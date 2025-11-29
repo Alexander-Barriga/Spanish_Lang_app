@@ -27,19 +27,21 @@ router.post('/', async (req: Request, res: Response) => {
     const userId = req.user?.id;
     const isAuthenticated = !!userId;
     
-    const { mode, topic, grammarFocus, rolePlayPersona } = req.body;
+    const { mode, topic, grammarFocus, rolePlayPersona, characterId } = req.body;
 
     if (!mode) {
       return res.status(400).json({ error: 'Conversation mode is required' });
     }
 
-    // Get initial AI greeting
+    console.log(`🎭 Creating conversation with character: ${characterId || 'default'}`);
+
+    // Get initial AI greeting (personalized if character is selected)
     const conversationService = new ConversationService();
     const greeting = await conversationService.generateGreeting(mode, {
       topic,
       grammarFocus,
       persona: rolePlayPersona,
-    });
+    }, characterId);
 
     // If authenticated, use database
     if (isAuthenticated) {
@@ -225,11 +227,13 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const conversationId = req.params.id;
-    const { content, audioUrl } = req.body;
+    const { content, audioUrl, characterId } = req.body;
 
     if (!content) {
       return res.status(400).json({ error: 'Message content is required' });
     }
+
+    console.log(`🎭 Message with character: ${characterId || 'default'}`);
 
     // Check if this is a dev conversation
     const devConv = devConversations.get(conversationId);
@@ -239,7 +243,7 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
       // Add user message
       devConv.messages.push({ id: uuidv4(), role: 'user', content });
 
-      // Generate AI response
+      // Generate AI response with character personality
       const conversationService = new ConversationService();
       const response = await conversationService.generateResponse(
         content,
@@ -256,7 +260,8 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
           message_count: devConv.messages.length,
         },
         devConv.messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        null
+        null,
+        characterId // Pass character ID for personality
       );
 
       // Add AI response
@@ -317,7 +322,8 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
       content,
       conversation,
       previousMessages || [],
-      userProfile
+      userProfile,
+      characterId // Pass character ID for personality
     );
 
     const { data: aiMessage } = await supabaseAdmin

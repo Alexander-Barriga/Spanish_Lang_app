@@ -135,14 +135,15 @@ export default function ConversationScreen() {
 
   const initializeConversation = async () => {
     try {
-      console.log('🚀 Initializing conversation with mode:', mode);
+      console.log('🚀 Initializing conversation with mode:', mode, 'character:', selectedTutorId);
       
-      // Create a new conversation on the backend
+      // Create a new conversation on the backend with selected tutor
       const result = await api.createConversation({
         mode: mode || 'open',
         topic: topic,
         grammarFocus: grammarFocus,
         rolePlayPersona: persona,
+        characterId: selectedTutorId,
       });
 
       console.log('📋 Conversation creation result:', JSON.stringify(result, null, 2));
@@ -393,6 +394,7 @@ export default function ConversationScreen() {
             topic: topic,
             grammarFocus: grammarFocus,
             rolePlayPersona: persona,
+            characterId: selectedTutorId,
           });
           
           if (createResult.data?.conversation?.id) {
@@ -408,7 +410,7 @@ export default function ConversationScreen() {
       if (currentConversationId) {
         console.log('📤 Sending message to conversation:', currentConversationId);
         const aiStart = Date.now();
-        const responseResult = await api.sendMessage(currentConversationId, userText);
+        const responseResult = await api.sendMessage(currentConversationId, userText, selectedTutorId);
         console.log(`⏱️ AI response took: ${Date.now() - aiStart}ms`);
         
         if (responseResult.error) {

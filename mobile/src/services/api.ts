@@ -119,6 +119,7 @@ class ApiClient {
     grammarFocus?: string;
     rolePlayPersona?: string;
     vocabularySetId?: string;
+    characterId?: string;
   }) {
     return this.request<{ conversation: ConversationResponse; initialMessage: string }>(
       '/conversations',
@@ -141,12 +142,12 @@ class ApiClient {
     );
   }
 
-  async sendMessage(conversationId: string, content: string, audioUrl?: string) {
+  async sendMessage(conversationId: string, content: string, characterId?: string) {
     return this.request<{ message: MessageResponse; corrections?: MessageResponse['corrections'] }>(
       `/conversations/${conversationId}/messages`,
       {
         method: 'POST',
-        body: JSON.stringify({ content, audioUrl }),
+        body: JSON.stringify({ content, characterId }),
       }
     );
   }

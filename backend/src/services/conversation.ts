@@ -7,6 +7,7 @@ import {
   CorrectionDepth,
   ModeContext 
 } from '../prompts';
+import { getCharacterPromptSection, getCharacterProfile } from '../prompts/characters';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -19,7 +20,32 @@ interface GeneratedResponse {
 }
 
 export class ConversationService {
-  async generateGreeting(mode: ConversationMode, context: ModeContext): Promise<string> {
+  async generateGreeting(mode: ConversationMode, context: ModeContext, characterId?: string): Promise<string> {
+    // If we have a character, generate a personalized greeting
+    if (characterId) {
+      const profile = getCharacterProfile(characterId);
+      if (profile) {
+        const greetings: Record<string, string[]> = {
+          'malena': [
+            `¡Hola! Soy ${profile.name}, de Buenos Aires. ¿Cómo andás? Contame algo de vos.`,
+            `¡Che, qué bueno conocerte! Soy ${profile.name}. ¿Qué querés practicar hoy?`,
+            `¡Hola! Acá ${profile.name}, lista para charlar. ¿Arrancamos?`,
+          ],
+          'ana_maria': [
+            `¡Hola! Soy ${profile.name}, de Oaxaca. ¡Qué gusto conocerte! ¿Cómo estás?`,
+            `¡Ay, qué padre! Soy ${profile.name}. ¿Ya comiste? Bueno, vamos a practicar español.`,
+            `¡Hola, hola! ${profile.name} aquí, lista para platicar. ¿Qué onda?`,
+          ],
+          'marcela': [
+            `¡Quiubo! Soy ${profile.name}, de Medellín. ¿Qué más, pues? ¡Vamos a hablar!`,
+            `¡Hola, parcero! Soy ${profile.name}. ¡Qué chimba conocerte! ¿Listo para practicar?`,
+            `¡Ey! ${profile.name} aquí, desde la Comuna 13. ¿Arrancamos pues?`,
+          ],
+        };
+        const options = greetings[characterId] || greetings['malena'];
+        return options[Math.floor(Math.random() * options.length)];
+      }
+    }
     return getGreetingMessage(mode, context);
   }
 
@@ -27,13 +53,14 @@ export class ConversationService {
     userMessage: string,
     conversation: Conversation,
     previousMessages: Message[],
-    userProfile: User | null
+    userProfile: User | null,
+    characterId?: string
   ): Promise<GeneratedResponse> {
     const userLevel = (userProfile?.spanish_level || 'A2') as SpanishLevel;
     const correctionDepth = (userProfile?.correction_depth || 'standard') as CorrectionDepth;
 
-    // Build system prompt using the new prompt system
-    const systemPrompt = buildSystemPrompt({
+    // Build base system prompt
+    let systemPrompt = buildSystemPrompt({
       mode: conversation.mode as ConversationMode,
       userLevel,
       correctionDepth,
@@ -43,6 +70,15 @@ export class ConversationService {
         persona: conversation.role_play_persona || undefined,
       },
     });
+
+    // Add character personality if a tutor is selected
+    if (characterId) {
+      const characterSection = getCharacterPromptSection(characterId);
+      if (characterSection) {
+        systemPrompt = characterSection + '\n\n---\n\n' + systemPrompt;
+        console.log(`🎭 Using character: ${characterId}`);
+      }
+    }
 
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: systemPrompt },
