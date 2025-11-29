@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "LoboLingo",
+    "slug": "lobolingo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "lobolingo",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1f36"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lobolingo.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "LoboLingo needs microphone access to enable voice conversations in Spanish."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1f36"
+      },
+      "package": "com.lobolingo.app",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow LoboLingo to access your microphone for voice conversations."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
