@@ -1,14 +1,23 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { SPANISH_LEVELS, CORRECTION_DEPTHS, ACCENT_OPTIONS } from '../../src/config/constants';
+import { SPANISH_LEVELS, CORRECTION_DEPTHS, ACCENT_OPTIONS, TUTOR_CHARACTERS, getTutorById } from '../../src/config/constants';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, selectedTutorId, setSelectedTutorId } = useAuth();
   const profile = user?.profile;
+  const [showTutorPicker, setShowTutorPicker] = useState(false);
+
+  const selectedTutor = getTutorById(selectedTutorId);
+
+  const handleSelectTutor = async (tutorId: string) => {
+    await setSelectedTutorId(tutorId);
+    setShowTutorPicker(false);
+  };
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -64,6 +73,31 @@ export default function ProfileScreen() {
           <View style={styles.levelBadge}>
             <Text style={styles.levelText}>{profile?.spanish_level || 'A1'}</Text>
           </View>
+        </View>
+
+        {/* Tutor Character Selection - Featured Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Spanish Tutor</Text>
+          
+          <Pressable 
+            style={styles.tutorCard}
+            onPress={() => setShowTutorPicker(true)}
+          >
+            <View style={styles.tutorCardContent}>
+              <View style={[styles.tutorAvatar, { backgroundColor: selectedTutor?.color + '30' }]}>
+                <Text style={styles.tutorAvatarEmoji}>{selectedTutor?.avatar}</Text>
+              </View>
+              <View style={styles.tutorInfo}>
+                <View style={styles.tutorNameRow}>
+                  <Text style={styles.tutorName}>{selectedTutor?.name}</Text>
+                  <Text style={styles.tutorFlag}>{selectedTutor?.flag}</Text>
+                </View>
+                <Text style={styles.tutorDescription}>{selectedTutor?.shortDescription}</Text>
+                <Text style={styles.tutorCountry}>from {selectedTutor?.country}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.neutral[500]} />
+            </View>
+          </Pressable>
         </View>
 
         {/* Settings Sections */}
@@ -164,6 +198,61 @@ export default function ProfileScreen() {
         {/* Version */}
         <Text style={styles.version}>LoboLingo v1.0.0</Text>
       </ScrollView>
+
+      {/* Tutor Character Picker Modal */}
+      <Modal
+        visible={showTutorPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowTutorPicker(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Choose Your Tutor</Text>
+            <Pressable onPress={() => setShowTutorPicker(false)}>
+              <Ionicons name="close" size={24} color={colors.text.primary} />
+            </Pressable>
+          </View>
+          
+          <Text style={styles.modalSubtitle}>
+            Each tutor speaks with a different Spanish accent
+          </Text>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {TUTOR_CHARACTERS.map((tutor) => (
+              <Pressable
+                key={tutor.id}
+                style={[
+                  styles.tutorOption,
+                  selectedTutorId === tutor.id && styles.tutorOptionSelected,
+                  { borderColor: tutor.color },
+                ]}
+                onPress={() => handleSelectTutor(tutor.id)}
+              >
+                <View style={[styles.tutorOptionAvatar, { backgroundColor: tutor.color + '30' }]}>
+                  <Text style={styles.tutorOptionEmoji}>{tutor.avatar}</Text>
+                </View>
+                <View style={styles.tutorOptionInfo}>
+                  <View style={styles.tutorOptionNameRow}>
+                    <Text style={styles.tutorOptionName}>{tutor.name}</Text>
+                    <Text style={styles.tutorOptionFlag}>{tutor.flag}</Text>
+                    {selectedTutorId === tutor.id && (
+                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                    )}
+                  </View>
+                  <Text style={styles.tutorOptionDescription}>{tutor.description}</Text>
+                  <Text style={styles.tutorOptionPersonality}>{tutor.personality}</Text>
+                  <View style={styles.samplePhrasesContainer}>
+                    {tutor.samplePhrases.map((phrase, idx) => (
+                      <Text key={idx} style={styles.samplePhrase}>"{phrase}"</Text>
+                    ))}
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -208,6 +297,144 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[10],
+  },
+  // Tutor Card styles
+  tutorCard: {
+    backgroundColor: colors.background.card,
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '40',
+  },
+  tutorCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  tutorAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tutorAvatarEmoji: {
+    fontSize: 28,
+  },
+  tutorInfo: {
+    flex: 1,
+  },
+  tutorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  tutorName: {
+    ...textStyles.h4,
+    color: colors.text.primary,
+  },
+  tutorFlag: {
+    fontSize: 16,
+  },
+  tutorDescription: {
+    ...textStyles.bodySmall,
+    color: colors.text.secondary,
+  },
+  tutorCountry: {
+    ...textStyles.caption,
+    color: colors.neutral[500],
+    marginTop: 2,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.default,
+  },
+  modalTitle: {
+    ...textStyles.h3,
+    color: colors.text.primary,
+  },
+  modalSubtitle: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[3],
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: spacing[5],
+  },
+  tutorOption: {
+    flexDirection: 'row',
+    backgroundColor: colors.background.card,
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tutorOptionSelected: {
+    borderWidth: 2,
+  },
+  tutorOptionAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing[3],
+  },
+  tutorOptionEmoji: {
+    fontSize: 32,
+  },
+  tutorOptionInfo: {
+    flex: 1,
+  },
+  tutorOptionNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[1],
+  },
+  tutorOptionName: {
+    ...textStyles.h4,
+    color: colors.text.primary,
+  },
+  tutorOptionFlag: {
+    fontSize: 18,
+  },
+  tutorOptionDescription: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    marginBottom: spacing[1],
+  },
+  tutorOptionPersonality: {
+    ...textStyles.bodySmall,
+    color: colors.neutral[500],
+    fontStyle: 'italic',
+    marginBottom: spacing[2],
+  },
+  samplePhrasesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  samplePhrase: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    backgroundColor: colors.primary.gold + '15',
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.sm,
   },
   header: {
     alignItems: 'center',

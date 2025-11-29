@@ -3,6 +3,13 @@ import multer from 'multer';
 import { optionalAuth } from '../middleware/auth';
 import { storageService } from '../services/storage';
 import FormData from 'form-data';
+import { 
+  tutorCharacters, 
+  getTutorCharacter, 
+  getVoiceIdForCharacter,
+  getVoiceIdForAccent,
+  getDefaultTutor 
+} from '../config/voices';
 
 const router = Router();
 
@@ -49,47 +56,25 @@ const upload = multer({
 // Use optional auth - will authenticate if token provided, otherwise continue
 router.use(optionalAuth);
 
-// Get available voices
+// Get available tutor characters (voices)
 router.get('/voices', async (req: Request, res: Response) => {
   try {
-    // ElevenLabs Spanish voices - these would be fetched from ElevenLabs API
-    // For now, we'll return a static list of recommended Spanish voices
-    const voices = [
-      {
-        id: 'spanish_female_1',
-        name: 'Isabella',
-        accent: 'mexico',
-        gender: 'female',
-        description: 'Warm and clear Mexican Spanish accent',
-        preview_url: null,
-      },
-      {
-        id: 'spanish_male_1',
-        name: 'Carlos',
-        accent: 'spain',
-        gender: 'male',
-        description: 'Professional Castilian Spanish accent',
-        preview_url: null,
-      },
-      {
-        id: 'spanish_female_2',
-        name: 'Lucía',
-        accent: 'argentina',
-        gender: 'female',
-        description: 'Friendly Rioplatense Spanish accent',
-        preview_url: null,
-      },
-      {
-        id: 'spanish_male_2',
-        name: 'Diego',
-        accent: 'colombia',
-        gender: 'male',
-        description: 'Clear Colombian Spanish accent',
-        preview_url: null,
-      },
-    ];
+    // Return the tutor characters with their accent info
+    // Note: We don't expose the actual voiceId to the client for security
+    const characters = tutorCharacters.map(c => ({
+      id: c.id,
+      name: c.name,
+      accent: c.accent,
+      country: c.country,
+      flag: c.flag,
+      description: c.description,
+      personality: c.personality,
+    }));
 
-    res.json({ voices });
+    res.json({ 
+      characters,
+      defaultCharacterId: getDefaultTutor().id,
+    });
   } catch (error) {
     console.error('Get voices error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -97,24 +82,50 @@ router.get('/voices', async (req: Request, res: Response) => {
 });
 
 // Text-to-speech endpoint
+// Accepts: text (required), characterId (optional), accent (optional)
+// Priority: characterId > accent > default
 router.post('/synthesize', async (req: Request, res: Response) => {
   try {
-    const { text, voiceId } = req.body;
+    const { text, characterId, accent } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
     const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
-    const defaultVoiceId = process.env.ELEVENLABS_VOICE_ID || 'your_default_voice_id';
 
     if (!elevenLabsApiKey) {
       return res.status(500).json({ error: 'ElevenLabs API not configured' });
     }
 
+    // Determine the voice ID based on characterId or accent
+    let voiceId: string;
+    let characterName: string;
+    
+    if (characterId) {
+      voiceId = getVoiceIdForCharacter(characterId);
+      characterName = getTutorCharacter(characterId)?.name || 'Unknown';
+    } else if (accent) {
+      voiceId = getVoiceIdForAccent(accent);
+      characterName = `${accent} accent`;
+    } else {
+      const defaultTutor = getDefaultTutor();
+      voiceId = defaultTutor.voiceId;
+      characterName = defaultTutor.name;
+    }
+
+    console.log(`🎤 Synthesizing speech for ${characterName} (voice: ${voiceId.substring(0, 8)}...)`);
+
+    // Check if voice ID is a dummy placeholder
+    if (voiceId.startsWith('DUMMY_')) {
+      console.warn(`⚠️ Using dummy voice ID for ${characterName}. Please update .env with real ElevenLabs voice ID.`);
+      // Fall back to the default voice
+      voiceId = getDefaultTutor().voiceId;
+    }
+
     // Call ElevenLabs API
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId || defaultVoiceId}/stream`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
         method: 'POST',
         headers: {
@@ -248,28 +259,25 @@ router.post('/transcribe', upload.single('audio'), async (req: Request, res: Res
 
     console.log(`Transcription result: "${result.text}"`);
 
-    // Save audio to Supabase Storage (in background, don't block response)
-    let audioUrl: string | undefined;
-    try {
-      const uploadResult = await storageService.uploadAudio(
-        audioFile.buffer,
-        userId,
-        conversationId,
-        audioFile.mimetype
-      );
-      if (uploadResult.success && uploadResult.url) {
-        audioUrl = uploadResult.url;
-        console.log(`✅ Audio saved to storage: ${audioUrl}`);
-      }
-    } catch (storageError) {
-      console.error('Audio storage error (non-fatal):', storageError);
-      // Continue without audio storage - transcription still works
-    }
-
+    // Return transcription immediately - don't wait for storage
     res.json({
       transcript: result.text || '',
       confidence: 0.95, // OpenAI doesn't return confidence, using a default
-      audioUrl, // Include the storage URL for later reference
+    });
+
+    // Save audio to Supabase Storage in background (truly async, non-blocking)
+    // This happens AFTER the response is sent
+    storageService.uploadAudio(
+      audioFile.buffer,
+      userId,
+      conversationId,
+      audioFile.mimetype
+    ).then(uploadResult => {
+      if (uploadResult.success && uploadResult.url) {
+        console.log(`✅ Audio saved to storage: ${uploadResult.url}`);
+      }
+    }).catch(storageError => {
+      console.error('Audio storage error (non-fatal):', storageError);
     });
   } catch (error) {
     console.error('Transcribe error:', error);

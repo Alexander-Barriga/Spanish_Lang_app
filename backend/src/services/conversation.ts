@@ -54,11 +54,13 @@ export class ConversationService {
     ];
 
     try {
+      // Using gpt-4o-mini for faster responses (~10x faster than gpt-4-turbo)
+      // Still maintains good quality for conversational Spanish tutoring
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o-mini',
         messages,
         temperature: 0.8,
-        max_tokens: 500,
+        max_tokens: 300, // Reduced for faster responses in voice conversations
         presence_penalty: 0.3,
         frequency_penalty: 0.5,
       });

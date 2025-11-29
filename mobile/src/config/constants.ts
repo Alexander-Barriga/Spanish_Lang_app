@@ -177,3 +177,58 @@ export const ACCENT_OPTIONS = [
   { value: 'colombia', label: 'Colombian Spanish', flag: '🇨🇴' },
 ] as const;
 
+// Tutor Characters - Each has a unique voice and personality
+// These correspond to different ElevenLabs voices for different Spanish accents
+export const TUTOR_CHARACTERS = [
+  {
+    id: 'malena',
+    name: 'Malena',
+    accent: 'argentina',
+    country: 'Argentina',
+    flag: '🇦🇷',
+    avatar: '👩‍🦱',
+    description: 'A warm porteña from Buenos Aires',
+    shortDescription: 'Rioplatense accent',
+    personality: 'Passionate and expressive, uses vos',
+    samplePhrases: ['¡Che, qué bueno verte!', '¿Cómo andás?'],
+    color: '#75AADB', // Light blue (Argentina flag)
+  },
+  {
+    id: 'ana_maria',
+    name: 'Ana María',
+    accent: 'mexico',
+    country: 'Mexico',
+    flag: '🇲🇽',
+    avatar: '👩‍🦰',
+    description: 'A friendly chilanga from Mexico City',
+    shortDescription: 'Mexican accent',
+    personality: 'Warm and patient, very clear pronunciation',
+    samplePhrases: ['¡Órale, qué onda!', '¿Qué tal, amiga?'],
+    color: '#006847', // Green (Mexico flag)
+  },
+  {
+    id: 'marcela',
+    name: 'Marcela',
+    accent: 'colombia',
+    country: 'Colombia',
+    flag: '🇨🇴',
+    avatar: '👩‍💼',
+    description: 'A cheerful paisa from Medellín',
+    shortDescription: 'Colombian accent',
+    personality: 'Upbeat and encouraging, very friendly',
+    samplePhrases: ['¡Quiubo, parcera!', '¿Qué más, amiga?'],
+    color: '#FCD116', // Yellow (Colombia flag)
+  },
+] as const;
+
+// Type for tutor character
+export type TutorCharacter = typeof TUTOR_CHARACTERS[number];
+
+// Get the default tutor character
+export const DEFAULT_TUTOR_ID = 'malena';
+
+// Helper to get tutor by ID
+export const getTutorById = (id: string): TutorCharacter | undefined => {
+  return TUTOR_CHARACTERS.find(t => t.id === id);
+};
+

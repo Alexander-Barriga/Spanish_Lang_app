@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { createClient, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/constants';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, DEFAULT_TUTOR_ID } from '../config/constants';
 
 // Types
 interface UserProfile {
@@ -14,6 +14,7 @@ interface UserProfile {
   correction_depth: 'light' | 'standard' | 'deep';
   voice_speed: number;
   accent_preference: 'spain' | 'mexico' | 'argentina' | 'colombia';
+  tutor_character?: string; // The selected tutor character ID
 }
 
 interface UserProgress {
@@ -41,6 +42,9 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  // Tutor character selection (stored locally)
+  selectedTutorId: string;
+  setSelectedTutorId: (tutorId: string) => Promise<void>;
 }
 
 // Secure storage adapter for Supabase
@@ -81,10 +85,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // Context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Storage key for tutor character
+const TUTOR_CHARACTER_KEY = 'selected_tutor_character';
+
 // Provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTutorId, setSelectedTutorIdState] = useState<string>(DEFAULT_TUTOR_ID);
 
   // Fetch user profile and progress
   const fetchUserData = async (supabaseUser: SupabaseUser): Promise<AuthUser> => {
@@ -101,10 +109,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  // Load selected tutor character from storage
+  const loadSelectedTutor = async () => {
+    try {
+      const storedTutor = await SecureStore.getItemAsync(TUTOR_CHARACTER_KEY);
+      if (storedTutor) {
+        setSelectedTutorIdState(storedTutor);
+        console.log('✅ Loaded tutor character:', storedTutor);
+      }
+    } catch (error) {
+      console.error('Error loading tutor character:', error);
+    }
+  };
+
+  // Save selected tutor character
+  const setSelectedTutorId = async (tutorId: string) => {
+    try {
+      await SecureStore.setItemAsync(TUTOR_CHARACTER_KEY, tutorId);
+      setSelectedTutorIdState(tutorId);
+      console.log('✅ Saved tutor character:', tutorId);
+    } catch (error) {
+      console.error('Error saving tutor character:', error);
+    }
+  };
+
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Load tutor character preference
+        await loadSelectedTutor();
+
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
@@ -253,6 +288,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         refreshUser,
+        selectedTutorId,
+        setSelectedTutorId,
       }}
     >
       {children}

@@ -18,7 +18,8 @@ import { Audio } from 'expo-av';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { useAudioPlayback } from '../../src/hooks/useAudioPlayback';
 import { api } from '../../src/services/api';
-import { VAD_CONFIG } from '../../src/config/constants';
+import { VAD_CONFIG, getTutorById } from '../../src/config/constants';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,6 +45,10 @@ export default function ConversationScreen() {
     grammarFocus?: string;
     persona?: string;
   }>();
+
+  // Get the selected tutor character for voice synthesis
+  const { selectedTutorId } = useAuth();
+  const selectedTutor = getTutorById(selectedTutorId);
 
   const [state, setState] = useState<ConversationState>('idle');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -202,8 +207,10 @@ export default function ConversationScreen() {
     try {
       setState('speaking');
       
-      // Call the TTS endpoint
-      const audioBuffer = await api.synthesizeSpeech(text);
+      console.log(`🗣️ Speaking with tutor: ${selectedTutor?.name || 'default'} (${selectedTutorId})`);
+      
+      // Call the TTS endpoint with the selected tutor character
+      const audioBuffer = await api.synthesizeSpeech(text, selectedTutorId);
       
       // Convert ArrayBuffer to base64 data URI for playback
       const base64 = arrayBufferToBase64(audioBuffer);
@@ -339,11 +346,15 @@ export default function ConversationScreen() {
 
   // Process the recorded audio
   const processRecording = async (audioUri: string) => {
+    const startTime = Date.now();
+    
     try {
       console.log('🔄 Transcribing audio...');
       
       // Transcribe the audio (pass conversationId for storage organization)
+      const transcribeStart = Date.now();
       const transcriptionResult = await api.transcribeAudio(audioUri, conversationId || undefined);
+      console.log(`⏱️ Transcription took: ${Date.now() - transcribeStart}ms`);
       
       if (transcriptionResult.error) {
         console.error('❌ Transcription error:', transcriptionResult.error);
@@ -358,11 +369,7 @@ export default function ConversationScreen() {
       }
 
       const userText = transcriptionResult.data.transcript;
-      const audioUrl = transcriptionResult.data.audioUrl; // Get the stored audio URL
       console.log(`💬 Transcription: "${userText}"`);
-      if (audioUrl) {
-        console.log(`🎵 Audio stored at: ${audioUrl}`);
-      }
       
       // Add user message
       const userMessage: Message = {
@@ -400,7 +407,9 @@ export default function ConversationScreen() {
       
       if (currentConversationId) {
         console.log('📤 Sending message to conversation:', currentConversationId);
-        const responseResult = await api.sendMessage(currentConversationId, userText, audioUrl);
+        const aiStart = Date.now();
+        const responseResult = await api.sendMessage(currentConversationId, userText);
+        console.log(`⏱️ AI response took: ${Date.now() - aiStart}ms`);
         
         if (responseResult.error) {
           console.error('❌ AI response error:', responseResult.error);
@@ -423,7 +432,10 @@ export default function ConversationScreen() {
           }
           
           // Speak the response
+          const ttsStart = Date.now();
           await speakText(aiMessage.content);
+          console.log(`⏱️ TTS took: ${Date.now() - ttsStart}ms`);
+          console.log(`⏱️ TOTAL response time: ${Date.now() - startTime}ms`);
         } else {
           throw new Error('Failed to get AI response');
         }
@@ -539,8 +551,11 @@ export default function ConversationScreen() {
           <View style={styles.headerCenter}>
             <View style={[styles.statusDot, { backgroundColor: getStateColor() }]} />
             <Text style={styles.headerTitle}>
-              {mode === 'roleplay' ? persona : mode === 'topic' ? topic : 'Lobo'}
+              {mode === 'roleplay' ? persona : mode === 'topic' ? topic : (selectedTutor?.name || 'Lobo')}
             </Text>
+            {selectedTutor && (
+              <Text style={styles.headerFlag}>{selectedTutor.flag}</Text>
+            )}
           </View>
           
           <Pressable 
@@ -706,6 +721,10 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.text.primary,
     fontWeight: '600',
+  },
+  headerFlag: {
+    fontSize: 14,
+    marginLeft: spacing[1],
   },
   content: {
     flex: 1,

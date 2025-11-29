@@ -161,8 +161,10 @@ class ApiClient {
   }
 
   // Voice endpoints
-  async synthesizeSpeech(text: string, voiceId?: string) {
+  async synthesizeSpeech(text: string, characterId?: string) {
     const token = await this.getAuthToken();
+
+    console.log(`🔊 Synthesizing speech with character: ${characterId || 'default'}`);
 
     const response = await fetch(`${this.baseUrl}/voice/synthesize`, {
       method: 'POST',
@@ -170,7 +172,7 @@ class ApiClient {
         'Content-Type': 'application/json',
         ...(token && { 'Authorization': `Bearer ${token}` }),
       },
-      body: JSON.stringify({ text, voiceId }),
+      body: JSON.stringify({ text, characterId }),
     });
 
     if (!response.ok) {
@@ -180,10 +182,26 @@ class ApiClient {
     return response.arrayBuffer();
   }
 
+  // Get available tutor characters
+  async getTutorCharacters() {
+    return this.request<{ 
+      characters: Array<{
+        id: string;
+        name: string;
+        accent: string;
+        country: string;
+        flag: string;
+        description: string;
+        personality: string;
+      }>;
+      defaultCharacterId: string;
+    }>('/voice/voices');
+  }
+
   async transcribeAudio(
     audioUri: string, 
     conversationId?: string
-  ): Promise<ApiResponse<{ transcript: string; confidence: number; audioUrl?: string }>> {
+  ): Promise<ApiResponse<{ transcript: string; confidence: number }>> {
     try {
       const token = await this.getAuthToken();
 
