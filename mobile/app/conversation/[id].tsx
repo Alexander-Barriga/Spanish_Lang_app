@@ -109,7 +109,7 @@ export default function ConversationScreen() {
         stopAudio();
         cleanupRecording();
       };
-    }, [stopAudio])
+    }, []) // Empty deps to prevent re-running during audio playback
   );
 
   // Stop audio when app goes to background (extra safety)
@@ -125,7 +125,7 @@ export default function ConversationScreen() {
     return () => {
       subscription.remove();
     };
-  }, [stopAudio]);
+  }, []);
 
   // Pulse animation for listening state
   useEffect(() => {
@@ -240,6 +240,7 @@ export default function ConversationScreen() {
   // Text-to-Speech function with emotional voice synthesis
   const speakText = async (text: string, emotion?: EmotionData) => {
     try {
+      console.log('🔊 Starting TTS...');
       setState('speaking');
       
       if (emotion) {
@@ -250,15 +251,20 @@ export default function ConversationScreen() {
       }
       
       // Call the TTS endpoint with the selected tutor character and emotion
+      console.log('📞 Calling synthesizeSpeech API...');
       const audioBuffer = await api.synthesizeSpeech(text, selectedTutorId, emotion);
+      console.log(`✅ Received audio buffer: ${audioBuffer.byteLength} bytes`);
       
       // Convert ArrayBuffer to base64 data URI for playback
       const base64 = arrayBufferToBase64(audioBuffer);
       const audioUri = `data:audio/mpeg;base64,${base64}`;
+      console.log(`🎵 Converted to audio URI, playing...`);
       
       await playAudio(audioUri);
+      console.log('✅ Audio playback started successfully');
     } catch (error) {
-      console.error('TTS error:', error);
+      console.error('❌ TTS error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       // Even if TTS fails, show the text and move on
       setState('idle');
     }

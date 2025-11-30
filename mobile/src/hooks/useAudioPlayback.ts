@@ -79,12 +79,12 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       setIsLoading(true);
 
       // Configure audio mode for playback
-      // NOTE: staysActiveInBackground is FALSE to prevent audio from playing
-      // when navigating away or switching screens
+      // NOTE: We allow background playback but explicitly stop it via navigation listeners
+      // in the conversation screen to prevent multiple tutors speaking simultaneously
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: false, // Stop audio when screen is backgrounded
+        staysActiveInBackground: true, // Allow playback, but stop it explicitly on navigation
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
         interruptionModeIOS: 1, // Duck others
@@ -117,12 +117,12 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       const uri = `data:audio/mpeg;base64,${base64}`;
 
       // Configure audio mode for playback
-      // NOTE: staysActiveInBackground is FALSE to prevent audio from playing
-      // when navigating away or switching screens
+      // NOTE: We allow background playback but explicitly stop it via navigation listeners
+      // in the conversation screen to prevent multiple tutors speaking simultaneously
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: false, // Stop audio when screen is backgrounded
+        staysActiveInBackground: true, // Allow playback, but stop it explicitly on navigation
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
         interruptionModeIOS: 1, // Duck others
