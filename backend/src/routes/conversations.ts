@@ -270,14 +270,19 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
         role: 'assistant',
         content: response.content,
         corrections: response.corrections,
+        emotion: response.emotion,
       };
       devConv.messages.push(aiMessage);
 
       console.log(`🤖 AI Response: "${response.content.substring(0, 50)}..."`);
+      if (response.emotion) {
+        console.log(`🎭 Emotion: ${response.emotion.type} (intensity: ${response.emotion.intensity})`);
+      }
 
       return res.json({
         message: aiMessage,
         corrections: response.corrections,
+        emotion: response.emotion,
       });
     }
 
@@ -334,6 +339,7 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
         content: response.content,
         audio_url: null,
         corrections: response.corrections,
+        metadata: response.emotion ? { emotion: response.emotion } : null,
       })
       .select()
       .single();
@@ -343,9 +349,15 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
       .update({ message_count: conversation.message_count + 2 })
       .eq('id', conversationId);
 
+    console.log(`🤖 AI Response: "${response.content.substring(0, 50)}..."`);
+    if (response.emotion) {
+      console.log(`🎭 Emotion: ${response.emotion.type} (intensity: ${response.emotion.intensity})`);
+    }
+
     res.json({
-      message: aiMessage,
+      message: { ...aiMessage, emotion: response.emotion },
       corrections: response.corrections,
+      emotion: response.emotion,
     });
   } catch (error) {
     console.error('Send message error:', error);

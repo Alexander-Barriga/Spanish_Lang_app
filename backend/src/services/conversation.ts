@@ -8,6 +8,12 @@ import {
   ModeContext 
 } from '../prompts';
 import { getCharacterPromptSection, getCharacterProfile } from '../prompts/characters';
+import { 
+  EmotionData, 
+  parseEmotionFromText, 
+  removeEmotionTags,
+  getEmotionPromptInstruction 
+} from './emotionalVoice';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -17,6 +23,7 @@ interface Message {
 interface GeneratedResponse {
   content: string;
   corrections: Correction[] | null;
+  emotion?: EmotionData;
 }
 
 export class ConversationService {
@@ -80,6 +87,10 @@ export class ConversationService {
       }
     }
 
+    // Add emotional response instruction for human-like voice synthesis
+    const emotionInstruction = getEmotionPromptInstruction();
+    systemPrompt += '\n\n' + emotionInstruction;
+
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: systemPrompt },
       ...previousMessages.map(m => ({
@@ -106,12 +117,20 @@ export class ConversationService {
       // Parse corrections from response
       const corrections = this.parseCorrections(responseText);
       
-      // Remove correction markers from displayed text
-      const cleanContent = responseText.replace(/\[CORRECCIÓN:.*?\]/g, '').trim();
+      // Parse emotion from response (for emotional voice synthesis)
+      const emotion = parseEmotionFromText(responseText);
+      if (emotion) {
+        console.log(`🎭 Detected emotion: ${emotion.type} (intensity: ${emotion.intensity})`);
+      }
+      
+      // Remove correction markers and emotion tags from displayed text
+      let cleanContent = responseText.replace(/\[CORRECCIÓN:.*?\]/g, '');
+      cleanContent = removeEmotionTags(cleanContent).trim();
 
       return {
         content: cleanContent,
         corrections: corrections.length > 0 ? corrections : null,
+        emotion,
       };
     } catch (error) {
       console.error('OpenAI API error:', error);

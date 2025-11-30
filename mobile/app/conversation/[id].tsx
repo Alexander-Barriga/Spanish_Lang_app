@@ -17,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { useAudioPlayback } from '../../src/hooks/useAudioPlayback';
-import { api } from '../../src/services/api';
+import { api, EmotionData } from '../../src/services/api';
 import { VAD_CONFIG, getTutorById } from '../../src/config/constants';
 import { useAuth } from '../../src/contexts/AuthContext';
 
@@ -28,6 +28,7 @@ type ConversationState = 'idle' | 'listening' | 'processing' | 'speaking';
 interface Message {
   id: string;
   role: 'user' | 'assistant';
+  emotion?: EmotionData;
   content: string;
   corrections?: Array<{
     type: string;
@@ -203,15 +204,20 @@ export default function ConversationScreen() {
     }
   };
 
-  // Text-to-Speech function
-  const speakText = async (text: string) => {
+  // Text-to-Speech function with emotional voice synthesis
+  const speakText = async (text: string, emotion?: EmotionData) => {
     try {
       setState('speaking');
       
-      console.log(`🗣️ Speaking with tutor: ${selectedTutor?.name || 'default'} (${selectedTutorId})`);
+      if (emotion) {
+        console.log(`🗣️ Speaking with tutor: ${selectedTutor?.name || 'default'} (${selectedTutorId})`);
+        console.log(`🎭 Emotion: ${emotion.type} (intensity: ${(emotion.intensity * 100).toFixed(0)}%)`);
+      } else {
+        console.log(`🗣️ Speaking with tutor: ${selectedTutor?.name || 'default'} (${selectedTutorId}) - neutral`);
+      }
       
-      // Call the TTS endpoint with the selected tutor character
-      const audioBuffer = await api.synthesizeSpeech(text, selectedTutorId);
+      // Call the TTS endpoint with the selected tutor character and emotion
+      const audioBuffer = await api.synthesizeSpeech(text, selectedTutorId, emotion);
       
       // Convert ArrayBuffer to base64 data URI for playback
       const base64 = arrayBufferToBase64(audioBuffer);
@@ -419,23 +425,30 @@ export default function ConversationScreen() {
         }
         
         if (responseResult.data) {
+          // Extract emotion for human-like voice synthesis
+          const emotion = responseResult.data.emotion || responseResult.data.message.emotion;
+          
           const aiMessage: Message = {
             id: responseResult.data.message.id,
             role: 'assistant',
             content: responseResult.data.message.content,
             corrections: responseResult.data.corrections,
+            emotion,
           };
           
           console.log(`🤖 AI response: "${aiMessage.content}"`);
+          if (emotion) {
+            console.log(`🎭 Detected emotion: ${emotion.type} (intensity: ${(emotion.intensity * 100).toFixed(0)}%)`);
+          }
           setMessages(prev => [...prev, aiMessage]);
           
           if (aiMessage.corrections && aiMessage.corrections.length > 0) {
             setCurrentCorrection(aiMessage.corrections);
           }
           
-          // Speak the response
+          // Speak the response with emotional voice synthesis
           const ttsStart = Date.now();
-          await speakText(aiMessage.content);
+          await speakText(aiMessage.content, emotion);
           console.log(`⏱️ TTS took: ${Date.now() - ttsStart}ms`);
           console.log(`⏱️ TOTAL response time: ${Date.now() - startTime}ms`);
         } else {

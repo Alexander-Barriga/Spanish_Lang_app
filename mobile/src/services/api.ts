@@ -27,7 +27,27 @@ export interface MessageResponse {
     corrected: string;
     explanation: string;
   }>;
+  emotion?: EmotionData;
   created_at: string;
+}
+
+// Emotion types for human-like voice synthesis
+export type EmotionType =
+  // Positive Emotions
+  | 'content' | 'pleased' | 'happy' | 'joyful' | 'excited' | 'ecstatic'
+  | 'proud' | 'amused' | 'playful'
+  // Encouraging Emotions
+  | 'reassuring' | 'encouraging' | 'enthusiastic' | 'empathetic'
+  | 'compassionate' | 'nurturing'
+  // Contemplative Emotions
+  | 'thoughtful' | 'curious' | 'concerned' | 'worried' | 'disappointed'
+  | 'frustrated' | 'stern'
+  // Surprise Emotions
+  | 'intrigued' | 'surprised' | 'amazed' | 'astonished' | 'shocked';
+
+export interface EmotionData {
+  type: EmotionType;
+  intensity: number; // 0.0 to 1.0
 }
 
 // API Client
@@ -143,7 +163,11 @@ class ApiClient {
   }
 
   async sendMessage(conversationId: string, content: string, characterId?: string) {
-    return this.request<{ message: MessageResponse; corrections?: MessageResponse['corrections'] }>(
+    return this.request<{ 
+      message: MessageResponse; 
+      corrections?: MessageResponse['corrections'];
+      emotion?: EmotionData;
+    }>(
       `/conversations/${conversationId}/messages`,
       {
         method: 'POST',
@@ -162,10 +186,14 @@ class ApiClient {
   }
 
   // Voice endpoints
-  async synthesizeSpeech(text: string, characterId?: string) {
+  async synthesizeSpeech(text: string, characterId?: string, emotion?: EmotionData) {
     const token = await this.getAuthToken();
 
-    console.log(`🔊 Synthesizing speech with character: ${characterId || 'default'}`);
+    if (emotion) {
+      console.log(`🔊 Synthesizing speech with character: ${characterId || 'default'}, emotion: ${emotion.type} (${(emotion.intensity * 100).toFixed(0)}%)`);
+    } else {
+      console.log(`🔊 Synthesizing speech with character: ${characterId || 'default'} (neutral)`);
+    }
 
     const response = await fetch(`${this.baseUrl}/voice/synthesize`, {
       method: 'POST',
@@ -173,7 +201,7 @@ class ApiClient {
         'Content-Type': 'application/json',
         ...(token && { 'Authorization': `Bearer ${token}` }),
       },
-      body: JSON.stringify({ text, characterId }),
+      body: JSON.stringify({ text, characterId, emotion }),
     });
 
     if (!response.ok) {

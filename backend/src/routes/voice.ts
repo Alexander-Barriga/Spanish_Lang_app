@@ -10,6 +10,11 @@ import {
   getVoiceIdForAccent,
   getDefaultTutor 
 } from '../config/voices';
+import {
+  EmotionData,
+  getEmotionalVoiceSettings,
+  getEmotionDescription,
+} from '../services/emotionalVoice';
 
 const router = Router();
 
@@ -82,11 +87,17 @@ router.get('/voices', async (req: Request, res: Response) => {
 });
 
 // Text-to-speech endpoint
-// Accepts: text (required), characterId (optional), accent (optional)
+// Accepts: text (required), characterId (optional), accent (optional), emotion (optional)
 // Priority: characterId > accent > default
+// Emotion adjusts voice parameters for human-like emotional delivery
 router.post('/synthesize', async (req: Request, res: Response) => {
   try {
-    const { text, characterId, accent } = req.body;
+    const { text, characterId, accent, emotion } = req.body as {
+      text: string;
+      characterId?: string;
+      accent?: string;
+      emotion?: EmotionData;
+    };
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
@@ -114,7 +125,18 @@ router.post('/synthesize', async (req: Request, res: Response) => {
       characterName = defaultTutor.name;
     }
 
-    console.log(`🎤 Synthesizing speech for ${characterName} (voice: ${voiceId.substring(0, 8)}...)`);
+    // Get emotion-adjusted voice settings
+    const voiceSettings = getEmotionalVoiceSettings(emotion);
+    
+    // Log synthesis details
+    if (emotion) {
+      console.log(`🎤 Synthesizing speech for ${characterName}`);
+      console.log(`   🎭 Emotion: ${emotion.type} (${getEmotionDescription(emotion.type)})`);
+      console.log(`   📊 Intensity: ${(emotion.intensity * 100).toFixed(0)}%`);
+      console.log(`   🎛️  Settings: stability=${voiceSettings.stability.toFixed(2)}, style=${voiceSettings.style.toFixed(2)}`);
+    } else {
+      console.log(`🎤 Synthesizing speech for ${characterName} (neutral emotion)`);
+    }
 
     // Check if voice ID is a dummy placeholder
     if (voiceId.startsWith('DUMMY_')) {
@@ -123,7 +145,7 @@ router.post('/synthesize', async (req: Request, res: Response) => {
       voiceId = getDefaultTutor().voiceId;
     }
 
-    // Call ElevenLabs API
+    // Call ElevenLabs API with emotion-adjusted voice settings
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
@@ -136,12 +158,7 @@ router.post('/synthesize', async (req: Request, res: Response) => {
         body: JSON.stringify({
           text,
           model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.5,
-            use_speaker_boost: true,
-          },
+          voice_settings: voiceSettings,
         }),
       }
     );
