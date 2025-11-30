@@ -241,6 +241,14 @@ export default function ConversationScreen() {
   const speakText = async (text: string, emotion?: EmotionData) => {
     try {
       console.log('🔊 Starting TTS...');
+      console.log(`📏 Text length: ${text.length} characters`);
+      
+      // Validate text length (ElevenLabs limit is ~5000 chars, but we limit to 2000 for performance)
+      if (text.length > 2000) {
+        console.warn(`⚠️ Text too long (${text.length} chars), truncating to 2000 chars`);
+        text = text.substring(0, 1997) + '...';
+      }
+      
       setState('speaking');
       
       if (emotion) {
@@ -255,16 +263,29 @@ export default function ConversationScreen() {
       const audioBuffer = await api.synthesizeSpeech(text, selectedTutorId, emotion);
       console.log(`✅ Received audio buffer: ${audioBuffer.byteLength} bytes`);
       
+      // Check if audio buffer is suspiciously small (might indicate an error)
+      if (audioBuffer.byteLength < 1000) {
+        throw new Error(`Audio buffer too small: ${audioBuffer.byteLength} bytes`);
+      }
+      
       // Convert ArrayBuffer to base64 data URI for playback
       const base64 = arrayBufferToBase64(audioBuffer);
       const audioUri = `data:audio/mpeg;base64,${base64}`;
-      console.log(`🎵 Converted to audio URI, playing...`);
+      console.log(`🎵 Converted to audio URI (${base64.length} base64 chars), playing...`);
       
       await playAudio(audioUri);
       console.log('✅ Audio playback started successfully');
     } catch (error) {
       console.error('❌ TTS error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      // Better error logging
+      if (error instanceof Error) {
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      } else {
+        console.error('Error type:', typeof error);
+        console.error('Error value:', error);
+      }
       // Even if TTS fails, show the text and move on
       setState('idle');
     }
