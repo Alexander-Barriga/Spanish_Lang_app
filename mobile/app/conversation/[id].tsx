@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,9 +8,11 @@ import {
   Dimensions,
   Alert,
   Animated,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -93,6 +95,37 @@ export default function ConversationScreen() {
       stopAudio();
     };
   }, []);
+
+  // Stop audio when navigating away from this screen
+  // This prevents audio from multiple tutors playing simultaneously
+  useFocusEffect(
+    useCallback(() => {
+      // When screen gains focus, nothing special to do
+      console.log('📱 Conversation screen focused');
+      
+      return () => {
+        // When screen loses focus (navigating away), stop all audio immediately
+        console.log('📱 Conversation screen unfocused - stopping audio');
+        stopAudio();
+        cleanupRecording();
+      };
+    }, [stopAudio])
+  );
+
+  // Stop audio when app goes to background (extra safety)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        console.log('📱 App backgrounded - stopping audio');
+        stopAudio();
+        cleanupRecording();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [stopAudio]);
 
   // Pulse animation for listening state
   useEffect(() => {

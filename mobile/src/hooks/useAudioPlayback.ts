@@ -79,12 +79,16 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       setIsLoading(true);
 
       // Configure audio mode for playback
+      // NOTE: staysActiveInBackground is FALSE to prevent audio from playing
+      // when navigating away or switching screens
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        staysActiveInBackground: false, // Stop audio when screen is backgrounded
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
+        interruptionModeIOS: 1, // Duck others
+        interruptionModeAndroid: 1, // Duck others
       });
 
       const { sound } = await Audio.Sound.createAsync(
@@ -113,12 +117,16 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       const uri = `data:audio/mpeg;base64,${base64}`;
 
       // Configure audio mode for playback
+      // NOTE: staysActiveInBackground is FALSE to prevent audio from playing
+      // when navigating away or switching screens
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        staysActiveInBackground: false, // Stop audio when screen is backgrounded
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
+        interruptionModeIOS: 1, // Duck others
+        interruptionModeAndroid: 1, // Duck others
       });
 
       const { sound } = await Audio.Sound.createAsync(
