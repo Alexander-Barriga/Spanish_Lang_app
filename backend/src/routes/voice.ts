@@ -126,14 +126,26 @@ router.post('/synthesize', async (req: Request, res: Response) => {
     }
 
     // Get emotion-adjusted voice settings
-    const voiceSettings = getEmotionalVoiceSettings(emotion);
+    let voiceSettings;
+    try {
+      voiceSettings = getEmotionalVoiceSettings(emotion);
+    } catch (settingsError) {
+      console.error('❌ Error generating voice settings:', settingsError);
+      // Fall back to default settings
+      voiceSettings = getEmotionalVoiceSettings(undefined);
+    }
     
     // Log synthesis details
     if (emotion) {
-      console.log(`🎤 Synthesizing speech for ${characterName}`);
-      console.log(`   🎭 Emotion: ${emotion.type} (${getEmotionDescription(emotion.type)})`);
-      console.log(`   📊 Intensity: ${(emotion.intensity * 100).toFixed(0)}%`);
-      console.log(`   🎛️  Settings: stability=${voiceSettings.stability.toFixed(2)}, style=${voiceSettings.style.toFixed(2)}`);
+      try {
+        console.log(`🎤 Synthesizing speech for ${characterName}`);
+        console.log(`   🎭 Emotion: ${emotion.type} (${getEmotionDescription(emotion.type)})`);
+        console.log(`   📊 Intensity: ${(emotion.intensity * 100).toFixed(0)}%`);
+        console.log(`   🎛️  Settings: stability=${voiceSettings.stability.toFixed(2)}, style=${voiceSettings.style.toFixed(2)}`);
+      } catch (logError) {
+        console.error('Error in logging:', logError);
+        console.log(`🎤 Synthesizing speech for ${characterName} with emotion`);
+      }
     } else {
       console.log(`🎤 Synthesizing speech for ${characterName} (neutral emotion)`);
     }
@@ -165,8 +177,36 @@ router.post('/synthesize', async (req: Request, res: Response) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('ElevenLabs error:', errorText);
-      return res.status(500).json({ error: 'Text-to-speech synthesis failed' });
+      const statusCode = response.status;
+      console.error(`❌ ElevenLabs API error (HTTP ${statusCode}):`, errorText);
+      console.error('Request details:', {
+        textLength: text.length,
+        characterId,
+        voiceId: voiceId.substring(0, 8) + '...',
+        voiceSettings,
+        hasEmotion: !!emotion,
+      });
+      
+      // Parse ElevenLabs error for better error messages
+      let errorDetails = 'ElevenLabs API error';
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.detail?.status === 'quota_exceeded') {
+          errorDetails = 'ElevenLabs API quota exceeded. Please check your account credits.';
+          console.error('⚠️ QUOTA EXCEEDED:', errorJson.detail.message);
+        } else if (errorJson.detail?.message) {
+          errorDetails = errorJson.detail.message;
+        }
+      } catch (e) {
+        // Error text is not JSON, use as-is
+        errorDetails = errorText.substring(0, 200);
+      }
+      
+      return res.status(statusCode === 401 ? 402 : 500).json({ 
+        error: 'Text-to-speech synthesis failed',
+        details: errorDetails,
+        statusCode,
+      });
     }
 
     // Stream audio back to client
@@ -285,10 +325,10 @@ router.post('/transcribe', upload.single('audio'), async (req: Request, res: Res
     // Save audio to Supabase Storage in background (truly async, non-blocking)
     // This happens AFTER the response is sent
     storageService.uploadAudio(
-      audioFile.buffer,
-      userId,
-      conversationId,
-      audioFile.mimetype
+        audioFile.buffer,
+        userId,
+        conversationId,
+        audioFile.mimetype
     ).then(uploadResult => {
       if (uploadResult.success && uploadResult.url) {
         console.log(`✅ Audio saved to storage: ${uploadResult.url}`);

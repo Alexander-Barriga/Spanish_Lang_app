@@ -205,7 +205,33 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error('Speech synthesis failed');
+      // Try to get error details from response
+      let errorMessage = 'Speech synthesis failed';
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const errorData = await response.json();
+          if (errorData.details) {
+            errorMessage = errorData.details;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+          
+          // Check for quota exceeded
+          if (errorMessage.toLowerCase().includes('quota') || 
+              errorMessage.toLowerCase().includes('credits') ||
+              errorMessage.toLowerCase().includes('exceeded')) {
+            errorMessage = 'Voice quota exceeded. Please check your ElevenLabs account or try again later.';
+          }
+        }
+      } catch (e) {
+        // Response is not JSON or parsing failed, use default message
+        console.warn('Could not parse error response:', e);
+      }
+      
+      const error = new Error(errorMessage);
+      (error as any).statusCode = response.status;
+      throw error;
     }
 
     return response.arrayBuffer();

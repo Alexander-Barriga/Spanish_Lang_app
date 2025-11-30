@@ -150,16 +150,16 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       if (soundRef.current) {
         const status = await soundRef.current.getStatusAsync();
         if (status.isLoaded && status.isPlaying) {
-          await soundRef.current.pauseAsync();
-          setIsPlaying(false);
+        await soundRef.current.pauseAsync();
+        setIsPlaying(false);
         }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (!errorMessage.includes('not loaded')) {
-        console.error('Error pausing audio:', error);
-        onError?.(error instanceof Error ? error : new Error('Failed to pause audio'));
-      }
+      console.error('Error pausing audio:', error);
+      onError?.(error instanceof Error ? error : new Error('Failed to pause audio'));
+    }
     }
   }, [onError]);
 
@@ -168,16 +168,16 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       if (soundRef.current) {
         const status = await soundRef.current.getStatusAsync();
         if (status.isLoaded && !status.isPlaying) {
-          await soundRef.current.playAsync();
-          setIsPlaying(true);
+        await soundRef.current.playAsync();
+        setIsPlaying(true);
         }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (!errorMessage.includes('not loaded')) {
-        console.error('Error resuming audio:', error);
-        onError?.(error instanceof Error ? error : new Error('Failed to resume audio'));
-      }
+      console.error('Error resuming audio:', error);
+      onError?.(error instanceof Error ? error : new Error('Failed to resume audio'));
+    }
     }
   }, [onError]);
 
@@ -187,8 +187,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         // Check if sound is loaded before trying to stop
         const status = await soundRef.current.getStatusAsync();
         if (status.isLoaded) {
-          await soundRef.current.stopAsync();
-          await soundRef.current.setPositionAsync(0);
+        await soundRef.current.stopAsync();
+        await soundRef.current.setPositionAsync(0);
         }
         setIsPlaying(false);
         setPosition(0);
@@ -197,8 +197,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       // Silently handle "not loaded" errors as they're expected during cleanup
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (!errorMessage.includes('not loaded')) {
-        console.error('Error stopping audio:', error);
-        onError?.(error instanceof Error ? error : new Error('Failed to stop audio'));
+      console.error('Error stopping audio:', error);
+      onError?.(error instanceof Error ? error : new Error('Failed to stop audio'));
       }
     }
   }, [onError]);

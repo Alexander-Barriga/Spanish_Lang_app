@@ -243,10 +243,11 @@ export default function ConversationScreen() {
       console.log('🔊 Starting TTS...');
       console.log(`📏 Text length: ${text.length} characters`);
       
-      // Validate text length (ElevenLabs limit is ~5000 chars, but we limit to 2000 for performance)
-      if (text.length > 2000) {
-        console.warn(`⚠️ Text too long (${text.length} chars), truncating to 2000 chars`);
-        text = text.substring(0, 1997) + '...';
+      // Validate text length - keep responses short to avoid quota issues
+      // ElevenLabs charges per character, so we limit to 500 chars to stay within quotas
+      if (text.length > 500) {
+        console.warn(`⚠️ Text too long (${text.length} chars), truncating to 500 chars`);
+        text = text.substring(0, 497) + '...';
       }
       
       setState('speaking');

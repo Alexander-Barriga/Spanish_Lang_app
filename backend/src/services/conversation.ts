@@ -103,12 +103,13 @@ export class ConversationService {
     try {
       // Using gpt-4o-mini for faster responses (~10x faster than gpt-4-turbo)
       // Still maintains good quality for conversational Spanish tutoring
-      // max_tokens: 250 ensures responses fit within TTS limits (~2000 chars)
+      // max_tokens: 150 ensures responses are very short to avoid quota issues
+      // This keeps responses to ~100-150 characters, well within API limits
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         temperature: 0.8,
-        max_tokens: 250, // Keep responses concise for voice - prevents TTS overload
+        max_tokens: 150, // Very short responses to stay within quota limits
         presence_penalty: 0.3,
         frequency_penalty: 0.5,
       });
