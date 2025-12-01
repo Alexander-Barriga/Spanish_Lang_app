@@ -141,7 +141,7 @@ class ApiClient {
     vocabularySetId?: string;
     characterId?: string;
   }) {
-    return this.request<{ conversation: ConversationResponse; initialMessage: string }>(
+    return this.request<{ conversation: ConversationResponse; initialMessage: string; greetingAudioUrl?: string | null }>(
       '/conversations',
       {
         method: 'POST',
@@ -207,22 +207,52 @@ class ApiClient {
     if (!response.ok) {
       // Try to get error details from response
       let errorMessage = 'Speech synthesis failed';
+      let isQuotaError = false;
+      
       try {
         const contentType = response.headers.get('content-type');
         if (contentType?.includes('application/json')) {
           const errorData = await response.json();
+          
+          console.error('❌ TTS API Error Response:', {
+            status: response.status,
+            error: errorData.error,
+            details: errorData.details,
+            isQuotaError: errorData.isQuotaError,
+            statusCode: errorData.statusCode,
+          });
+          
           if (errorData.details) {
             errorMessage = errorData.details;
           } else if (errorData.error) {
             errorMessage = errorData.error;
           }
           
-          // Check for quota exceeded
-          if (errorMessage.toLowerCase().includes('quota') || 
-              errorMessage.toLowerCase().includes('credits') ||
-              errorMessage.toLowerCase().includes('exceeded')) {
+          // Check for quota exceeded - use backend's isQuotaError flag if available
+          // Only show quota error if backend explicitly says it's a quota issue
+          if (errorData.isQuotaError === true) {
+            isQuotaError = true;
             errorMessage = 'Voice quota exceeded. Please check your ElevenLabs account or try again later.';
+          } else if (response.status === 402) {
+            // 402 = Payment Required, typically means quota exceeded
+            isQuotaError = true;
+            errorMessage = 'Voice quota exceeded. Please check your ElevenLabs account or try again later.';
+          } else if (response.status === 429) {
+            // 429 = Too Many Requests (rate limit, not quota)
+            errorMessage = 'Too many requests. Please wait a moment and try again.';
+          } else {
+            // Not a quota error - show the actual error
+            console.warn('⚠️ TTS error is NOT quota-related:', errorMessage);
           }
+        } else {
+          // Non-JSON error response
+          const errorText = await response.text();
+          console.error('❌ TTS API Error (non-JSON):', {
+            status: response.status,
+            contentType,
+            errorText: errorText.substring(0, 200),
+          });
+          errorMessage = `Speech synthesis failed (HTTP ${response.status})`;
         }
       } catch (e) {
         // Response is not JSON or parsing failed, use default message
@@ -231,6 +261,7 @@ class ApiClient {
       
       const error = new Error(errorMessage);
       (error as any).statusCode = response.status;
+      (error as any).isQuotaError = isQuotaError;
       throw error;
     }
 

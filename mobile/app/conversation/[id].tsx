@@ -195,8 +195,22 @@ export default function ConversationScreen() {
         };
         setMessages([greeting]);
         
-        // Play the greeting audio
-        await speakText(greeting.content);
+        // Play the greeting audio - use stored audio if available, otherwise generate with TTS
+        if (result.data.greetingAudioUrl) {
+          console.log('🎵 Using stored greeting audio:', result.data.greetingAudioUrl);
+          setState('speaking');
+          try {
+            await playAudio(result.data.greetingAudioUrl);
+            setState('idle');
+          } catch (error) {
+            console.error('❌ Error playing stored greeting audio:', error);
+            // Fallback to TTS if stored audio fails
+            await speakText(greeting.content);
+          }
+        } else {
+          console.log('🎤 No stored greeting audio, generating with TTS');
+          await speakText(greeting.content);
+        }
       } else {
         // Fallback to local greeting if API fails
         console.warn('⚠️ API returned no data, error:', result.error);
@@ -283,6 +297,28 @@ export default function ConversationScreen() {
         console.error('Error name:', error.name);
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
+        
+        // Check if this is a quota error
+        const isQuotaError = (error as any).isQuotaError === true || 
+                            error.message.toLowerCase().includes('quota') ||
+                            (error as any).statusCode === 402;
+        
+        if (isQuotaError) {
+          console.warn('⚠️ Quota error detected - showing user-friendly message');
+          Alert.alert(
+            'Voice Quota Exceeded',
+            'Your ElevenLabs account quota has been exceeded. Please check your account or try again later. The text response is still available below.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          // For non-quota errors, show a generic message
+          console.warn('⚠️ Non-quota TTS error - showing generic message');
+          Alert.alert(
+            'Voice Playback Failed',
+            'Could not play the voice response, but the text is available below. Please try again.',
+            [{ text: 'OK' }]
+          );
+        }
       } else {
         console.error('Error type:', typeof error);
         console.error('Error value:', error);

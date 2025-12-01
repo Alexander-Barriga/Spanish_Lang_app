@@ -70,6 +70,17 @@ CREATE TABLE IF NOT EXISTS public.vocabulary_sets (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tutor Greetings table (stores pre-generated greeting audio)
+CREATE TABLE IF NOT EXISTS public.tutor_greetings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    character_id TEXT NOT NULL CHECK (character_id IN ('malena', 'ana_maria', 'marcela')),
+    greeting_index INTEGER NOT NULL CHECK (greeting_index >= 0 AND greeting_index < 3),
+    greeting_text TEXT NOT NULL,
+    audio_url TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(character_id, greeting_index)
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON public.conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_started_at ON public.conversations(started_at DESC);
@@ -85,23 +96,29 @@ ALTER TABLE public.progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vocabulary_sets ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.users;
 CREATE POLICY "Users can view their own profile" ON public.users
     FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
 CREATE POLICY "Users can update their own profile" ON public.users
     FOR UPDATE USING (auth.uid() = id);
 
 -- RLS Policies for conversations
+DROP POLICY IF EXISTS "Users can view their own conversations" ON public.conversations;
 CREATE POLICY "Users can view their own conversations" ON public.conversations
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create their own conversations" ON public.conversations;
 CREATE POLICY "Users can create their own conversations" ON public.conversations
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own conversations" ON public.conversations;
 CREATE POLICY "Users can update their own conversations" ON public.conversations
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- RLS Policies for messages
+DROP POLICY IF EXISTS "Users can view messages in their conversations" ON public.messages;
 CREATE POLICY "Users can view messages in their conversations" ON public.messages
     FOR SELECT USING (
         EXISTS (
@@ -111,6 +128,7 @@ CREATE POLICY "Users can view messages in their conversations" ON public.message
         )
     );
 
+DROP POLICY IF EXISTS "Users can create messages in their conversations" ON public.messages;
 CREATE POLICY "Users can create messages in their conversations" ON public.messages
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -121,30 +139,41 @@ CREATE POLICY "Users can create messages in their conversations" ON public.messa
     );
 
 -- RLS Policies for progress
+DROP POLICY IF EXISTS "Users can view their own progress" ON public.progress;
 CREATE POLICY "Users can view their own progress" ON public.progress
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own progress" ON public.progress;
 CREATE POLICY "Users can update their own progress" ON public.progress
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- RLS Policies for vocabulary sets
+DROP POLICY IF EXISTS "Users can view their own and default vocabulary sets" ON public.vocabulary_sets;
 CREATE POLICY "Users can view their own and default vocabulary sets" ON public.vocabulary_sets
     FOR SELECT USING (auth.uid() = user_id OR is_default = TRUE);
 
+DROP POLICY IF EXISTS "Users can create their own vocabulary sets" ON public.vocabulary_sets;
 CREATE POLICY "Users can create their own vocabulary sets" ON public.vocabulary_sets
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own vocabulary sets" ON public.vocabulary_sets;
 CREATE POLICY "Users can update their own vocabulary sets" ON public.vocabulary_sets
     FOR UPDATE USING (auth.uid() = user_id AND is_default = FALSE);
 
+DROP POLICY IF EXISTS "Users can delete their own vocabulary sets" ON public.vocabulary_sets;
 CREATE POLICY "Users can delete their own vocabulary sets" ON public.vocabulary_sets
     FOR DELETE USING (auth.uid() = user_id AND is_default = FALSE);
 
--- Insert default vocabulary sets
-INSERT INTO public.vocabulary_sets (name, description, words, is_default, category) VALUES
-(
-    'Restaurantes',
-    'Essential vocabulary for dining out',
+-- RLS Policies for tutor greetings (public read access, admin write)
+ALTER TABLE public.tutor_greetings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view tutor greetings" ON public.tutor_greetings;
+CREATE POLICY "Anyone can view tutor greetings" ON public.tutor_greetings
+    FOR SELECT USING (true);
+
+-- Insert default vocabulary sets (only if they don't exist)
+INSERT INTO public.vocabulary_sets (name, description, words, is_default, category)
+SELECT 'Restaurantes', 'Essential vocabulary for dining out', 
     '[
         {"spanish": "la carta", "english": "the menu", "example_sentence": "¿Me puede traer la carta, por favor?"},
         {"spanish": "la cuenta", "english": "the bill", "example_sentence": "La cuenta, por favor."},
@@ -154,13 +183,11 @@ INSERT INTO public.vocabulary_sets (name, description, words, is_default, catego
         {"spanish": "reservar", "english": "to reserve", "example_sentence": "Quisiera reservar una mesa para dos."},
         {"spanish": "la propina", "english": "the tip", "example_sentence": "Dejé una buena propina."},
         {"spanish": "el postre", "english": "the dessert", "example_sentence": "¿Tienen postres caseros?"}
-    ]'::jsonb,
-    TRUE,
-    'dining'
-),
-(
-    'Viajes',
-    'Travel vocabulary for exploring',
+    ]'::jsonb, TRUE, 'dining'
+WHERE NOT EXISTS (SELECT 1 FROM public.vocabulary_sets WHERE name = 'Restaurantes' AND is_default = TRUE);
+
+INSERT INTO public.vocabulary_sets (name, description, words, is_default, category)
+SELECT 'Viajes', 'Travel vocabulary for exploring',
     '[
         {"spanish": "el vuelo", "english": "the flight", "example_sentence": "Mi vuelo sale a las ocho."},
         {"spanish": "el equipaje", "english": "the luggage", "example_sentence": "¿Dónde recojo el equipaje?"},
@@ -170,13 +197,11 @@ INSERT INTO public.vocabulary_sets (name, description, words, is_default, catego
         {"spanish": "el mapa", "english": "the map", "example_sentence": "¿Tiene un mapa de la ciudad?"},
         {"spanish": "perderse", "english": "to get lost", "example_sentence": "Me perdí buscando el museo."},
         {"spanish": "el recuerdo", "english": "the souvenir", "example_sentence": "Compré recuerdos para mi familia."}
-    ]'::jsonb,
-    TRUE,
-    'travel'
-),
-(
-    'Trabajo',
-    'Professional and workplace vocabulary',
+    ]'::jsonb, TRUE, 'travel'
+WHERE NOT EXISTS (SELECT 1 FROM public.vocabulary_sets WHERE name = 'Viajes' AND is_default = TRUE);
+
+INSERT INTO public.vocabulary_sets (name, description, words, is_default, category)
+SELECT 'Trabajo', 'Professional and workplace vocabulary',
     '[
         {"spanish": "la reunión", "english": "the meeting", "example_sentence": "Tengo una reunión a las tres."},
         {"spanish": "el jefe", "english": "the boss", "example_sentence": "Mi jefe es muy comprensivo."},
@@ -186,10 +211,8 @@ INSERT INTO public.vocabulary_sets (name, description, words, is_default, catego
         {"spanish": "las vacaciones", "english": "vacation", "example_sentence": "Me tomo vacaciones en agosto."},
         {"spanish": "el colega", "english": "the colleague", "example_sentence": "Mis colegas son muy amables."},
         {"spanish": "el proyecto", "english": "the project", "example_sentence": "Estoy trabajando en un proyecto nuevo."}
-    ]'::jsonb,
-    TRUE,
-    'work'
-);
+    ]'::jsonb, TRUE, 'work'
+WHERE NOT EXISTS (SELECT 1 FROM public.vocabulary_sets WHERE name = 'Trabajo' AND is_default = TRUE);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -201,6 +224,7 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger for users table
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON public.users
     FOR EACH ROW

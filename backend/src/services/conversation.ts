@@ -1,5 +1,5 @@
 import { openai, SpanishLevel } from '../config/openai';
-import { Conversation, Correction, User } from '../config/supabase';
+import { Conversation, Correction, User, supabaseAdmin } from '../config/supabase';
 import { 
   buildSystemPrompt, 
   getGreetingMessage, 
@@ -26,10 +26,40 @@ interface GeneratedResponse {
   emotion?: EmotionData;
 }
 
+export interface GreetingResult {
+  text: string;
+  audioUrl?: string;
+}
+
 export class ConversationService {
-  async generateGreeting(mode: ConversationMode, context: ModeContext, characterId?: string): Promise<string> {
-    // If we have a character, generate a personalized greeting
+  async generateGreeting(mode: ConversationMode, context: ModeContext, characterId?: string): Promise<GreetingResult> {
+    // If we have a character, try to fetch stored greeting from database
     if (characterId) {
+      try {
+        // Get a random greeting index (0, 1, or 2)
+        const greetingIndex = Math.floor(Math.random() * 3);
+        
+        const { data, error } = await supabaseAdmin
+          .from('tutor_greetings')
+          .select('greeting_text, audio_url')
+          .eq('character_id', characterId)
+          .eq('greeting_index', greetingIndex)
+          .single();
+
+        if (!error && data) {
+          console.log(`✅ Using stored greeting for ${characterId} (index ${greetingIndex})`);
+          return {
+            text: data.greeting_text,
+            audioUrl: data.audio_url,
+          };
+        } else {
+          console.warn(`⚠️ No stored greeting found for ${characterId}, falling back to generated text`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error fetching stored greeting:`, error);
+      }
+
+      // Fallback to generated greeting text if stored greeting not found
       const profile = getCharacterProfile(characterId);
       if (profile) {
         const greetings: Record<string, string[]> = {
@@ -50,10 +80,14 @@ export class ConversationService {
           ],
         };
         const options = greetings[characterId] || greetings['malena'];
-        return options[Math.floor(Math.random() * options.length)];
+        return {
+          text: options[Math.floor(Math.random() * options.length)],
+        };
       }
     }
-    return getGreetingMessage(mode, context);
+    return {
+      text: getGreetingMessage(mode, context),
+    };
   }
 
   async generateResponse(

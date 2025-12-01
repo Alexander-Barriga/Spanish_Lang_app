@@ -37,11 +37,12 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Get initial AI greeting (personalized if character is selected)
     const conversationService = new ConversationService();
-    const greeting = await conversationService.generateGreeting(mode, {
+    const greetingResult = await conversationService.generateGreeting(mode, {
       topic,
       grammarFocus,
       persona: rolePlayPersona,
     }, characterId);
+    const greeting = greetingResult.text;
 
     // If authenticated, use database
     if (isAuthenticated) {
@@ -83,6 +84,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(201).json({
         conversation: data,
         initialMessage: greeting,
+        greetingAudioUrl: greetingResult.audioUrl || null,
       });
     }
 
@@ -114,6 +116,7 @@ router.post('/', async (req: Request, res: Response) => {
         message_count: 1,
       },
       initialMessage: greeting,
+      greetingAudioUrl: greetingResult.audioUrl || null,
     });
   } catch (error) {
     console.error('Create conversation error:', error);

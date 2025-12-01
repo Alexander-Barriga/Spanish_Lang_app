@@ -189,23 +189,66 @@ router.post('/synthesize', async (req: Request, res: Response) => {
       
       // Parse ElevenLabs error for better error messages
       let errorDetails = 'ElevenLabs API error';
+      let isQuotaError = false;
+      
       try {
         const errorJson = JSON.parse(errorText);
-        if (errorJson.detail?.status === 'quota_exceeded') {
+        
+        // Check multiple possible quota error formats
+        const quotaIndicators = [
+          errorJson.detail?.status === 'quota_exceeded',
+          errorJson.detail?.status === 'quota_exceeded' || errorJson.status === 'quota_exceeded',
+          errorJson.message?.toLowerCase().includes('quota'),
+          errorJson.detail?.message?.toLowerCase().includes('quota'),
+          errorJson.detail?.message?.toLowerCase().includes('credits'),
+          errorText.toLowerCase().includes('quota'),
+          errorText.toLowerCase().includes('credits'),
+        ];
+        
+        isQuotaError = quotaIndicators.some(indicator => indicator === true);
+        
+        if (isQuotaError) {
           errorDetails = 'ElevenLabs API quota exceeded. Please check your account credits.';
-          console.error('⚠️ QUOTA EXCEEDED:', errorJson.detail.message);
+          console.error('⚠️ QUOTA EXCEEDED:', errorJson.detail?.message || errorJson.message || errorText);
         } else if (errorJson.detail?.message) {
           errorDetails = errorJson.detail.message;
+          console.error('⚠️ ElevenLabs error (not quota):', errorDetails);
+        } else if (errorJson.message) {
+          errorDetails = errorJson.message;
+          console.error('⚠️ ElevenLabs error (not quota):', errorDetails);
+        } else {
+          errorDetails = JSON.stringify(errorJson);
+          console.error('⚠️ ElevenLabs error (unknown format):', errorDetails);
         }
       } catch (e) {
-        // Error text is not JSON, use as-is
-        errorDetails = errorText.substring(0, 200);
+        // Error text is not JSON, check if it mentions quota
+        const lowerError = errorText.toLowerCase();
+        if (lowerError.includes('quota') || lowerError.includes('credits')) {
+          isQuotaError = true;
+          errorDetails = 'ElevenLabs API quota exceeded. Please check your account credits.';
+          console.error('⚠️ QUOTA EXCEEDED (non-JSON):', errorText);
+        } else {
+          errorDetails = errorText.substring(0, 200);
+          console.error('⚠️ ElevenLabs error (non-JSON, not quota):', errorDetails);
+        }
       }
       
-      return res.status(statusCode === 401 ? 402 : 500).json({ 
+      // Return appropriate status code
+      // 402 = Payment Required (for quota), 429 = Too Many Requests (for rate limits), 500 = Server Error
+      let httpStatus = 500;
+      if (isQuotaError) {
+        httpStatus = 402; // Payment Required
+      } else if (statusCode === 429) {
+        httpStatus = 429; // Too Many Requests
+      } else if (statusCode === 401) {
+        httpStatus = 401; // Unauthorized
+      }
+      
+      return res.status(httpStatus).json({ 
         error: 'Text-to-speech synthesis failed',
         details: errorDetails,
         statusCode,
+        isQuotaError,
       });
     }
 
