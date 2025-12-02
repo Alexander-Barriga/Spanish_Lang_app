@@ -15,6 +15,10 @@ import conversationRoutes from './routes/conversations';
 import userRoutes from './routes/users';
 import voiceRoutes from './routes/voice';
 import progressRoutes from './routes/progress';
+import curriculumRoutes from './routes/curriculum';
+import workoutsRoutes from './routes/workouts';
+import writingRoutes from './routes/writing';
+import placementRoutes from './routes/placement';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -52,6 +56,10 @@ app.use('/api/v1/conversations', conversationRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/voice', voiceRoutes);
 app.use('/api/v1/progress', progressRoutes);
+app.use('/api/v1/curriculum', curriculumRoutes);
+app.use('/api/v1/workouts', workoutsRoutes);
+app.use('/api/v1/writing', writingRoutes);
+app.use('/api/v1/placement', placementRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

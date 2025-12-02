@@ -1,5 +1,5 @@
 import { API_URL } from '../config/constants';
-import * as SecureStore from 'expo-secure-store';
+import { authTokenManager } from './authToken';
 
 // Types
 export interface ApiResponse<T> {
@@ -59,11 +59,16 @@ class ApiClient {
   }
 
   private async getAuthToken(): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync('auth_token');
-    } catch {
-      return null;
+    // Get token from the in-memory token manager (set by AuthContext)
+    const token = authTokenManager.getToken();
+    
+    if (token) {
+      console.log('🔑 Auth token available');
+      return token;
     }
+    
+    console.log('⚠️ No auth token - user may not be logged in');
+    return null;
   }
 
   private async request<T>(
@@ -404,6 +409,345 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // ============================================
+  // CURRICULUM ENDPOINTS
+  // ============================================
+
+  async getCurriculum(level: 'B1' | 'B2') {
+    return this.request<{ curriculum: CurriculumWeek[] }>(`/curriculum/${level}`);
+  }
+
+  async getCurriculumWeek(level: 'B1' | 'B2', weekNumber: number) {
+    return this.request<{ week: CurriculumWeek; lessons: DailyLesson[] }>(
+      `/curriculum/${level}/week/${weekNumber}`
+    );
+  }
+
+  async getUserCurriculumProgress() {
+    return this.request<{ progress: UserCurriculumProgress }>('/curriculum/user/progress');
+  }
+
+  async updateUserCurriculumProgress(data: Partial<UserCurriculumProgress>) {
+    return this.request<{ progress: UserCurriculumProgress }>('/curriculum/user/progress', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async advanceCurriculum() {
+    return this.request<{ progress: UserCurriculumProgress; message: string }>(
+      '/curriculum/user/advance',
+      { method: 'POST' }
+    );
+  }
+
+  async getTodayLesson() {
+    return this.request<{
+      needsPlacement: boolean;
+      progress: UserCurriculumProgress | null;
+      curriculum?: CurriculumWeek;
+      lesson?: DailyLesson;
+    }>('/curriculum/user/today');
+  }
+
+  // ============================================
+  // WORKOUT ENDPOINTS
+  // ============================================
+
+  async startWorkout(data: {
+    session_type: 'daily_workout' | 'weekly_challenge' | 'quick_mission' | 'placement_test';
+    curriculum_week?: number;
+    curriculum_day?: number;
+    grammar_focus?: string;
+  }) {
+    return this.request<{ session: WorkoutSession }>('/workouts/start', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async completeWorkout(sessionId: string, data: {
+    duration_seconds: number;
+    mcq_correct: number;
+    mcq_total: number;
+    speaking_exchanges: number;
+    grammar_accuracy?: number;
+    subjunctive_uses?: number;
+  }) {
+    return this.request<{ session: WorkoutSession; xp_earned: number; message: string }>(
+      `/workouts/${sessionId}/complete`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async getWorkoutHistory(limit = 20, offset = 0, sessionType?: string) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (sessionType) params.append('session_type', sessionType);
+    return this.request<{ sessions: WorkoutSession[]; total: number }>(
+      `/workouts/history?${params}`
+    );
+  }
+
+  async getWorkoutStats() {
+    return this.request<{ stats: WorkoutStats }>('/workouts/stats');
+  }
+
+  async getQuickMissionTopics() {
+    return this.request<{ topics: QuickMissionTopic[] }>('/workouts/quick-missions/topics');
+  }
+
+  // ============================================
+  // WRITING ENDPOINTS
+  // ============================================
+
+  async getWritingExercises(level: 'B1' | 'B2', week: number) {
+    return this.request<{
+      curriculum: { level: string; week: number; grammar_focus: string; title_en: string; title_es: string };
+      exercises: WritingExercise[];
+    }>(`/writing/exercises/${level}/${week}`);
+  }
+
+  async submitWriting(data: {
+    exercise_type: 'sentence_transform' | 'gap_fill' | 'free_response';
+    curriculum_week?: number;
+    prompt: string;
+    correct_answer?: string;
+    user_response: string;
+    grammar_target?: string;
+  }) {
+    return this.request<{
+      submission: WritingSubmission;
+      feedback: Record<string, unknown>;
+      is_correct: boolean;
+      xp_earned: number;
+    }>('/writing/submit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getWritingHistory(limit = 20, offset = 0, exerciseType?: string) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (exerciseType) params.append('exercise_type', exerciseType);
+    return this.request<{ submissions: WritingSubmission[] }>(`/writing/history?${params}`);
+  }
+
+  async getWritingStats() {
+    return this.request<{ stats: WritingStats }>('/writing/stats');
+  }
+
+  // ============================================
+  // PLACEMENT TEST ENDPOINTS
+  // ============================================
+
+  async getPlacementQuestions() {
+    return this.request<{
+      questions: PlacementQuestion[];
+      speaking_prompt: { prompt_es: string; prompt_en: string };
+      total_questions: number;
+    }>('/placement/questions');
+  }
+
+  async submitPlacementMCQ(answers: Array<{ question_id: number; selected: string }>) {
+    return this.request<{
+      test_id: string;
+      mcq_score: number;
+      correct: number;
+      total: number;
+      b1_score: number;
+      b2_score: number;
+      results: Array<{
+        question_id: number;
+        user_answer: string;
+        correct_answer: string;
+        is_correct: boolean;
+        explanation: string;
+      }>;
+      next_step: string;
+    }>('/placement/submit-mcq', {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    });
+  }
+
+  async submitPlacementSpeaking(testId: string, transcription: string) {
+    return this.request<{
+      test: Record<string, unknown>;
+      mcq_score: number;
+      speaking_score: number;
+      combined_score: number;
+      assigned_level: 'B1' | 'B2';
+      speaking_feedback: Record<string, unknown>;
+      message: string;
+      next_steps: {
+        level: string;
+        start_week: number;
+        curriculum_focus: string;
+      };
+    }>('/placement/submit-speaking', {
+      method: 'POST',
+      body: JSON.stringify({ test_id: testId, transcription }),
+    });
+  }
+
+  async skipPlacement(level: 'B1' | 'B2') {
+    return this.request<{ progress: UserCurriculumProgress; message: string }>(
+      '/placement/skip',
+      {
+        method: 'POST',
+        body: JSON.stringify({ level }),
+      }
+    );
+  }
+
+  async getPlacementStatus() {
+    return this.request<{
+      placement_completed: boolean;
+      level: 'B1' | 'B2' | null;
+      placement_score: number | null;
+    }>('/placement/status');
+  }
+}
+
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+
+export interface CurriculumWeek {
+  id: string;
+  level: 'B1' | 'B2';
+  week_number: number;
+  grammar_focus: string;
+  title_es: string;
+  title_en: string;
+  description: string;
+  triggers: string[];
+  example_sentences: Array<{ spanish: string; english: string }>;
+}
+
+export interface DailyLesson {
+  id: string;
+  curriculum_id: string;
+  day_number: number;
+  lesson_type: 'workout' | 'review' | 'challenge';
+  title: string;
+  intro_text: string;
+  mcq_questions: MCQQuestion[];
+  speaking_prompts: SpeakingPrompt[];
+  writing_exercises: Array<{
+    type: string;
+    prompt: string;
+    answer?: string;
+    grammar_target?: string;
+  }>;
+}
+
+export interface MCQQuestion {
+  question: string;
+  options: string[];
+  correct: string;
+  explanation: string;
+}
+
+export interface SpeakingPrompt {
+  prompt: string;
+  expected_grammar: string;
+  hint: string;
+}
+
+export interface UserCurriculumProgress {
+  id?: string;
+  user_id?: string;
+  level: 'B1' | 'B2' | null;
+  current_week: number;
+  current_day: number;
+  week_started_at?: string;
+  placement_completed: boolean;
+  placement_score?: number;
+  total_xp: number;
+}
+
+export interface WorkoutSession {
+  id: string;
+  user_id: string;
+  session_type: 'daily_workout' | 'weekly_challenge' | 'quick_mission' | 'placement_test';
+  curriculum_week?: number;
+  curriculum_day?: number;
+  grammar_focus?: string;
+  duration_seconds: number;
+  mcq_correct: number;
+  mcq_total: number;
+  speaking_exchanges: number;
+  grammar_accuracy?: number;
+  subjunctive_uses: number;
+  xp_earned: number;
+  completed_at: string;
+}
+
+export interface WorkoutStats {
+  total_workouts: number;
+  total_duration_minutes: number;
+  total_xp: number;
+  average_accuracy: number;
+  daily_workouts: number;
+  weekly_challenges: number;
+  quick_missions: number;
+  this_week_workouts: number;
+}
+
+export interface QuickMissionTopic {
+  id: string;
+  topic_key: string;
+  title_es: string;
+  title_en: string;
+  description: string;
+  icon: string;
+  color: string;
+  grammar_targets: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+}
+
+export interface WritingExercise {
+  day: number;
+  type: 'sentence_transform' | 'gap_fill' | 'free_response';
+  prompt: string;
+  answer?: string;
+  grammar_target?: string;
+}
+
+export interface WritingSubmission {
+  id: string;
+  user_id: string;
+  exercise_type: string;
+  curriculum_week?: number;
+  prompt: string;
+  correct_answer?: string;
+  user_response: string;
+  is_correct: boolean;
+  ai_feedback: Record<string, unknown>;
+  grammar_score: number;
+  xp_earned: number;
+  completed_at: string;
+}
+
+export interface WritingStats {
+  total_exercises: number;
+  gap_fill_completed: number;
+  sentence_transform_completed: number;
+  free_response_completed: number;
+  correct_answers: number;
+  average_score: number;
+  total_xp_from_writing: number;
+}
+
+export interface PlacementQuestion {
+  id: number;
+  text: string;
+  options: string[];
 }
 
 // Export singleton instance

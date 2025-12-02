@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { createClient, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, DEFAULT_TUTOR_ID } from '../config/constants';
+import { authTokenManager } from '../services/authToken';
 
 // Types
 interface UserProfile {
@@ -143,8 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Store the token for API calls
+          // Store the token for API calls (both in SecureStore and in-memory)
           await SecureStore.setItemAsync('auth_token', session.access_token);
+          authTokenManager.setToken(session.access_token);
           console.log('✅ Session restored for user:', session.user.id);
           
           const userData = await fetchUserData(session.user);
@@ -165,17 +167,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔐 Auth state changed:', event);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          // Store the token for API calls
+          // Store the token for API calls (both in SecureStore and in-memory)
           await SecureStore.setItemAsync('auth_token', session.access_token);
+          authTokenManager.setToken(session.access_token);
           const userData = await fetchUserData(session.user);
           setUser(userData);
         } else if (event === 'SIGNED_OUT') {
           // Clear the stored token
           await SecureStore.deleteItemAsync('auth_token');
+          authTokenManager.setToken(null);
           setUser(null);
         } else if (event === 'TOKEN_REFRESHED' && session) {
           // Update stored token on refresh
           await SecureStore.setItemAsync('auth_token', session.access_token);
+          authTokenManager.setToken(session.access_token);
         }
       }
     );
@@ -193,8 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
     
     if (data.user && data.session) {
-      // Store the access token for API calls
+      // Store the access token for API calls (both in SecureStore and in-memory)
       await SecureStore.setItemAsync('auth_token', data.session.access_token);
+      authTokenManager.setToken(data.session.access_token);
       console.log('✅ Auth token stored for user:', data.user.id);
       
       const userData = await fetchUserData(data.user);
@@ -217,11 +223,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Store the access token for API calls (if session exists)
       if (data.session) {
         await SecureStore.setItemAsync('auth_token', data.session.access_token);
-        console.log('✅ Auth token stored');
+        authTokenManager.setToken(data.session.access_token);
+        console.log('✅ Auth token stored after signup');
+      } else {
+        // No session returned - email confirmation might be required
+        // Try to sign in immediately (works if email confirmation is disabled in Supabase)
+        console.log('⚠️ No session returned from signup, attempting sign-in...');
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (!signInError && signInData.session) {
+            await SecureStore.setItemAsync('auth_token', signInData.session.access_token);
+            authTokenManager.setToken(signInData.session.access_token);
+            console.log('✅ Auth token stored after auto sign-in');
+          } else {
+            console.log('⚠️ Auto sign-in failed, email confirmation may be required');
+          }
+        } catch (e) {
+          console.log('⚠️ Could not auto sign-in after signup:', e);
+        }
       }
 
-      // Create user profile
-      const { error: profileError } = await supabase.from('users').insert({
+      // Create user profile (using upsert for idempotency)
+      const { error: profileError } = await supabase.from('users').upsert({
         id: data.user.id,
         email,
         display_name: displayName || null,
@@ -231,16 +258,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         correction_depth: 'standard',
         voice_speed: 1.0,
         accent_preference: 'mexico',
-      });
+      }, { onConflict: 'id' });
 
       if (profileError) {
         console.error('❌ Profile creation error:', profileError);
+        // Don't throw - we can continue with auth even if profile creation fails
+        // The RLS policy might be missing INSERT permission
       } else {
         console.log('✅ User profile created');
       }
 
-      // Create progress record
-      const { error: progressError } = await supabase.from('progress').insert({
+      // Create progress record (using upsert for idempotency)
+      const { error: progressError } = await supabase.from('progress').upsert({
         user_id: data.user.id,
         grammar_mastery: {},
         vocabulary_learned: [],
@@ -249,10 +278,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         current_streak: 0,
         longest_streak: 0,
         achievements: [],
-      });
+      }, { onConflict: 'user_id' });
 
       if (progressError) {
         console.error('❌ Progress creation error:', progressError);
+        // Don't throw - continue with auth flow
       } else {
         console.log('✅ Progress record created');
       }

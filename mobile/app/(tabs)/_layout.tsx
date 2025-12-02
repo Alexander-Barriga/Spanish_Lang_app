@@ -25,11 +25,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="conversations"
+        name="writing"
         options={{
-          title: 'History',
+          title: 'Writing',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+            <Ionicons name="pencil" size={size} color={color} />
           ),
         }}
       />
@@ -64,6 +64,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
+        }}
+      />
+      {/* Hidden tab for conversations history - accessible from profile */}
+      <Tabs.Screen
+        name="conversations"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

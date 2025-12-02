@@ -205,7 +205,7 @@ export default function ConversationScreen() {
           } catch (error) {
             console.error('❌ Error playing stored greeting audio:', error);
             // Fallback to TTS if stored audio fails
-            await speakText(greeting.content);
+        await speakText(greeting.content);
           }
         } else {
           console.log('🎤 No stored greeting audio, generating with TTS');

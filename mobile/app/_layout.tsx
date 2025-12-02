@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,12 +24,29 @@ const queryClient = new QueryClient({
 
 function RootLayoutNav() {
   const { isLoading, isAuthenticated } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isLoading) {
       SplashScreen.hideAsync();
     }
   }, [isLoading]);
+
+  // Handle auth-based navigation
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      // Redirect to auth if not authenticated
+      router.replace('/(auth)/welcome');
+    } else if (isAuthenticated && inAuthGroup) {
+      // Redirect to main app if authenticated
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, segments, isLoading]);
 
   if (isLoading) {
     return (
@@ -49,30 +66,44 @@ function RootLayoutNav() {
           animation: 'slide_from_right',
         }}
       >
-        {!isAuthenticated ? (
-          <>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          </>
-        ) : (
-          <>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen 
-              name="conversation/[id]" 
-              options={{ 
-                headerShown: false,
-                presentation: 'fullScreenModal',
-                animation: 'slide_from_bottom',
-              }} 
-            />
-            <Stack.Screen 
-              name="mode-setup" 
-              options={{ 
-                headerShown: false,
-                presentation: 'modal',
-              }} 
-            />
-          </>
-        )}
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="conversation/[id]" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }} 
+        />
+        <Stack.Screen 
+          name="mode-setup" 
+          options={{ 
+            headerShown: false,
+            presentation: 'modal',
+          }} 
+        />
+        <Stack.Screen 
+          name="placement-test" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+          }} 
+        />
+        <Stack.Screen 
+          name="quick-mission" 
+          options={{ 
+            headerShown: false,
+            presentation: 'modal',
+          }} 
+        />
+        <Stack.Screen 
+          name="workout/[week]" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+          }} 
+        />
       </Stack>
     </>
   );

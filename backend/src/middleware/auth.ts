@@ -55,22 +55,32 @@ export const optionalAuth = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('🔓 No auth header provided for:', req.path);
       return next();
     }
 
     const token = authHeader.substring(7);
+    console.log('🔑 Auth token received for:', req.path, '- Token length:', token.length);
 
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error) {
+      console.log('❌ Token validation error:', error.message);
+    }
 
     if (user) {
+      console.log('✅ User authenticated:', user.id);
       req.user = {
         id: user.id,
         email: user.email || '',
       };
+    } else {
+      console.log('⚠️ No user found for token');
     }
 
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     // Don't fail on auth errors for optional auth
     next();
   }

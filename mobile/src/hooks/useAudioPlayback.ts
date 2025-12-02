@@ -182,23 +182,27 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   }, [onError]);
 
   const stopAudio = useCallback(async () => {
+    // Reset state immediately
+    setIsPlaying(false);
+    setPosition(0);
+
+    if (!soundRef.current) {
+      return;
+    }
+
     try {
-      if (soundRef.current) {
-        // Check if sound is loaded before trying to stop
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded) {
+      // Check if sound is loaded before trying to stop
+      const status = await soundRef.current.getStatusAsync();
+      if (status.isLoaded) {
         await soundRef.current.stopAsync();
         await soundRef.current.setPositionAsync(0);
-        }
-        setIsPlaying(false);
-        setPosition(0);
       }
     } catch (error) {
       // Silently handle "not loaded" errors as they're expected during cleanup
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (!errorMessage.includes('not loaded')) {
-      console.error('Error stopping audio:', error);
-      onError?.(error instanceof Error ? error : new Error('Failed to stop audio'));
+      if (!errorMessage.includes('not loaded') && !errorMessage.includes('Cannot complete operation')) {
+        console.error('Error stopping audio:', error);
+        onError?.(error instanceof Error ? error : new Error('Failed to stop audio'));
       }
     }
   }, [onError]);

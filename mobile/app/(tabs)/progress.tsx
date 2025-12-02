@@ -1,20 +1,61 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { api, UserCurriculumProgress, WorkoutStats, WritingStats } from '../../src/services/api';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 
 // Mock achievements
 const achievements = [
-  { id: 'first_chat', name: 'First Chat', icon: '💬', earned: true },
-  { id: 'streak_7', name: '7-Day Streak', icon: '🔥', earned: true },
-  { id: 'vocab_100', name: '100 Words', icon: '📚', earned: false },
-  { id: 'chats_10', name: '10 Conversations', icon: '🗣️', earned: false },
+  { id: 'first_workout', name: 'First Workout', icon: '💪', earned: false },
+  { id: 'streak_7', name: '7-Day Streak', icon: '🔥', earned: false },
+  { id: 'subjunctive_master', name: 'Subjunctive Master', icon: '📚', earned: false },
+  { id: 'week_complete', name: 'Week Complete', icon: '🏆', earned: false },
 ];
 
 export default function ProgressScreen() {
   const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [curriculumProgress, setCurriculumProgress] = useState<UserCurriculumProgress | null>(null);
+  const [workoutStats, setWorkoutStats] = useState<WorkoutStats | null>(null);
+  const [writingStats, setWritingStats] = useState<WritingStats | null>(null);
+
   const progress = user?.progress;
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAllStats();
+    }, [])
+  );
+
+  const loadAllStats = async () => {
+    try {
+      setIsLoading(true);
+
+      const [curriculumResult, workoutResult, writingResult] = await Promise.all([
+        api.getUserCurriculumProgress(),
+        api.getWorkoutStats(),
+        api.getWritingStats(),
+      ]);
+
+      if (curriculumResult.data?.progress) {
+        setCurriculumProgress(curriculumResult.data.progress);
+      }
+      if (workoutResult.data?.stats) {
+        setWorkoutStats(workoutResult.data.stats);
+      }
+      if (writingResult.data?.stats) {
+        setWritingStats(writingResult.data.stats);
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const stats = {
     streak: progress?.current_streak || 0,
@@ -24,6 +65,31 @@ export default function ProgressScreen() {
     vocabulary: progress?.vocabulary_learned?.length || 0,
   };
 
+  // Calculate curriculum progress percentage
+  const curriculumPercentage = curriculumProgress
+    ? Math.round(((curriculumProgress.current_week - 1) * 7 + curriculumProgress.current_day - 1) / 84 * 100)
+    : 0;
+
+  // Update achievements based on actual data
+  const updatedAchievements = achievements.map(a => ({
+    ...a,
+    earned: 
+      (a.id === 'first_workout' && (workoutStats?.total_workouts || 0) > 0) ||
+      (a.id === 'streak_7' && stats.streak >= 7) ||
+      (a.id === 'subjunctive_master' && (workoutStats?.average_accuracy || 0) >= 90) ||
+      (a.id === 'week_complete' && (curriculumProgress?.current_week || 0) > 1),
+  }));
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary.gold} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView 
@@ -32,19 +98,58 @@ export default function ProgressScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View 
-         
-          style={styles.header}
-        >
+        <View style={styles.header}>
           <Text style={styles.title}>Your Progress</Text>
-          <Text style={styles.subtitle}>Keep up the great work! 💪</Text>
+          <Text style={styles.subtitle}>Keep up the great work!</Text>
         </View>
 
+        {/* Curriculum Progress Card */}
+        {curriculumProgress?.placement_completed && (
+          <LinearGradient
+            colors={[colors.primary.gold, '#e5a83a']}
+            style={styles.curriculumCard}
+          >
+            <View style={styles.curriculumHeader}>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelText}>{curriculumProgress.level}</Text>
+              </View>
+              <Text style={styles.xpText}>{curriculumProgress.total_xp} XP</Text>
+            </View>
+
+            <View style={styles.curriculumContent}>
+              <Text style={styles.curriculumLabel}>Grammar Gym Progress</Text>
+              <Text style={styles.curriculumProgress}>
+                Week {curriculumProgress.current_week}, Day {curriculumProgress.current_day}
+              </Text>
+            </View>
+
+            <View style={styles.curriculumProgressBar}>
+              <View 
+                style={[styles.curriculumProgressFill, { width: `${curriculumPercentage}%` }]} 
+              />
+            </View>
+            <Text style={styles.curriculumPercentText}>{curriculumPercentage}% Complete</Text>
+          </LinearGradient>
+        )}
+
+        {/* Not enrolled prompt */}
+        {!curriculumProgress?.placement_completed && (
+          <Link href="/placement-test" asChild>
+            <Pressable style={styles.enrollCard}>
+              <Ionicons name="school" size={32} color={colors.primary.gold} />
+              <View style={styles.enrollContent}>
+                <Text style={styles.enrollTitle}>Start Grammar Gym</Text>
+                <Text style={styles.enrollSubtitle}>
+                  Take the placement test to begin your personalized curriculum
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={colors.neutral[500]} />
+            </Pressable>
+          </Link>
+        )}
+
         {/* Streak Card */}
-        <View 
-         
-          style={styles.streakCard}
-        >
+        <View style={styles.streakCard}>
           <View style={styles.streakMain}>
             <Text style={styles.streakEmoji}>🔥</Text>
             <View>
@@ -59,51 +164,96 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* Stats Grid */}
-        <View 
-         
-          style={styles.section}
-        >
-          <Text style={styles.sectionTitle}>Statistics</Text>
-          <View style={styles.statsGrid}>
-            <StatCard 
-              icon="chatbubbles" 
-              value={stats.conversations} 
-              label="Conversations" 
-              delay={0}
-            />
-            <StatCard 
-              icon="time" 
-              value={stats.minutes} 
-              label="Minutes" 
-              delay={50}
-            />
-            <StatCard 
-              icon="book" 
-              value={stats.vocabulary} 
-              label="Words Learned" 
-              delay={100}
-            />
-            <StatCard 
-              icon="trophy" 
-              value={achievements.filter(a => a.earned).length} 
-              label="Achievements" 
-              delay={150}
+        {/* Workout Stats */}
+        {workoutStats && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Workout Stats</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Ionicons name="barbell" size={24} color={colors.primary.gold} />
+                <Text style={styles.statValue}>{workoutStats.total_workouts}</Text>
+                <Text style={styles.statLabel}>Workouts</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="time" size={24} color={colors.primary.gold} />
+                <Text style={styles.statValue}>{workoutStats.total_duration_minutes}</Text>
+                <Text style={styles.statLabel}>Minutes</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.primary.gold} />
+                <Text style={styles.statValue}>{workoutStats.average_accuracy}%</Text>
+                <Text style={styles.statLabel}>Accuracy</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="flash" size={24} color={colors.primary.gold} />
+                <Text style={styles.statValue}>{workoutStats.quick_missions}</Text>
+                <Text style={styles.statLabel}>Missions</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Writing Stats */}
+        {writingStats && writingStats.total_exercises > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Writing Stats</Text>
+            <View style={styles.writingStatsCard}>
+              <View style={styles.writingStatRow}>
+                <Text style={styles.writingStatLabel}>Exercises Completed</Text>
+                <Text style={styles.writingStatValue}>{writingStats.total_exercises}</Text>
+              </View>
+              <View style={styles.writingStatDivider} />
+              <View style={styles.writingStatRow}>
+                <Text style={styles.writingStatLabel}>Correct Answers</Text>
+                <Text style={styles.writingStatValue}>{writingStats.correct_answers}</Text>
+              </View>
+              <View style={styles.writingStatDivider} />
+              <View style={styles.writingStatRow}>
+                <Text style={styles.writingStatLabel}>Average Score</Text>
+                <Text style={styles.writingStatValue}>{writingStats.average_score}%</Text>
+              </View>
+              <View style={styles.writingStatDivider} />
+              <View style={styles.writingStatRow}>
+                <Text style={styles.writingStatLabel}>XP from Writing</Text>
+                <Text style={[styles.writingStatValue, styles.writingStatXP]}>
+                  {writingStats.total_xp_from_writing}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Weekly Goal */}
+        <View style={styles.goalCard}>
+          <View style={styles.goalHeader}>
+            <Text style={styles.goalTitle}>Weekly Goal</Text>
+            <Text style={styles.goalProgress}>
+              {workoutStats?.this_week_workouts || 0}/5 workouts
+            </Text>
+          </View>
+          <View style={styles.goalProgressBar}>
+            <View 
+              style={[
+                styles.goalProgressFill, 
+                { width: `${Math.min((workoutStats?.this_week_workouts || 0) / 5 * 100, 100)}%` }
+              ]} 
             />
           </View>
+          <Text style={styles.goalText}>
+            {(workoutStats?.this_week_workouts || 0) >= 5 
+              ? '🎉 Goal reached! Keep the momentum going!'
+              : `Complete ${5 - (workoutStats?.this_week_workouts || 0)} more workouts this week!`
+            }
+          </Text>
         </View>
 
         {/* Achievements */}
-        <View 
-         
-          style={styles.section}
-        >
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Achievements</Text>
           <View style={styles.achievementsGrid}>
-            {achievements.map((achievement, index) => (
+            {updatedAchievements.map((achievement) => (
               <View
                 key={achievement.id}
-               
                 style={[
                   styles.achievementCard,
                   !achievement.earned && styles.achievementCardLocked,
@@ -129,53 +279,16 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* Weekly Goal */}
-        <View 
-         
-          style={styles.goalCard}
-        >
-          <View style={styles.goalHeader}>
-            <Text style={styles.goalTitle}>Weekly Goal</Text>
-            <Text style={styles.goalProgress}>3/5 days</Text>
-          </View>
-          <View style={styles.goalProgressBar}>
-            <View 
-              style={[styles.goalProgressFill, { width: '60%' }]} 
-            />
-          </View>
-          <Text style={styles.goalText}>
-            Practice 2 more days to reach your weekly goal!
-          </Text>
-        </View>
+        {/* View History Link */}
+        <Link href="/(tabs)/conversations" asChild>
+          <Pressable style={styles.historyLink}>
+            <Ionicons name="chatbubbles" size={20} color={colors.text.secondary} />
+            <Text style={styles.historyLinkText}>View Conversation History</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.neutral[500]} />
+          </Pressable>
+        </Link>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function StatCard({ 
-  icon, 
-  value, 
-  label, 
-  delay 
-}: { 
-  icon: string; 
-  value: number; 
-  label: string; 
-  delay: number;
-}) {
-  return (
-    <View 
-     
-      style={styles.statCard}
-    >
-      <Ionicons 
-        name={icon as keyof typeof Ionicons.glyphMap} 
-        size={24} 
-        color={colors.primary.gold} 
-      />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
   );
 }
 
@@ -183,6 +296,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -202,6 +320,85 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.text.secondary,
     marginTop: spacing[1],
+  },
+  curriculumCard: {
+    borderRadius: borderRadius['2xl'],
+    padding: spacing[5],
+    marginBottom: spacing[4],
+  },
+  curriculumHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[3],
+  },
+  levelBadge: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.full,
+  },
+  levelText: {
+    ...textStyles.labelSmall,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  xpText: {
+    ...textStyles.body,
+    color: colors.neutral[900],
+    fontWeight: '700',
+  },
+  curriculumContent: {
+    marginBottom: spacing[3],
+  },
+  curriculumLabel: {
+    ...textStyles.labelSmall,
+    color: 'rgba(0,0,0,0.5)',
+    marginBottom: spacing[0.5],
+  },
+  curriculumProgress: {
+    ...textStyles.h4,
+    color: colors.neutral[900],
+  },
+  curriculumProgressBar: {
+    height: 8,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+    marginBottom: spacing[2],
+  },
+  curriculumProgressFill: {
+    height: '100%',
+    backgroundColor: colors.neutral[900],
+    borderRadius: borderRadius.full,
+  },
+  curriculumPercentText: {
+    ...textStyles.caption,
+    color: 'rgba(0,0,0,0.6)',
+    textAlign: 'right',
+  },
+  enrollCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.card,
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '30',
+  },
+  enrollContent: {
+    flex: 1,
+    marginLeft: spacing[4],
+  },
+  enrollTitle: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  enrollSubtitle: {
+    ...textStyles.bodySmall,
+    color: colors.text.secondary,
   },
   streakCard: {
     flexDirection: 'row',
@@ -287,44 +484,40 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
   },
-  achievementsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[3],
-  },
-  achievementCard: {
+  writingStatsCard: {
     backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
     borderWidth: 1,
-    borderColor: colors.primary.gold + '40',
-  },
-  achievementCardLocked: {
     borderColor: colors.border.default,
-    opacity: 0.6,
   },
-  achievementIcon: {
-    fontSize: 20,
-    marginRight: spacing[2],
+  writingStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing[2],
   },
-  achievementName: {
-    ...textStyles.bodySmall,
-    color: colors.text.primary,
-    fontWeight: '500',
+  writingStatDivider: {
+    height: 1,
+    backgroundColor: colors.border.default,
   },
-  achievementNameLocked: {
+  writingStatLabel: {
+    ...textStyles.body,
     color: colors.text.secondary,
   },
-  lockIcon: {
-    marginLeft: spacing[2],
+  writingStatValue: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  writingStatXP: {
+    color: colors.primary.gold,
   },
   goalCard: {
     backgroundColor: colors.background.card,
     borderRadius: borderRadius.xl,
     padding: spacing[5],
+    marginBottom: spacing[6],
     borderWidth: 1,
     borderColor: colors.border.default,
   },
@@ -360,5 +553,49 @@ const styles = StyleSheet.create({
     ...textStyles.bodySmall,
     color: colors.text.secondary,
   },
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[3],
+  },
+  achievementCard: {
+    backgroundColor: colors.background.card,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '40',
+  },
+  achievementCardLocked: {
+    borderColor: colors.border.default,
+    opacity: 0.6,
+  },
+  achievementIcon: {
+    fontSize: 20,
+    marginRight: spacing[2],
+  },
+  achievementName: {
+    ...textStyles.bodySmall,
+    color: colors.text.primary,
+    fontWeight: '500',
+  },
+  achievementNameLocked: {
+    color: colors.text.secondary,
+  },
+  lockIcon: {
+    marginLeft: spacing[2],
+  },
+  historyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[4],
+    gap: spacing[2],
+  },
+  historyLinkText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+  },
 });
-
