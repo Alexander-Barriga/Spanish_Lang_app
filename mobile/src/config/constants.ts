@@ -8,8 +8,8 @@ export const WS_URL = __DEV__
   : 'wss://your-production-api.com/ws';
 
 // Supabase Configuration
-export const SUPABASE_URL = 'https://xiexgemkwtfyrppyfmqp.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpZXhnZW1rd3RmeXJwcHlmbXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTkxNzgsImV4cCI6MjA3OTc3NTE3OH0.Pxc319wRkXAMa9YoGLE67hLmJJ90_hRnHl9H0s-3PAo';
+export const SUPABASE_URL = 'https://bqlnhmsskcnbinexmnra.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbG5obXNza2NuYmluZXhtbnJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3ODA1OTcsImV4cCI6MjA4MDM1NjU5N30.zx-Dznwg2SVQIBVI7lZn7hGTOvD70B-Rm6tZPgN681g';
 
 // App Configuration
 export const APP_NAME = 'LoboLingo';
@@ -181,8 +181,8 @@ export const ACCENT_OPTIONS = [
 // These correspond to different ElevenLabs voices for different Spanish accents
 export const TUTOR_CHARACTERS = [
   {
-    id: 'malena',
-    name: 'Malena',
+    id: 'florencia',
+    name: 'Florencia',
     accent: 'argentina',
     country: 'Argentina',
     flag: '🇦🇷',
@@ -225,7 +225,7 @@ export const TUTOR_CHARACTERS = [
 export type TutorCharacter = typeof TUTOR_CHARACTERS[number];
 
 // Get the default tutor character
-export const DEFAULT_TUTOR_ID = 'malena';
+export const DEFAULT_TUTOR_ID = 'florencia';
 
 // Helper to get tutor by ID
 export const getTutorById = (id: string): TutorCharacter | undefined => {

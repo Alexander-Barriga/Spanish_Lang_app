@@ -611,6 +611,167 @@ class ApiClient {
       placement_score: number | null;
     }>('/placement/status');
   }
+
+  // ============================================
+  // STORY SYSTEM METHODS
+  // ============================================
+
+  async getStoryArcs() {
+    return this.request<{ arcs: StoryArc[] }>('/stories/arcs');
+  }
+
+  async getStoryArc(arcId: string) {
+    return this.request<{ arc: StoryArc; episodes: Episode[] }>(`/stories/arcs/${arcId}`);
+  }
+
+  async getEpisode(episodeId: string) {
+    return this.request<{ episode: Episode & { story_arcs: StoryArc } }>(`/stories/episodes/${episodeId}`);
+  }
+
+  async getCurrentStory() {
+    return this.request<{
+      hasStarted: boolean;
+      arc: StoryArc | null;
+      progress: UserStoryProgress | null;
+      currentEpisode: Episode | null;
+    }>('/stories/current');
+  }
+
+  async getStoryProgress() {
+    return this.request<{
+      arcs: (StoryArc & { progress: UserStoryProgress | null; isUnlocked: boolean })[];
+    }>('/stories/progress');
+  }
+
+  async startStoryArc(storyArcId: string) {
+    return this.request<{
+      progress: UserStoryProgress;
+      firstEpisode: Episode;
+      message: string;
+    }>('/stories/progress/start', {
+      method: 'POST',
+      body: JSON.stringify({ storyArcId }),
+    });
+  }
+
+  async recordEpisodeAttempt(data: {
+    episodeId: string;
+    grammarScore?: number;
+    speakingCount?: number;
+    writingCount?: number;
+    starsEarned?: number;
+    pathTaken?: any[];
+    durationSeconds?: number;
+  }) {
+    return this.request<{
+      attempt: any;
+      xpEarned: number;
+      message: string;
+      nextEpisode: number;
+    }>('/stories/attempt', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ============================================
+  // JOURNAL METHODS
+  // ============================================
+
+  async getJournalEntries(limit = 20, offset = 0) {
+    return this.request<{
+      entries: JournalEntry[];
+      total: number;
+      hasMore: boolean;
+    }>(`/journal/entries?limit=${limit}&offset=${offset}`);
+  }
+
+  async getJournalEntry(entryId: string) {
+    return this.request<{ entry: JournalEntry }>(`/journal/entries/${entryId}`);
+  }
+
+  async createJournalEntry(data: {
+    episodeId?: string;
+    promptEs: string;
+    promptEn?: string;
+    entryText: string;
+  }) {
+    return this.request<{
+      entry: JournalEntry;
+      xpEarned: number;
+      message: string;
+    }>('/journal/entries', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getJournalFeedback(data: {
+    entryId?: string;
+    entryText: string;
+    grammarFocus?: string;
+    grammarTriggers?: string[];
+  }) {
+    return this.request<{ feedback: any }>('/journal/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getJournalPrompt(episodeId: string) {
+    return this.request<{
+      promptEs: string;
+      promptEn: string;
+      grammarFocus: string;
+      grammarTriggers: string[];
+    }>(`/journal/prompts/${episodeId}`);
+  }
+
+  async getJournalStats() {
+    return this.request<JournalStats>('/journal/stats');
+  }
+
+  // ============================================
+  // AUDIO CACHE METHODS
+  // ============================================
+
+  async getPreGeneratedAudio(contentKey: string) {
+    return this.request<{
+      audioUrl: string;
+      textContent: string;
+      emotion?: string;
+      durationMs?: number;
+    }>(`/audio/${contentKey}`);
+  }
+
+  async getEpisodeAudio(episodeId: string) {
+    return this.request<{
+      episodeId: string;
+      audioCount: number;
+      audio: Record<string, {
+        audioUrl: string;
+        textContent: string;
+        emotion?: string;
+        durationMs?: number;
+      }>;
+    }>(`/audio/episode/${episodeId}`);
+  }
+
+  async batchGetAudio(contentKeys: string[]) {
+    return this.request<{
+      found: number;
+      requested: number;
+      audio: Record<string, {
+        audioUrl: string;
+        textContent: string;
+        emotion?: string;
+        durationMs?: number;
+      }>;
+    }>('/audio/batch', {
+      method: 'POST',
+      body: JSON.stringify({ contentKeys }),
+    });
+  }
 }
 
 // ============================================
@@ -748,6 +909,71 @@ export interface PlacementQuestion {
   id: number;
   text: string;
   options: string[];
+}
+
+// Story System Interfaces
+export interface StoryArc {
+  id: string;
+  character_id: string;
+  arc_number: number;
+  title_es: string;
+  title_en: string;
+  description: string;
+  location: string;
+  total_episodes: number;
+  cefr_level: string;
+  cover_image_url?: string;
+}
+
+export interface Episode {
+  id: string;
+  story_arc_id: string;
+  episode_number: number;
+  title_es: string;
+  title_en: string;
+  scenario: string;
+  grammar_focus: string;
+  grammar_triggers: string[];
+  scenes: any[];
+  journal_prompt_es?: string;
+  journal_prompt_en?: string;
+  estimated_duration: number;
+  intro_audio_url?: string;
+}
+
+export interface UserStoryProgress {
+  id: string;
+  user_id: string;
+  story_arc_id: string;
+  current_episode: number;
+  episodes_completed: number;
+  total_stars: number;
+  total_xp: number;
+  unlocked_at: string;
+  last_played_at?: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  user_id: string;
+  episode_id?: string;
+  prompt_es: string;
+  prompt_en?: string;
+  entry_text: string;
+  ai_feedback?: any;
+  grammar_highlights: string[];
+  word_count: number;
+  xp_earned: number;
+  created_at: string;
+}
+
+export interface JournalStats {
+  totalEntries: number;
+  totalWords: number;
+  totalXP: number;
+  averageWords: number;
+  currentStreak: number;
+  longestStreak: number;
 }
 
 // Export singleton instance

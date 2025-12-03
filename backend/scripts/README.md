@@ -1,6 +1,6 @@
 # Tutor Greetings Generation Script
 
-This script generates and uploads pre-recorded greeting audio files for all three Spanish tutors (Malena, Ana María, and Marcela) to save on ElevenLabs API costs.
+This script generates and uploads pre-recorded greeting audio files for all three Spanish tutors (Florencia, Ana María, and Marcela) to save on ElevenLabs API costs.
 
 ## Overview
 
@@ -18,7 +18,7 @@ When users open a conversation, the app will use the stored audio instead of gen
    - `ELEVENLABS_API_KEY` - Your ElevenLabs API key
    - `SUPABASE_URL` - Your Supabase project URL
    - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (for admin access)
-   - `ELEVENLABS_VOICE_ID_ARGENTINA` - Voice ID for Malena
+   - `ELEVENLABS_VOICE_ID_ARGENTINA` - Voice ID for Florencia
    - `ELEVENLABS_VOICE_ID_MEXICO` - Voice ID for Ana María
    - `ELEVENLABS_VOICE_ID_COLOMBIA` - Voice ID for Marcela
 
@@ -52,15 +52,15 @@ npx ts-node scripts/generate-greetings.ts
 
 ✅ tutor-greetings bucket already exists
 
-📝 Processing Malena (malena)...
+📝 Processing Florencia (florencia)...
 
   Greeting 1/3:
-  🎤 Generating audio for: "¡Hola! Soy Malena, de Buenos Aires. ¿Cómo andás? Contame algo de vos...."
+  🎤 Generating audio for: "¡Hola! Soy Florencia, de Buenos Aires. ¿Cómo andás? Contame algo de vos...."
   ✅ Generated 45678 bytes
-  📤 Uploading to: malena/greeting-0.mp3
+  📤 Uploading to: florencia/greeting-0.mp3
   ✅ Uploaded: https://...
   💾 Saved to database
-  ✅ Completed greeting 1 for Malena
+  ✅ Completed greeting 1 for Florencia
 
 ...
 

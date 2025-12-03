@@ -201,8 +201,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       // Silently handle "not loaded" errors as they're expected during cleanup
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (!errorMessage.includes('not loaded') && !errorMessage.includes('Cannot complete operation')) {
-        console.error('Error stopping audio:', error);
-        onError?.(error instanceof Error ? error : new Error('Failed to stop audio'));
+      console.error('Error stopping audio:', error);
+      onError?.(error instanceof Error ? error : new Error('Failed to stop audio'));
       }
     }
   }, [onError]);

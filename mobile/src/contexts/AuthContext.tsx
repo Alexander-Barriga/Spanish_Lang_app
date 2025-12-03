@@ -210,9 +210,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign up
   const signUp = async (email: string, password: string, displayName?: string) => {
+    // Pass display_name via user metadata so the database trigger can use it
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          display_name: displayName || null,
+        },
+      },
     });
 
     if (error) throw error;
@@ -247,45 +253,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Create user profile (using upsert for idempotency)
-      const { error: profileError } = await supabase.from('users').upsert({
-        id: data.user.id,
-        email,
-        display_name: displayName || null,
-        spanish_level: 'A1',
-        goals: [],
-        preferred_topics: [],
-        correction_depth: 'standard',
-        voice_speed: 1.0,
-        accent_preference: 'mexico',
-      }, { onConflict: 'id' });
-
-      if (profileError) {
-        console.error('❌ Profile creation error:', profileError);
-        // Don't throw - we can continue with auth even if profile creation fails
-        // The RLS policy might be missing INSERT permission
-      } else {
-        console.log('✅ User profile created');
-      }
-
-      // Create progress record (using upsert for idempotency)
-      const { error: progressError } = await supabase.from('progress').upsert({
-        user_id: data.user.id,
-        grammar_mastery: {},
-        vocabulary_learned: [],
-        total_conversations: 0,
-        total_minutes: 0,
-        current_streak: 0,
-        longest_streak: 0,
-        achievements: [],
-      }, { onConflict: 'user_id' });
-
-      if (progressError) {
-        console.error('❌ Progress creation error:', progressError);
-        // Don't throw - continue with auth flow
-      } else {
-        console.log('✅ Progress record created');
-      }
+      // Profile and progress records are created automatically by database trigger
+      // Wait a moment for the trigger to complete, then fetch user data
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const userData = await fetchUserData(data.user);
       setUser(userData);

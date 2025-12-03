@@ -25,24 +25,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="writing"
-        options={{
-          title: 'Writing',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pencil" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="start"
         options={{
           title: '',
           tabBarIcon: ({ focused }) => (
             <View style={styles.startButton}>
               <Ionicons 
-                name="mic" 
-                size={28} 
-                color={colors.neutral[900]} 
+                name="book" 
+                size={26} 
+                color={colors.neutral[950]} 
               />
             </View>
           ),
@@ -66,11 +57,17 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Hidden tab for conversations history - accessible from profile */}
+      {/* Hidden tabs - accessible via navigation */}
       <Tabs.Screen
         name="conversations"
         options={{
-          href: null, // Hide from tab bar
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="writing"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
@@ -80,7 +77,7 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: colors.background.secondary,
-    borderTopColor: colors.border.default,
+    borderTopColor: colors.border.subtle,
     borderTopWidth: 1,
     height: 85,
     paddingBottom: 20,
@@ -105,4 +102,3 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 });
-

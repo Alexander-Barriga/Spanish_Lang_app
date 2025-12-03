@@ -25,8 +25,8 @@ const VOICE_IDS = {
 // Available tutor characters with different Spanish accents
 export const tutorCharacters: TutorCharacter[] = [
   {
-    id: 'malena',
-    name: 'Malena',
+    id: 'florencia',
+    name: 'Florencia',
     accent: 'argentina',
     country: 'Argentina',
     flag: '🇦🇷',
@@ -68,7 +68,7 @@ export function getTutorByAccent(accent: string): TutorCharacter | undefined {
 
 // Get the default tutor character
 export function getDefaultTutor(): TutorCharacter {
-  return tutorCharacters[0]; // Malena (Argentina) is the default
+  return tutorCharacters[0]; // Florencia (Argentina) is the default
 }
 
 // Get voice ID for a character

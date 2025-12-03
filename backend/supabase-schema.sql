@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.vocabulary_sets (
 -- Tutor Greetings table (stores pre-generated greeting audio)
 CREATE TABLE IF NOT EXISTS public.tutor_greetings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    character_id TEXT NOT NULL CHECK (character_id IN ('malena', 'ana_maria', 'marcela')),
+    character_id TEXT NOT NULL CHECK (character_id IN ('florencia', 'ana_maria', 'marcela')),
     greeting_index INTEGER NOT NULL CHECK (greeting_index >= 0 AND greeting_index < 3),
     greeting_text TEXT NOT NULL,
     audio_url TEXT NOT NULL,
@@ -194,6 +194,30 @@ CREATE TABLE IF NOT EXISTS public.quick_mission_topics (
     difficulty TEXT DEFAULT 'intermediate' CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add missing columns to existing tables (for migrations)
+DO $$ 
+BEGIN 
+    -- Add started_at to conversations if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='conversations' AND column_name='started_at') THEN
+        ALTER TABLE public.conversations ADD COLUMN started_at TIMESTAMPTZ DEFAULT NOW();
+    END IF;
+    -- Add ended_at to conversations if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='conversations' AND column_name='ended_at') THEN
+        ALTER TABLE public.conversations ADD COLUMN ended_at TIMESTAMPTZ;
+    END IF;
+    -- Add message_count to conversations if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='conversations' AND column_name='message_count') THEN
+        ALTER TABLE public.conversations ADD COLUMN message_count INTEGER DEFAULT 0;
+    END IF;
+    
+    -- Add total_xp to user_curriculum_progress if missing
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='user_curriculum_progress') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='user_curriculum_progress' AND column_name='total_xp') THEN
+            ALTER TABLE public.user_curriculum_progress ADD COLUMN total_xp INTEGER DEFAULT 0;
+        END IF;
+    END IF;
+END $$;
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON public.conversations(user_id);
@@ -639,6 +663,1131 @@ SELECT
 FROM public.grammar_curriculum gc
 WHERE gc.level = 'B2' AND gc.week_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.daily_lessons dl WHERE dl.curriculum_id = gc.id AND dl.day_number = 2);
+
+-- ============================================
+-- IMMERSIVE STORY SYSTEM TABLES
+-- ============================================
+
+-- Story Arcs - Multi-episode narrative arcs
+CREATE TABLE IF NOT EXISTS public.story_arcs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    character_id TEXT NOT NULL CHECK (character_id IN ('florencia', 'ana_maria', 'marcela')),
+    arc_number INTEGER NOT NULL,
+    title_es TEXT NOT NULL,
+    title_en TEXT NOT NULL,
+    description TEXT,
+    location TEXT NOT NULL,
+    total_episodes INTEGER DEFAULT 8,
+    cefr_level TEXT NOT NULL CHECK (cefr_level IN ('B1', 'B2')),
+    cover_image_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(character_id, arc_number)
+);
+
+-- Episodes - Individual episodes with scene data
+CREATE TABLE IF NOT EXISTS public.episodes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    story_arc_id UUID REFERENCES public.story_arcs(id) ON DELETE CASCADE,
+    episode_number INTEGER NOT NULL,
+    title_es TEXT NOT NULL,
+    title_en TEXT NOT NULL,
+    scenario TEXT NOT NULL,
+    grammar_focus TEXT NOT NULL,
+    grammar_triggers TEXT[] DEFAULT '{}',
+    scenes JSONB NOT NULL DEFAULT '[]',
+    journal_prompt_es TEXT,
+    journal_prompt_en TEXT,
+    estimated_duration INTEGER DEFAULT 10,
+    intro_audio_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(story_arc_id, episode_number)
+);
+
+-- User Story Progress - Tracks user's position in stories
+CREATE TABLE IF NOT EXISTS public.user_story_progress (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    story_arc_id UUID REFERENCES public.story_arcs(id) ON DELETE CASCADE NOT NULL,
+    current_episode INTEGER DEFAULT 1,
+    episodes_completed INTEGER DEFAULT 0,
+    total_stars INTEGER DEFAULT 0,
+    total_xp INTEGER DEFAULT 0,
+    unlocked_at TIMESTAMPTZ DEFAULT NOW(),
+    last_played_at TIMESTAMPTZ,
+    UNIQUE(user_id, story_arc_id)
+);
+
+-- Episode Attempts - Each playthrough of an episode
+CREATE TABLE IF NOT EXISTS public.episode_attempts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    episode_id UUID REFERENCES public.episodes(id) ON DELETE CASCADE NOT NULL,
+    grammar_score DECIMAL(5,2),
+    speaking_count INTEGER DEFAULT 0,
+    writing_count INTEGER DEFAULT 0,
+    stars_earned INTEGER CHECK (stars_earned >= 0 AND stars_earned <= 3),
+    xp_earned INTEGER DEFAULT 0,
+    path_taken JSONB DEFAULT '[]',
+    duration_seconds INTEGER DEFAULT 0,
+    completed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Journal Entries - User's Spanish journal
+CREATE TABLE IF NOT EXISTS public.journal_entries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    episode_id UUID REFERENCES public.episodes(id) ON DELETE SET NULL,
+    prompt_es TEXT NOT NULL,
+    prompt_en TEXT,
+    entry_text TEXT NOT NULL,
+    ai_feedback JSONB,
+    grammar_highlights TEXT[] DEFAULT '{}',
+    word_count INTEGER DEFAULT 0,
+    xp_earned INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Pre-generated Audio - Cached voice recordings for episodes
+CREATE TABLE IF NOT EXISTS public.pre_generated_audio (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    content_type TEXT NOT NULL CHECK (content_type IN ('episode_intro', 'scene_dialogue', 'grammar_explanation', 'feedback')),
+    content_key TEXT NOT NULL UNIQUE,
+    character_id TEXT NOT NULL CHECK (character_id IN ('florencia', 'ana_maria', 'marcela')),
+    text_content TEXT NOT NULL,
+    audio_url TEXT NOT NULL,
+    emotion TEXT,
+    duration_ms INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for story system (some indexes created after migration block below)
+CREATE INDEX IF NOT EXISTS idx_story_arcs_character ON public.story_arcs(character_id);
+CREATE INDEX IF NOT EXISTS idx_episodes_arc ON public.episodes(story_arc_id);
+CREATE INDEX IF NOT EXISTS idx_user_story_progress_user ON public.user_story_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_story_progress_arc ON public.user_story_progress(story_arc_id);
+CREATE INDEX IF NOT EXISTS idx_episode_attempts_user ON public.episode_attempts(user_id);
+-- Note: idx_episode_attempts_episode and idx_journal_entries_episode created after migration block
+CREATE INDEX IF NOT EXISTS idx_journal_entries_user ON public.journal_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_pre_generated_audio_key ON public.pre_generated_audio(content_key);
+
+-- Enable RLS on story tables
+ALTER TABLE public.story_arcs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.episodes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_story_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.episode_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pre_generated_audio ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for story_arcs (public read)
+DROP POLICY IF EXISTS "Anyone can view story arcs" ON public.story_arcs;
+CREATE POLICY "Anyone can view story arcs" ON public.story_arcs
+    FOR SELECT USING (true);
+
+-- RLS Policies for episodes (public read)
+DROP POLICY IF EXISTS "Anyone can view episodes" ON public.episodes;
+CREATE POLICY "Anyone can view episodes" ON public.episodes
+    FOR SELECT USING (true);
+
+-- RLS Policies for user_story_progress
+DROP POLICY IF EXISTS "Users can view their own story progress" ON public.user_story_progress;
+CREATE POLICY "Users can view their own story progress" ON public.user_story_progress
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own story progress" ON public.user_story_progress;
+CREATE POLICY "Users can insert their own story progress" ON public.user_story_progress
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own story progress" ON public.user_story_progress;
+CREATE POLICY "Users can update their own story progress" ON public.user_story_progress
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- RLS Policies for episode_attempts
+DROP POLICY IF EXISTS "Users can view their own episode attempts" ON public.episode_attempts;
+CREATE POLICY "Users can view their own episode attempts" ON public.episode_attempts
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own episode attempts" ON public.episode_attempts;
+CREATE POLICY "Users can insert their own episode attempts" ON public.episode_attempts
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- RLS Policies for journal_entries
+DROP POLICY IF EXISTS "Users can view their own journal entries" ON public.journal_entries;
+CREATE POLICY "Users can view their own journal entries" ON public.journal_entries
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own journal entries" ON public.journal_entries;
+CREATE POLICY "Users can insert their own journal entries" ON public.journal_entries
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own journal entries" ON public.journal_entries;
+CREATE POLICY "Users can update their own journal entries" ON public.journal_entries
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- RLS Policies for pre_generated_audio (public read)
+DROP POLICY IF EXISTS "Anyone can view pre-generated audio" ON public.pre_generated_audio;
+CREATE POLICY "Anyone can view pre-generated audio" ON public.pre_generated_audio
+    FOR SELECT USING (true);
+
+-- ============================================
+-- MIGRATION: Add missing columns to existing tables
+-- ============================================
+DO $$ 
+BEGIN 
+    -- Migrate episode_attempts if it exists but is missing columns
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='episode_attempts') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='episode_attempts' AND column_name='episode_id') THEN
+            ALTER TABLE public.episode_attempts ADD COLUMN episode_id UUID REFERENCES public.episodes(id) ON DELETE CASCADE;
+        END IF;
+    END IF;
+
+    -- Migrate journal_entries if it exists but is missing story columns
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='journal_entries') THEN
+        -- Add episode_id (now that episodes table exists)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='episode_id') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN episode_id UUID REFERENCES public.episodes(id) ON DELETE SET NULL;
+        END IF;
+        -- Add prompt columns
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='prompt_es') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN prompt_es TEXT NOT NULL DEFAULT '';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='prompt_en') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN prompt_en TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='entry_text') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN entry_text TEXT NOT NULL DEFAULT '';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='ai_feedback') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN ai_feedback JSONB;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='grammar_highlights') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN grammar_highlights TEXT[] DEFAULT '{}';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='word_count') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN word_count INTEGER DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='journal_entries' AND column_name='xp_earned') THEN
+            ALTER TABLE public.journal_entries ADD COLUMN xp_earned INTEGER DEFAULT 0;
+        END IF;
+    END IF;
+END $$;
+
+-- Create indexes for story system (after migrations ensure columns exist)
+CREATE INDEX IF NOT EXISTS idx_episode_attempts_episode ON public.episode_attempts(episode_id);
+CREATE INDEX IF NOT EXISTS idx_journal_entries_episode ON public.journal_entries(episode_id);
+
+-- ============================================
+-- STORY ARC SEED DATA: Encuentros en Buenos Aires
+-- ============================================
+
+-- Insert Florencia's story arc
+INSERT INTO public.story_arcs (character_id, arc_number, title_es, title_en, description, location, total_episodes, cefr_level)
+SELECT 'florencia', 1, 
+    'Encuentros en Buenos Aires',
+    'Encounters in Buenos Aires',
+    'Conoce a Florencia, una bailarina de tango apasionada de San Telmo. A través de ocho episodios, explorarás los cafés históricos, las milongas vibrantes, y los barrios coloridos de Buenos Aires mientras practicas gramática esencial del nivel B1.',
+    'Buenos Aires, Argentina',
+    8,
+    'B1'
+WHERE NOT EXISTS (SELECT 1 FROM public.story_arcs WHERE character_id = 'florencia' AND arc_number = 1);
+
+-- Insert Episode 1: El Café de la Esquina
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    1,
+    'El Café de la Esquina',
+    'The Corner Café',
+    'Tu primer encuentro con Florencia en el histórico Café Tortoni de Buenos Aires',
+    'present_subjunctive_formation',
+    ARRAY['Quiero que', 'Es importante que', 'Espero que', 'Es necesario que'],
+    '[
+        {
+            "scene_id": "arrival",
+            "scene_number": 1,
+            "florencia_says": "¡Hola! Qué bueno que estés aquí. Bienvenido a Buenos Aires. Soy Florencia, sentate, sentate. ¿Querés un café?",
+            "audio_key": "ep1_s1_arrival",
+            "emotion": "warm_welcome",
+            "response_type": "guided",
+            "options": [
+                {"text": "¡Hola Florencia! Sí, quiero un café, gracias.", "next_scene": "coffee_order", "grammar_correct": true},
+                {"text": "Hola, mucho gusto. ¿Cómo estás?", "next_scene": "small_talk", "grammar_correct": true}
+            ]
+        },
+        {
+            "scene_id": "coffee_order",
+            "scene_number": 2,
+            "florencia_says": "¡Perfecto! Acá en Argentina tomamos mucho café. Es importante que pruebes un cortado - es espresso con un poquito de leche. ¿De dónde sos vos?",
+            "audio_key": "ep1_s2_coffee",
+            "emotion": "curious",
+            "response_type": "free_speak",
+            "grammar_hint": "Tell her where you are from using present tense",
+            "expected_patterns": ["Soy de", "Vengo de"]
+        },
+        {
+            "scene_id": "small_talk",
+            "scene_number": 2,
+            "florencia_says": "¡Muy bien, gracias! Qué lindo que hayas venido a Buenos Aires. Este café, el Tortoni, tiene más de 150 años. Es importante que conozcas su historia. ¿Sabés algo de Argentina?",
+            "audio_key": "ep1_s2_smalltalk",
+            "emotion": "proud",
+            "response_type": "free_speak",
+            "grammar_hint": "Share what you know about Argentina",
+            "expected_patterns": ["Sé que", "Conozco", "He escuchado"]
+        },
+        {
+            "scene_id": "tango_intro",
+            "scene_number": 3,
+            "florencia_says": "Mirá, yo soy bailarina de tango. Es mi pasión. Quiero que vengas a una milonga conmigo esta semana. ¿Te gustaría?",
+            "audio_key": "ep1_s3_tango",
+            "emotion": "enthusiastic",
+            "response_type": "guided",
+            "options": [
+                {"text": "¡Sí! Espero que me enseñes a bailar.", "next_scene": "tango_yes", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "Me gustaría, pero no sé bailar.", "next_scene": "tango_nervous", "grammar_correct": true}
+            ]
+        },
+        {
+            "scene_id": "tango_yes",
+            "scene_number": 4,
+            "florencia_says": "¡Genial! No te preocupes si no sabés bailar. Es necesario que tengas paciencia, nada más. El tango se siente, no se piensa. Te va a encantar.",
+            "audio_key": "ep1_s4_tango_yes",
+            "emotion": "encouraging",
+            "response_type": "free_speak",
+            "grammar_hint": "Express your excitement or ask a question about tango",
+            "expected_patterns": ["Espero que", "Quiero que", "¿Cuándo"]
+        },
+        {
+            "scene_id": "tango_nervous",
+            "scene_number": 4,
+            "florencia_says": "¡No importa! Quiero que sepas que todos empezamos sin saber nada. Es importante que te relajes y disfrutes. Te voy a enseñar los pasos básicos.",
+            "audio_key": "ep1_s4_tango_nervous",
+            "emotion": "reassuring",
+            "response_type": "free_speak",
+            "grammar_hint": "Thank her and express what you hope to learn",
+            "expected_patterns": ["Gracias", "Espero que", "Quiero aprender"]
+        },
+        {
+            "scene_id": "closing",
+            "scene_number": 5,
+            "florencia_says": "Bueno, fue un placer conocerte. Espero que te guste Buenos Aires tanto como a mí. Nos vemos en la milonga, ¿dale?",
+            "audio_key": "ep1_s5_closing",
+            "emotion": "warm_goodbye",
+            "response_type": "free_speak",
+            "grammar_hint": "Say goodbye and express that you hope to see her soon",
+            "expected_patterns": ["Hasta pronto", "Espero que", "Fue un placer"]
+        }
+    ]'::jsonb,
+    'Describe el Café Tortoni y tu primera impresión de Florencia. ¿Qué esperas aprender de ella? Usa frases como "Espero que..." y "Quiero que..."',
+    'Describe Café Tortoni and your first impression of Florencia. What do you hope to learn from her? Use phrases like "Espero que..." and "Quiero que..."',
+    10
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 1);
+
+-- Insert Episode 2: La Milonga
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    2,
+    'La Milonga',
+    'The Tango Hall',
+    'Tu primera experiencia en una milonga tradicional de San Telmo con Florencia',
+    'subjunctive_emotions',
+    ARRAY['Me alegra que', 'Es triste que', 'Me sorprende que', 'Me encanta que'],
+    '[
+        {
+            "scene_id": "arrival_milonga",
+            "scene_number": 1,
+            "florencia_says": "¡Llegaste! Me alegra que hayas venido. Mirá este lugar - esta milonga tiene 80 años de historia. ¿Qué te parece?",
+            "audio_key": "ep2_s1_arrival",
+            "emotion": "excited",
+            "response_type": "free_speak",
+            "grammar_hint": "Express what you think about the place using emotion phrases",
+            "expected_patterns": ["Me encanta", "Es increíble", "Me sorprende que"]
+        },
+        {
+            "scene_id": "tango_lesson",
+            "scene_number": 2,
+            "florencia_says": "Vení, te voy a mostrar los pasos básicos. Es importante que escuches la música primero. El tango tiene un ritmo especial. Me alegra que quieras aprender.",
+            "audio_key": "ep2_s2_lesson",
+            "emotion": "patient_teacher",
+            "response_type": "guided",
+            "options": [
+                {"text": "Me sorprende que sea tan difícil escuchar el ritmo.", "next_scene": "rhythm_help", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "¡Me encanta la música! ¿Podemos bailar?", "next_scene": "first_dance", "grammar_correct": true}
+            ]
+        },
+        {
+            "scene_id": "rhythm_help",
+            "scene_number": 3,
+            "florencia_says": "No te preocupes, es normal. Me alegra que seas honesto. Cerrá los ojos y sentí la música en el corazón. El tango es emoción pura.",
+            "audio_key": "ep2_s3_rhythm",
+            "emotion": "encouraging",
+            "response_type": "free_speak",
+            "grammar_hint": "Express how you feel about learning tango",
+            "expected_patterns": ["Me alegra que", "Es emocionante que"]
+        },
+        {
+            "scene_id": "first_dance",
+            "scene_number": 3,
+            "florencia_says": "¡Dale! Me encanta que tengas entusiasmo. Poné tu mano acá... así. Es triste que mucha gente no conozca el tango verdadero, solo el de las películas.",
+            "audio_key": "ep2_s3_dance",
+            "emotion": "nostalgic",
+            "response_type": "free_speak",
+            "grammar_hint": "Ask about the difference between real tango and movie tango",
+            "expected_patterns": ["¿Por qué", "Me sorprende que", "¿Cuál es la diferencia"]
+        },
+        {
+            "scene_id": "personal_story",
+            "scene_number": 4,
+            "florencia_says": "Mi abuela Rosa me enseñó a bailar cuando tenía 6 años. Me emociona que su memoria viva cada vez que bailo. El tango es mi conexión con ella.",
+            "audio_key": "ep2_s4_story",
+            "emotion": "emotional_nostalgic",
+            "response_type": "free_speak",
+            "grammar_hint": "Express empathy and share something personal",
+            "expected_patterns": ["Es hermoso que", "Me alegra que", "También yo"]
+        },
+        {
+            "scene_id": "closing_milonga",
+            "scene_number": 5,
+            "florencia_says": "Bailaste muy bien para ser tu primera vez. Me alegra que hayas disfrutado. ¿Querés venir al mercado de San Telmo conmigo el domingo?",
+            "audio_key": "ep2_s5_closing",
+            "emotion": "happy",
+            "response_type": "guided",
+            "options": [
+                {"text": "¡Sí! Me encanta que me invites. ¿A qué hora?", "next_scene": "end_yes", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "Me encantaría. Gracias por enseñarme.", "next_scene": "end_thanks", "grammar_correct": true}
+            ]
+        }
+    ]'::jsonb,
+    'Describe tu experiencia en la milonga. ¿Qué emociones sentiste? ¿Qué te sorprendió del tango? Usa expresiones como "Me alegra que...", "Me sorprende que...", "Es emocionante que..."',
+    'Describe your experience at the milonga. What emotions did you feel? What surprised you about tango? Use expressions like "Me alegra que...", "Me sorprende que...", "Es emocionante que..."',
+    12
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 2);
+
+-- Insert Episode 3: Feria de San Telmo
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    3,
+    'La Feria de San Telmo',
+    'The San Telmo Market',
+    'Explorás el famoso mercado de antigüedades de San Telmo con Florencia',
+    'subjunctive_doubt',
+    ARRAY['No creo que', 'Dudo que', 'Es posible que', 'No es seguro que'],
+    '[
+        {
+            "scene_id": "market_arrival",
+            "scene_number": 1,
+            "florencia_says": "¡Bienvenido a la Feria de San Telmo! Es el mercado de antigüedades más grande de Buenos Aires. No creo que encuentres algo así en otro lugar del mundo.",
+            "audio_key": "ep3_s1_arrival",
+            "emotion": "proud",
+            "response_type": "free_speak",
+            "grammar_hint": "Express what you see or ask about the market",
+            "expected_patterns": ["No creo que", "Es posible que", "¿Qué es"]
+        },
+        {
+            "scene_id": "antique_find",
+            "scene_number": 2,
+            "florencia_says": "Mirá estos discos de vinde Gardel. Dudo que sean originales de 1930, pero son hermosos igual. ¿Te gusta la música de Gardel?",
+            "audio_key": "ep3_s2_antique",
+            "emotion": "curious",
+            "response_type": "guided",
+            "options": [
+                {"text": "No creo que conozca su música. ¿Quién es Gardel?", "next_scene": "gardel_intro", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "Sí, es posible que haya escuchado algunas canciones.", "next_scene": "gardel_fan", "grammar_correct": true, "uses_subjunctive": true}
+            ]
+        },
+        {
+            "scene_id": "gardel_intro",
+            "scene_number": 3,
+            "florencia_says": "¡Carlos Gardel es el rey del tango! Nació en Francia pero es nuestro. Hay gente que duda que haya existido alguien mejor. Decimos que cada día canta mejor, aunque murió en 1935.",
+            "audio_key": "ep3_s3_gardel_intro",
+            "emotion": "passionate",
+            "response_type": "free_speak",
+            "grammar_hint": "Express doubt or possibility about something",
+            "expected_patterns": ["No creo que", "Es posible que", "Dudo que"]
+        },
+        {
+            "scene_id": "gardel_fan",
+            "scene_number": 3,
+            "florencia_says": "¡Qué bien! Es raro que los extranjeros conozcan a Gardel. Dudo que exista mejor embajador del tango argentino. ¿Cuál es tu canción favorita?",
+            "audio_key": "ep3_s3_gardel_fan",
+            "emotion": "impressed",
+            "response_type": "free_speak",
+            "grammar_hint": "Share your favorite song or express uncertainty",
+            "expected_patterns": ["No estoy seguro", "Es posible que sea", "Creo que"]
+        },
+        {
+            "scene_id": "vendor_chat",
+            "scene_number": 4,
+            "florencia_says": "Este vendedor dice que este reloj es de 1890. Dudo que sea tan antiguo, pero es lindo. En las ferias no es seguro que todo sea auténtico, ¿sabés?",
+            "audio_key": "ep3_s4_vendor",
+            "emotion": "skeptical",
+            "response_type": "free_speak",
+            "grammar_hint": "Express doubt about the vendors claims",
+            "expected_patterns": ["No creo que", "Dudo que", "Es posible que"]
+        },
+        {
+            "scene_id": "closing_market",
+            "scene_number": 5,
+            "florencia_says": "Fue un día genial. No creo que haya mejor manera de conocer Buenos Aires que caminando por San Telmo. ¿Querés que te cuente sobre mi familia el próximo encuentro?",
+            "audio_key": "ep3_s5_closing",
+            "emotion": "satisfied",
+            "response_type": "free_speak",
+            "grammar_hint": "Accept and express what you hope to learn",
+            "expected_patterns": ["Sí", "Me gustaría", "Espero que"]
+        }
+    ]'::jsonb,
+    'Describe la Feria de San Telmo. ¿Qué cosas viste? ¿Dudas de la autenticidad de algunas cosas? Usa expresiones como "No creo que...", "Dudo que...", "Es posible que..."',
+    'Describe the San Telmo Fair. What things did you see? Do you doubt the authenticity of some things? Use expressions like "No creo que...", "Dudo que...", "Es posible que..."',
+    10
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 3);
+
+-- Insert Episode 4: Asado en Familia
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    4,
+    'Asado en Familia',
+    'Family Barbecue',
+    'Florencia te invita a un asado dominical con su madre Elena',
+    'subjunctive_desires',
+    ARRAY['Quiero que', 'Prefiero que', 'Necesito que', 'Me gustaría que'],
+    '[
+        {
+            "scene_id": "arrival_home",
+            "scene_number": 1,
+            "florencia_says": "¡Pasá, pasá! Bienvenido a mi casa. Mi mamá Elena está preparando el asado. Quiero que la conozcas, es una mujer increíble.",
+            "audio_key": "ep4_s1_arrival",
+            "emotion": "welcoming",
+            "response_type": "free_speak",
+            "grammar_hint": "Thank her and express what you want to know about her family",
+            "expected_patterns": ["Gracias", "Quiero que", "Me gustaría que"]
+        },
+        {
+            "scene_id": "meet_elena",
+            "scene_number": 2,
+            "florencia_says": "Mamá, este es mi amigo. Necesito que le muestres cómo hacés el chimichurri. ¡Es el mejor de Buenos Aires!",
+            "audio_key": "ep4_s2_elena",
+            "emotion": "proud",
+            "response_type": "guided",
+            "options": [
+                {"text": "¡Mucho gusto, Elena! Me gustaría que me enseñe la receta.", "next_scene": "chimichurri", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "Es un placer conocerla. Su casa es muy linda.", "next_scene": "house_tour", "grammar_correct": true}
+            ]
+        },
+        {
+            "scene_id": "chimichurri",
+            "scene_number": 3,
+            "florencia_says": "Mi mamá prefiere que usemos perejil fresco del jardín. Dice que necesita que el chimichurri descanse una hora antes de servir. Es su secreto.",
+            "audio_key": "ep4_s3_chimichurri",
+            "emotion": "sharing_wisdom",
+            "response_type": "free_speak",
+            "grammar_hint": "Ask about the recipe or express what you want to learn",
+            "expected_patterns": ["Quiero que", "Me gustaría que", "¿Qué necesito"]
+        },
+        {
+            "scene_id": "house_tour",
+            "scene_number": 3,
+            "florencia_says": "Te muestro la casa. Esta es la cocina donde mi abuela Rosa me enseñó a bailar. Quiero que veas las fotos de ella en el living.",
+            "audio_key": "ep4_s3_house",
+            "emotion": "nostalgic",
+            "response_type": "free_speak",
+            "grammar_hint": "Ask about the grandmother or express interest",
+            "expected_patterns": ["Me gustaría que", "Quiero que", "Contame de"]
+        },
+        {
+            "scene_id": "asado_time",
+            "scene_number": 4,
+            "florencia_says": "El asado está listo. En Argentina, preferimos que la carne esté bien cocida, no como en otros países. ¿Vos cómo la querés?",
+            "audio_key": "ep4_s4_asado",
+            "emotion": "hosting",
+            "response_type": "free_speak",
+            "grammar_hint": "Express how you want your meat using desire phrases",
+            "expected_patterns": ["Prefiero que", "Quiero que", "Me gustaría"]
+        },
+        {
+            "scene_id": "closing_meal",
+            "scene_number": 5,
+            "florencia_says": "Qué lindo fue tenerte acá. Mi mamá quiere que vuelvas pronto. Dice que necesita que alguien aprecie su cocina como vos.",
+            "audio_key": "ep4_s5_closing",
+            "emotion": "warm",
+            "response_type": "free_speak",
+            "grammar_hint": "Express gratitude and what you want for the future",
+            "expected_patterns": ["Gracias", "Me gustaría que", "Quiero que"]
+        }
+    ]'::jsonb,
+    'Describe el asado con la familia de Florencia. ¿Qué querés aprender de la cultura argentina? ¿Qué te gustaría que te enseñen? Usa "Quiero que...", "Me gustaría que...", "Prefiero que..."',
+    'Describe the barbecue with Florencias family. What do you want to learn about Argentine culture? What would you like them to teach you? Use "Quiero que...", "Me gustaría que...", "Prefiero que..."',
+    12
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 4);
+
+-- Insert Episode 5: La Recoleta
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    5,
+    'La Recoleta',
+    'The Recoleta Cemetery',
+    'Un paseo por el cementerio más famoso de Buenos Aires con reflexiones sobre la historia argentina',
+    'preterite_vs_imperfect',
+    ARRAY['Cuando era', 'Mientras', 'De repente', 'Todos los días'],
+    '[
+        {
+            "scene_id": "cemetery_entrance",
+            "scene_number": 1,
+            "florencia_says": "Este es el Cementerio de la Recoleta. Cuando era niña, mi abuela me traía acá todos los domingos. Siempre me contaba historias de las personas famosas que están enterradas aquí.",
+            "audio_key": "ep5_s1_entrance",
+            "emotion": "reflective",
+            "response_type": "free_speak",
+            "grammar_hint": "Ask about her childhood memories using past tenses",
+            "expected_patterns": ["¿Cómo era", "¿Qué hacían", "Cuando eras niña"]
+        },
+        {
+            "scene_id": "evita_tomb",
+            "scene_number": 2,
+            "florencia_says": "Mirá, esta es la tumba de Eva Perón. Evita murió en 1952, pero mientras vivía, ayudó a millones de argentinos pobres. Era una figura muy controversial.",
+            "audio_key": "ep5_s2_evita",
+            "emotion": "respectful",
+            "response_type": "guided",
+            "options": [
+                {"text": "¿Cómo era Evita? ¿Qué hacía por los pobres?", "next_scene": "evita_story", "grammar_correct": true},
+                {"text": "Mientras ella vivía, ¿la gente la quería o la odiaba?", "next_scene": "evita_opinion", "grammar_correct": true}
+            ]
+        },
+        {
+            "scene_id": "evita_story",
+            "scene_number": 3,
+            "florencia_says": "Evita era actriz antes de conocer a Perón. Un día conoció al coronel Perón y todo cambió. Mientras él gobernaba, ella trabajaba con los descamisados - los trabajadores pobres.",
+            "audio_key": "ep5_s3_evita_story",
+            "emotion": "storytelling",
+            "response_type": "free_speak",
+            "grammar_hint": "Use preterite and imperfect to talk about historical events",
+            "expected_patterns": ["Entonces", "Mientras", "De repente"]
+        },
+        {
+            "scene_id": "family_memories",
+            "scene_number": 4,
+            "florencia_says": "Mi padre siempre decía que los domingos eran sagrados. Mientras mi mamá cocinaba, él escuchaba tangos en la radio. Un día, de repente, tuvo un infarto. Yo tenía solo 20 años.",
+            "audio_key": "ep5_s4_memories",
+            "emotion": "sad_nostalgic",
+            "response_type": "free_speak",
+            "grammar_hint": "Express empathy and share a memory of your own",
+            "expected_patterns": ["Lo siento", "Cuando yo era", "Mi familia también"]
+        },
+        {
+            "scene_id": "closing_reflection",
+            "scene_number": 5,
+            "florencia_says": "Este lugar me hace pensar en el pasado. Antes yo era más triste, pero ahora entiendo que la vida continúa. ¿Vamos a tomar un café y hablar de cosas más alegres?",
+            "audio_key": "ep5_s5_closing",
+            "emotion": "hopeful",
+            "response_type": "free_speak",
+            "grammar_hint": "Accept and reflect on what you learned",
+            "expected_patterns": ["Sí", "Antes yo", "Fue interesante"]
+        }
+    ]'::jsonb,
+    'Describe tu visita al Cementerio de la Recoleta. ¿Qué aprendiste sobre la historia argentina? Usa el pretérito y el imperfecto para contar lo que pasó y cómo era.',
+    'Describe your visit to Recoleta Cemetery. What did you learn about Argentine history? Use preterite and imperfect to tell what happened and what it was like.',
+    10
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 5);
+
+-- Insert Episode 6: Crisis Porteña
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    6,
+    'Crisis Porteña',
+    'Buenos Aires Crisis',
+    'Una conversación profunda sobre los desafíos de la vida en Argentina',
+    'imperfect_subjunctive',
+    ARRAY['Si tuviera', 'Si pudiera', 'Quisiera que', 'Como si fuera'],
+    '[
+        {
+            "scene_id": "cafe_conversation",
+            "scene_number": 1,
+            "florencia_says": "Perdón si estoy un poco seria hoy. Si tuviera más plata, no tendría que trabajar tanto. A veces siento como si fuera imposible vivir de mi arte.",
+            "audio_key": "ep6_s1_cafe",
+            "emotion": "frustrated",
+            "response_type": "free_speak",
+            "grammar_hint": "Express empathy using hypothetical phrases",
+            "expected_patterns": ["Si yo estuviera", "Quisiera que", "Entiendo cómo"]
+        },
+        {
+            "scene_id": "economy_talk",
+            "scene_number": 2,
+            "florencia_says": "Si vivieras en Argentina, entenderías. La inflación nos come vivos. Si pudiera irme a Europa, a veces pienso... pero no, este es mi país.",
+            "audio_key": "ep6_s2_economy",
+            "emotion": "conflicted",
+            "response_type": "guided",
+            "options": [
+                {"text": "Si yo pudiera ayudarte de alguna manera, lo haría.", "next_scene": "support", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "¿Quisiera que te fueras de Argentina?", "next_scene": "stay_or_go", "grammar_correct": true, "uses_subjunctive": true}
+            ]
+        },
+        {
+            "scene_id": "support",
+            "scene_number": 3,
+            "florencia_says": "Gracias, eso significa mucho. Si todos fueran tan comprensivos como vos... A veces me siento como si nadie entendiera lo difícil que es ser artista acá.",
+            "audio_key": "ep6_s3_support",
+            "emotion": "touched",
+            "response_type": "free_speak",
+            "grammar_hint": "Continue offering support using conditional forms",
+            "expected_patterns": ["Si necesitaras", "Quisiera que supieras", "Como si fuera"]
+        },
+        {
+            "scene_id": "stay_or_go",
+            "scene_number": 3,
+            "florencia_says": "No sé. Si me fuera, extrañaría todo: el mate, las milongas, mi mamá. Pero si me quedara sin cambiar nada, seguiría igual de frustrada. Es como si no hubiera solución perfecta.",
+            "audio_key": "ep6_s3_stay_go",
+            "emotion": "torn",
+            "response_type": "free_speak",
+            "grammar_hint": "Share your thoughts on her dilemma",
+            "expected_patterns": ["Si yo fuera vos", "Quisiera que", "Como si"]
+        },
+        {
+            "scene_id": "hope_returns",
+            "scene_number": 4,
+            "florencia_says": "Pero sabés qué, si no tuviera esperanza, no seguiría bailando. El tango me salva. Quisiera que vieras mi show este viernes. ¿Vendrías?",
+            "audio_key": "ep6_s4_hope",
+            "emotion": "hopeful",
+            "response_type": "free_speak",
+            "grammar_hint": "Accept the invitation and express your wishes for her",
+            "expected_patterns": ["Claro que sí", "Quisiera que", "Si pudiera"]
+        }
+    ]'::jsonb,
+    'Reflexiona sobre la conversación con Florencia. ¿Qué harías si estuvieras en su situación? ¿Qué le recomendarías? Usa el subjuntivo imperfecto: "Si tuviera...", "Quisiera que...", "Como si fuera..."',
+    'Reflect on your conversation with Florencia. What would you do if you were in her situation? What would you recommend? Use imperfect subjunctive: "Si tuviera...", "Quisiera que...", "Como si fuera..."',
+    12
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 6);
+
+-- Insert Episode 7: La Boca Colorida
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    7,
+    'La Boca Colorida',
+    'Colorful La Boca',
+    'Explorando el barrio más colorido de Buenos Aires y el estadio de Boca Juniors',
+    'conditional_tense',
+    ARRAY['Me gustaría', 'Podría', 'Sería', 'Tendría que'],
+    '[
+        {
+            "scene_id": "caminito",
+            "scene_number": 1,
+            "florencia_says": "¡Bienvenido a La Boca! Este es el Caminito, el lugar más colorido de Buenos Aires. ¿Te gustaría sacar fotos? Podríamos caminar un rato.",
+            "audio_key": "ep7_s1_caminito",
+            "emotion": "cheerful",
+            "response_type": "free_speak",
+            "grammar_hint": "Express what you would like to do using conditional",
+            "expected_patterns": ["Me gustaría", "Podría", "Sería genial"]
+        },
+        {
+            "scene_id": "bombonera",
+            "scene_number": 2,
+            "florencia_says": "Este es el estadio de Boca Juniors, La Bombonera. Mi papá era hincha fanático. Él diría que este es el lugar más sagrado de Argentina. ¿Te gusta el fútbol?",
+            "audio_key": "ep7_s2_bombonera",
+            "emotion": "nostalgic_proud",
+            "response_type": "guided",
+            "options": [
+                {"text": "Sí, me encantaría ver un partido aquí. Sería increíble.", "next_scene": "football_fan", "grammar_correct": true},
+                {"text": "No mucho, pero me gustaría entender por qué es tan importante.", "next_scene": "football_culture", "grammar_correct": true}
+            ]
+        },
+        {
+            "scene_id": "football_fan",
+            "scene_number": 3,
+            "florencia_says": "¡Tendrías que venir un domingo de superclásico! El ambiente sería algo que nunca olvidarías. Boca contra River es más que fútbol, es pasión pura.",
+            "audio_key": "ep7_s3_fan",
+            "emotion": "excited",
+            "response_type": "free_speak",
+            "grammar_hint": "Express what you would do at a match",
+            "expected_patterns": ["Me gustaría", "Gritaría", "Sería"]
+        },
+        {
+            "scene_id": "football_culture",
+            "scene_number": 3,
+            "florencia_says": "El fútbol acá es religión. Podrías decir que cada barrio tiene su equipo. Mi papá decía que sin Boca, la vida no tendría sentido. Era su forma de conectar con otros.",
+            "audio_key": "ep7_s3_culture",
+            "emotion": "explaining",
+            "response_type": "free_speak",
+            "grammar_hint": "Ask questions about the culture using conditional",
+            "expected_patterns": ["¿Sería posible", "¿Podría", "Me gustaría saber"]
+        },
+        {
+            "scene_id": "artists_corner",
+            "scene_number": 4,
+            "florencia_says": "Mirá estos artistas callejeros. Me encantaría poder vivir del arte así de libre. Tendría que ser muy valiente para dejarlo todo y pintar en la calle.",
+            "audio_key": "ep7_s4_artists",
+            "emotion": "dreaming",
+            "response_type": "free_speak",
+            "grammar_hint": "Share what you would do if you were an artist",
+            "expected_patterns": ["Yo pintaría", "Me gustaría", "Sería difícil"]
+        },
+        {
+            "scene_id": "closing_boca",
+            "scene_number": 5,
+            "florencia_says": "Fue un día hermoso. El próximo encuentro sería el último antes de que te vayas. ¿Te gustaría que nos despidiéramos en mi lugar favorito de Buenos Aires?",
+            "audio_key": "ep7_s5_closing",
+            "emotion": "bittersweet",
+            "response_type": "free_speak",
+            "grammar_hint": "Accept and express what the experience has meant to you",
+            "expected_patterns": ["Me encantaría", "Sería un honor", "Tendría que"]
+        }
+    ]'::jsonb,
+    'Describe tu visita a La Boca. ¿Qué te gustaría hacer si vivieras en Buenos Aires? ¿Qué cambiarías de tu vida? Usa el condicional: "Me gustaría...", "Sería...", "Podría..."',
+    'Describe your visit to La Boca. What would you like to do if you lived in Buenos Aires? What would you change about your life? Use conditional: "Me gustaría...", "Sería...", "Podría..."',
+    10
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 7);
+
+-- Insert Episode 8: Despedida
+INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
+SELECT 
+    sa.id,
+    8,
+    'Despedida',
+    'Farewell',
+    'Tu último encuentro con Florencia en la terraza de su edificio con vista a Buenos Aires',
+    'comprehensive_review',
+    ARRAY['Espero que', 'Me alegra que', 'Si pudiera', 'Me gustaría que'],
+    '[
+        {
+            "scene_id": "rooftop",
+            "scene_number": 1,
+            "florencia_says": "Bienvenido a mi lugar secreto. Desde esta terraza se ve todo Buenos Aires. Es importante que veas esto antes de irte. Me alegra que hayas venido.",
+            "audio_key": "ep8_s1_rooftop",
+            "emotion": "warm_nostalgic",
+            "response_type": "free_speak",
+            "grammar_hint": "Express your feelings about the view and your time in Buenos Aires",
+            "expected_patterns": ["Es increíble", "Me alegra que", "Espero que"]
+        },
+        {
+            "scene_id": "reflection",
+            "scene_number": 2,
+            "florencia_says": "¿Sabés qué? Cuando te conocí en el café, no pensé que nos íbamos a hacer tan amigos. Me sorprende que el tiempo haya pasado tan rápido.",
+            "audio_key": "ep8_s2_reflection",
+            "emotion": "touched",
+            "response_type": "free_speak",
+            "grammar_hint": "Share what you have learned and how you have changed",
+            "expected_patterns": ["Me sorprende que", "Aprendí que", "Si no te hubiera conocido"]
+        },
+        {
+            "scene_id": "lessons_learned",
+            "scene_number": 3,
+            "florencia_says": "Espero que nunca olvides lo que aprendiste acá. El tango, el asado, las historias... Quiero que lleves un pedacito de Argentina con vos a donde vayas.",
+            "audio_key": "ep8_s3_lessons",
+            "emotion": "earnest",
+            "response_type": "guided",
+            "options": [
+                {"text": "Nunca olvidaré. Me gustaría que supieras cuánto significó esto para mí.", "next_scene": "gratitude", "grammar_correct": true, "uses_subjunctive": true},
+                {"text": "Espero que podamos vernos de nuevo algún día.", "next_scene": "future_hope", "grammar_correct": true, "uses_subjunctive": true}
+            ]
+        },
+        {
+            "scene_id": "gratitude",
+            "scene_number": 4,
+            "florencia_says": "Vos también cambiaste mi vida. Me hiciste ver que puedo compartir mi cultura y mi historia. Si pudiera, detendría el tiempo ahora mismo.",
+            "audio_key": "ep8_s4_gratitude",
+            "emotion": "emotional",
+            "response_type": "free_speak",
+            "grammar_hint": "Express what you would do if you could stay longer",
+            "expected_patterns": ["Si pudiera", "Me gustaría que", "Quisiera"]
+        },
+        {
+            "scene_id": "future_hope",
+            "scene_number": 4,
+            "florencia_says": "Definitivamente. Es posible que algún día yo viaje a tu país, o que vos vuelvas a Buenos Aires. Dudo que esta sea la última vez que nos veamos.",
+            "audio_key": "ep8_s4_future",
+            "emotion": "hopeful",
+            "response_type": "free_speak",
+            "grammar_hint": "Express your hopes for the future",
+            "expected_patterns": ["Espero que", "Es posible que", "Me gustaría que"]
+        },
+        {
+            "scene_id": "final_goodbye",
+            "scene_number": 5,
+            "florencia_says": "Bueno, llegó el momento. No me gustan las despedidas largas. Solo quiero que sepas que te voy a extrañar. Cuidate mucho, ¿dale? Y practicá tu español.",
+            "audio_key": "ep8_s5_goodbye",
+            "emotion": "bittersweet_loving",
+            "response_type": "free_speak",
+            "grammar_hint": "Say your final goodbye using all the grammar you have learned",
+            "expected_patterns": ["Gracias por todo", "Espero que", "Si algún día", "Me alegra que"]
+        }
+    ]'::jsonb,
+    'Escribe una carta de despedida a Florencia. Incluye: qué aprendiste, qué esperas para el futuro, y qué harías si pudieras quedarte más tiempo. Usa todos los tiempos y modos que aprendiste.',
+    'Write a farewell letter to Florencia. Include: what you learned, what you hope for the future, and what you would do if you could stay longer. Use all the tenses and moods you learned.',
+    15
+FROM public.story_arcs sa
+WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
+AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 8);
+
+-- ============================================
+-- COMPLETE B1/B2 GRAMMAR CURRICULUM (12 weeks each)
+-- Based on CEFR grammar requirements from grammar.csv
+-- ============================================
+
+-- B1 Week 4: Subjunctive with Desires and Wishes
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 4, 'subjunctive_desires',
+    'Subjuntivo con Deseos',
+    'Subjunctive with Desires',
+    'Express wishes and desires using the subjunctive mood',
+    ARRAY['Ojalá que', 'Deseo que', 'Prefiero que', 'Necesito que'],
+    '[
+        {"spanish": "Ojalá que tengas un buen viaje.", "english": "I hope you have a good trip."},
+        {"spanish": "Deseo que seas muy feliz.", "english": "I wish you to be very happy."},
+        {"spanish": "Prefiero que hablemos en español.", "english": "I prefer that we speak in Spanish."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 4);
+
+-- B1 Week 5: Subjunctive in Adjective Clauses
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 5, 'subjunctive_adjective_clauses',
+    'Subjuntivo en Cláusulas Adjetivas',
+    'Subjunctive in Adjective Clauses',
+    'Use subjunctive when describing unknown or hypothetical things',
+    ARRAY['Busco algo que', 'Necesito alguien que', 'No hay nada que', 'Quiero un lugar que'],
+    '[
+        {"spanish": "Busco un trabajo que pague bien.", "english": "I am looking for a job that pays well."},
+        {"spanish": "Necesito alguien que hable inglés.", "english": "I need someone who speaks English."},
+        {"spanish": "No hay nada que me guste más.", "english": "There is nothing I like more."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 5);
+
+-- B1 Week 6: Commands (Imperative)
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 6, 'commands_imperative',
+    'Mandatos e Imperativo',
+    'Commands and Imperative',
+    'Give commands in formal and informal situations, affirmative and negative',
+    ARRAY['Habla', 'No hables', 'Hable usted', 'Vamos a'],
+    '[
+        {"spanish": "¡Habla más despacio, por favor!", "english": "Speak slower, please!"},
+        {"spanish": "No te preocupes por eso.", "english": "Dont worry about that."},
+        {"spanish": "Siéntese, por favor.", "english": "Please sit down (formal)."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 6);
+
+-- B1 Week 7: Preterite vs Imperfect Mastery
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 7, 'preterite_imperfect_mastery',
+    'Pretérito vs Imperfecto',
+    'Preterite vs Imperfect Mastery',
+    'Master the distinction between completed and ongoing past actions',
+    ARRAY['Cuando era', 'Mientras', 'De repente', 'Todos los días', 'Una vez'],
+    '[
+        {"spanish": "Cuando era niño, vivía en México.", "english": "When I was a child, I lived in Mexico."},
+        {"spanish": "Mientras estudiaba, sonó el teléfono.", "english": "While I was studying, the phone rang."},
+        {"spanish": "De repente, empezó a llover.", "english": "Suddenly, it started to rain."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 7);
+
+-- B1 Week 8: Present Perfect (Pretérito Perfecto)
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 8, 'present_perfect',
+    'Pretérito Perfecto',
+    'Present Perfect',
+    'Talk about recent past actions and experiences',
+    ARRAY['He hablado', 'Has comido', 'Hemos visto', 'Todavía no he', 'Ya he'],
+    '[
+        {"spanish": "He viajado a España tres veces.", "english": "I have traveled to Spain three times."},
+        {"spanish": "¿Ya has comido?", "english": "Have you already eaten?"},
+        {"spanish": "Todavía no he terminado.", "english": "I havent finished yet."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 8);
+
+-- B1 Week 9: Future and Conditional Basics
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 9, 'future_conditional_basic',
+    'Futuro y Condicional Básico',
+    'Future and Conditional Basics',
+    'Express future plans and hypothetical situations',
+    ARRAY['Mañana iré', 'La semana que viene', 'Me gustaría', 'Podría'],
+    '[
+        {"spanish": "Mañana iré al médico.", "english": "Tomorrow I will go to the doctor."},
+        {"spanish": "Me gustaría viajar a Sudamérica.", "english": "I would like to travel to South America."},
+        {"spanish": "¿Podrías ayudarme?", "english": "Could you help me?"}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 9);
+
+-- B1 Week 10: Reflexive Verbs Advanced
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 10, 'reflexive_verbs_advanced',
+    'Verbos Reflexivos Avanzados',
+    'Advanced Reflexive Verbs',
+    'Master reflexive constructions including reciprocal and emphatic uses',
+    ARRAY['Se levanta', 'Nos vemos', 'Se quieren', 'Me di cuenta'],
+    '[
+        {"spanish": "Nos conocimos en una fiesta.", "english": "We met each other at a party."},
+        {"spanish": "Se quieren mucho.", "english": "They love each other very much."},
+        {"spanish": "Me di cuenta del error.", "english": "I realized the mistake."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 10);
+
+-- B1 Week 11: Object Pronoun Combinations
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 11, 'object_pronoun_combinations',
+    'Combinación de Pronombres',
+    'Object Pronoun Combinations',
+    'Combine direct and indirect object pronouns correctly',
+    ARRAY['Se lo di', 'Te lo digo', 'Me lo compraron', 'Se la envié'],
+    '[
+        {"spanish": "Se lo di ayer.", "english": "I gave it to him/her yesterday."},
+        {"spanish": "¿Me lo puedes explicar?", "english": "Can you explain it to me?"},
+        {"spanish": "Te lo prometo.", "english": "I promise it to you."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 11);
+
+-- B1 Week 12: Comprehensive Review
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B1', 12, 'b1_comprehensive_review',
+    'Repaso Integral B1',
+    'B1 Comprehensive Review',
+    'Review and consolidate all B1 grammar structures',
+    ARRAY['Todos los tiempos', 'Subjuntivo presente', 'Mandatos', 'Pronombres'],
+    '[
+        {"spanish": "Espero que hayas disfrutado este curso.", "english": "I hope you have enjoyed this course."},
+        {"spanish": "Si necesitas ayuda, dímelo.", "english": "If you need help, tell me."},
+        {"spanish": "Me alegra que hayamos llegado tan lejos.", "english": "I am glad we have come so far."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B1' AND week_number = 12);
+
+-- B2 Week 4: Como si + Imperfect Subjunctive
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 4, 'como_si_constructions',
+    'Construcciones con Como Si',
+    'Como Si Constructions',
+    'Use como si to describe how things appear or how people behave',
+    ARRAY['Como si fuera', 'Como si tuviera', 'Como si no supiera', 'Como si hubiera'],
+    '[
+        {"spanish": "Habla como si fuera experto.", "english": "He speaks as if he were an expert."},
+        {"spanish": "Me mira como si no me conociera.", "english": "She looks at me as if she didnt know me."},
+        {"spanish": "Actúa como si nada hubiera pasado.", "english": "He acts as if nothing had happened."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 4);
+
+-- B2 Week 5: Conditional Perfect
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 5, 'conditional_perfect',
+    'Condicional Perfecto',
+    'Conditional Perfect',
+    'Express what would have happened under different circumstances',
+    ARRAY['Habría hecho', 'Habrían venido', 'No habría sabido'],
+    '[
+        {"spanish": "Habría ido si me hubieras invitado.", "english": "I would have gone if you had invited me."},
+        {"spanish": "¿Qué habrías hecho en mi lugar?", "english": "What would you have done in my place?"},
+        {"spanish": "Nunca habría imaginado esto.", "english": "I never would have imagined this."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 5);
+
+-- B2 Week 6: Passive Voice and Se Impersonal
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 6, 'passive_se_impersonal',
+    'Voz Pasiva y Se Impersonal',
+    'Passive Voice and Se Impersonal',
+    'Use passive constructions and impersonal se',
+    ARRAY['Se dice que', 'Fue construido', 'Se habla español', 'Es considerado'],
+    '[
+        {"spanish": "Se dice que va a llover mañana.", "english": "They say it is going to rain tomorrow."},
+        {"spanish": "Este edificio fue construido en 1920.", "english": "This building was built in 1920."},
+        {"spanish": "Aquí se habla español.", "english": "Spanish is spoken here."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 6);
+
+-- B2 Week 7: Indirect/Reported Speech
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 7, 'reported_speech',
+    'Estilo Indirecto',
+    'Indirect/Reported Speech',
+    'Report what others have said with appropriate tense changes',
+    ARRAY['Dijo que', 'Me preguntó si', 'Comentó que', 'Explicó que'],
+    '[
+        {"spanish": "Dijo que vendría mañana.", "english": "He said he would come tomorrow."},
+        {"spanish": "Me preguntó si había terminado.", "english": "She asked me if I had finished."},
+        {"spanish": "Explicó que no había podido venir.", "english": "He explained that he hadnt been able to come."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 7);
+
+-- B2 Week 8: Advanced Connectors and Discourse Markers
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 8, 'advanced_connectors',
+    'Conectores Avanzados',
+    'Advanced Connectors and Discourse',
+    'Use sophisticated connectors for cohesive discourse',
+    ARRAY['Sin embargo', 'No obstante', 'Por lo tanto', 'A pesar de que', 'Dado que'],
+    '[
+        {"spanish": "Sin embargo, no estoy de acuerdo.", "english": "However, I do not agree."},
+        {"spanish": "A pesar de que llovía, salimos.", "english": "Even though it was raining, we went out."},
+        {"spanish": "Por lo tanto, debemos actuar.", "english": "Therefore, we must act."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 8);
+
+-- B2 Week 9: Concessive Clauses
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 9, 'concessive_clauses',
+    'Cláusulas Concesivas',
+    'Concessive Clauses',
+    'Express concession using aunque, a pesar de, and similar structures',
+    ARRAY['Aunque + subjuntivo', 'A pesar de que', 'Por más que', 'Por mucho que'],
+    '[
+        {"spanish": "Aunque llueva, iré a la fiesta.", "english": "Even if it rains, I will go to the party."},
+        {"spanish": "Por más que lo intente, no puedo.", "english": "No matter how hard I try, I cannot."},
+        {"spanish": "A pesar de sus errores, lo quiero.", "english": "Despite his mistakes, I love him."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 9);
+
+-- B2 Week 10: Nominalization and Clause Reduction
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 10, 'nominalization',
+    'Nominalización',
+    'Nominalization and Clause Reduction',
+    'Convert clauses to noun phrases for more sophisticated expression',
+    ARRAY['El hecho de que', 'Lo importante es', 'Lo que más me gusta'],
+    '[
+        {"spanish": "Lo que más me gusta es viajar.", "english": "What I like most is traveling."},
+        {"spanish": "El hecho de que haya llegado tarde es inaceptable.", "english": "The fact that he arrived late is unacceptable."},
+        {"spanish": "Lo difícil es empezar.", "english": "The difficult thing is to start."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 10);
+
+-- B2 Week 11: Subjunctive in Adverbial Clauses
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 11, 'subjunctive_adverbial',
+    'Subjuntivo en Cláusulas Adverbiales',
+    'Subjunctive in Adverbial Clauses',
+    'Use subjunctive in purpose, time, and condition clauses',
+    ARRAY['Para que', 'Antes de que', 'Cuando + subjuntivo', 'A menos que', 'Con tal de que'],
+    '[
+        {"spanish": "Te lo explico para que entiendas.", "english": "I explain it to you so that you understand."},
+        {"spanish": "Antes de que llegues, preparo la cena.", "english": "Before you arrive, I will prepare dinner."},
+        {"spanish": "A menos que llueva, iremos al parque.", "english": "Unless it rains, we will go to the park."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 11);
+
+-- B2 Week 12: Comprehensive Review
+INSERT INTO public.grammar_curriculum (level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences)
+SELECT 'B2', 12, 'b2_comprehensive_review',
+    'Repaso Integral B2',
+    'B2 Comprehensive Review',
+    'Review and master all B2 grammar for near-native expression',
+    ARRAY['Todos los subjuntivos', 'Condicionales complejos', 'Conectores', 'Estilo indirecto'],
+    '[
+        {"spanish": "Si hubiera sabido, habría actuado diferente.", "english": "If I had known, I would have acted differently."},
+        {"spanish": "Por más que lo intente, parece como si no fuera suficiente.", "english": "No matter how hard I try, it seems as if it is not enough."},
+        {"spanish": "Dijo que ojalá hubiera podido quedarse más tiempo.", "english": "He said he wished he could have stayed longer."}
+    ]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM public.grammar_curriculum WHERE level = 'B2' AND week_number = 12);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

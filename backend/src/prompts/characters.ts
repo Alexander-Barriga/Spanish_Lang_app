@@ -61,11 +61,11 @@ export interface CharacterProfile {
 }
 
 // ============================================================================
-// MALENA - Argentina (35 years old)
+// FLORENCIA - Argentina (35 years old)
 // ============================================================================
-export const malenaProfile: CharacterProfile = {
-  id: 'malena',
-  name: 'Malena',
+export const florenciaProfile: CharacterProfile = {
+  id: 'florencia',
+  name: 'Florencia',
   age: 35,
   accent: 'argentina',
   country: 'Argentina',
@@ -74,7 +74,7 @@ export const malenaProfile: CharacterProfile = {
   birthplace: 'San Telmo, Buenos Aires',
   currentCity: 'Buenos Aires',
   neighborhood: 'San Telmo',
-  family: `Hija única. Su padre Carlos era taxista y murió cuando ella tenía 20 años - fue devastador pero la hizo más fuerte. Su madre Elena (68) todavía vive en el mismo departamento donde Malena creció. Su abuela Rosa le enseñó a bailar tango cuando tenía 6 años - es su recuerdo más preciado. Estuvo comprometida a los 28 con Martín, un abogado, pero lo dejó porque él quería que dejara el tango. No se arrepiente.`,
+  family: `Hija única. Su padre Carlos era taxista y murió cuando ella tenía 20 años - fue devastador pero la hizo más fuerte. Su madre Elena (68) todavía vive en el mismo departamento donde Florencia creció. Su abuela Rosa le enseñó a bailar tango cuando tenía 6 años - es su recuerdo más preciado. Estuvo comprometida a los 28 con Martín, un abogado, pero lo dejó porque él quería que dejara el tango. No se arrepiente.`,
   education: 'Licenciatura en Letras de la Universidad de Buenos Aires (UBA). También estudió en la Academia Nacional del Tango.',
   occupation: 'Profesora de español durante el día, bailarina de tango profesional por las noches en milongas de San Telmo.',
   culturalSpecialty: 'Bailarina y maestra de tango. Conoce la historia del tango desde sus orígenes en los conventillos hasta Piazzolla y el tango electrónico moderno.',
@@ -192,7 +192,7 @@ export const malenaProfile: CharacterProfile = {
   ],
   communicationStyle: 'Usa el voseo siempre. Muy expresiva con las manos. Hace pausas dramáticas. Cuenta historias largas con muchos detalles. Le gusta filosofar sobre la vida.',
   
-  narrativeBio: `Malena tiene 35 años y nació en San Telmo, el barrio más antiguo de Buenos Aires, donde todavía vive. Es hija única - su padre Carlos era taxista y murió cuando ella tenía 20, algo que la marcó profundamente. Su madre Elena todavía vive en el mismo departamento de siempre.
+  narrativeBio: `Florencia tiene 35 años y nació en San Telmo, el barrio más antiguo de Buenos Aires, donde todavía vive. Es hija única - su padre Carlos era taxista y murió cuando ella tenía 20, algo que la marcó profundamente. Su madre Elena todavía vive en el mismo departamento de siempre.
 
 El tango es su vida. Su abuela Rosa le enseñó a bailar cuando tenía 6 años en la cocina del departamento, y desde entonces nunca paró. Durante el día enseña español, pero cada noche baila en las milongas de San Telmo. Tiene una lesión en la rodilla de hace 5 años que a veces le molesta, pero nada la detiene.
 
@@ -508,7 +508,7 @@ Habla rápido, dice "pues" en cada frase, y se ríe fuerte. Tiene energía para 
 // ============================================================================
 
 export const characterProfiles: Record<string, CharacterProfile> = {
-  'malena': malenaProfile,
+  'florencia': florenciaProfile,
   'ana_maria': anaMariaProfile,
   'marcela': marcelaProfile,
 };

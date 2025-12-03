@@ -19,6 +19,9 @@ import curriculumRoutes from './routes/curriculum';
 import workoutsRoutes from './routes/workouts';
 import writingRoutes from './routes/writing';
 import placementRoutes from './routes/placement';
+import storiesRoutes from './routes/stories';
+import journalRoutes from './routes/journal';
+import audioCacheRoutes from './routes/audio-cache';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -60,6 +63,9 @@ app.use('/api/v1/curriculum', curriculumRoutes);
 app.use('/api/v1/workouts', workoutsRoutes);
 app.use('/api/v1/writing', writingRoutes);
 app.use('/api/v1/placement', placementRoutes);
+app.use('/api/v1/stories', storiesRoutes);
+app.use('/api/v1/journal', journalRoutes);
+app.use('/api/v1/audio', audioCacheRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

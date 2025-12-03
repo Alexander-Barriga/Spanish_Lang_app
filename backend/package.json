@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts",
     "test": "jest",
-    "generate-greetings": "ts-node scripts/generate-greetings.ts"
+    "generate-greetings": "ts-node scripts/generate-greetings.ts",
+    "generate-episode-audio": "ts-node scripts/generate-episode-audio.ts"
   },
   "keywords": [
     "spanish",

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { api, WritingExercise, UserCurriculumProgress } from '../../src/services/api';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 type ExerciseState = 'loading' | 'ready' | 'answering' | 'feedback' | 'complete';
 
@@ -29,6 +30,7 @@ interface ExerciseWithState extends WritingExercise {
 }
 
 export default function WritingScreen() {
+  const { user } = useAuth();
   const [state, setState] = useState<ExerciseState>('loading');
   const [progress, setProgress] = useState<UserCurriculumProgress | null>(null);
   const [exercises, setExercises] = useState<ExerciseWithState[]>([]);
@@ -42,14 +44,23 @@ export default function WritingScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadExercises();
+      if (user) {
+        loadExercises();
+      } else {
+        setState('ready');
+      }
       return () => {
         cleanupRecording();
       };
-    }, [])
+    }, [user])
   );
 
   const loadExercises = async () => {
+    if (!user) {
+      setState('ready');
+      return;
+    }
+
     try {
       setState('loading');
       
@@ -406,9 +417,6 @@ export default function WritingScreen() {
     </SafeAreaView>
   );
 }
-
-// Need to import React for useRef
-import React from 'react';
 
 const styles = StyleSheet.create({
   container: {

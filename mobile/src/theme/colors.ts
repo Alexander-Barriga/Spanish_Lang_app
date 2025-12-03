@@ -1,105 +1,112 @@
-// LoboLingo Color Palette
-// Deep, warm colors inspired by wolves and Spanish culture
+// LoboLingo Premium Color Palette
+// Elegant, sophisticated colors for an elite learning experience
 
 export const colors = {
-  // Primary colors
+  // Primary colors - Rich, luxurious palette
   primary: {
-    navy: '#1a1f36',      // Deep navy - main background
-    gold: '#f4b942',       // Warm gold - primary accent
-    cream: '#faf8f5',      // Soft cream - text on dark
+    black: '#0A0A0B',        // Deep black - main background
+    gold: '#C9A962',          // Muted gold - primary accent (elegant, not flashy)
+    cream: '#F5F2EB',         // Warm cream - text on dark
+    charcoal: '#1C1C1E',      // Rich charcoal - elevated surfaces
   },
 
-  // Secondary colors
-  secondary: {
-    rust: '#c45d3a',       // Warm rust - secondary accent
-    sage: '#7a9e7e',       // Sage green - success states
-    lavender: '#8b7eb8',   // Soft lavender - grammar mode
-    coral: '#e07a5f',      // Coral - vocabulary mode
-    teal: '#4ecdc4',       // Teal - open chat mode
+  // Accent colors - Inspired by Buenos Aires and tango
+  accent: {
+    tango: '#8B2942',         // Deep burgundy - passion, tango
+    wine: '#722F37',          // Dark wine - sophisticated accent
+    sky: '#4A6B8A',           // Muted slate blue - calm, trustworthy
+    sage: '#6B8068',          // Soft sage - success, growth
+    rose: '#B76E79',          // Dusty rose - warmth
   },
 
-  // Neutral palette
+  // Neutral palette - Sophisticated grays
   neutral: {
-    900: '#0f1219',        // Darkest
-    800: '#1a1f36',        // Navy (same as primary)
-    700: '#2a3152',        // Dark blue-gray
-    600: '#3d4567',        // Medium blue-gray
-    500: '#5a6380',        // Mid gray
-    400: '#8891a8',        // Light blue-gray
-    300: '#b4bcd0',        // Lighter
-    200: '#d6dce8',        // Very light
-    100: '#eef1f6',        // Near white
-    50: '#f8f9fc',         // Lightest
+    950: '#0A0A0B',           // Near black
+    900: '#121214',           // Deep dark
+    850: '#1C1C1E',           // Charcoal
+    800: '#2C2C2E',           // Dark gray
+    700: '#3A3A3C',           // Medium dark
+    600: '#48484A',           // Medium gray
+    500: '#636366',           // Mid gray
+    400: '#8E8E93',           // Light gray
+    300: '#AEAEB2',           // Lighter
+    200: '#C7C7CC',           // Very light
+    100: '#E5E5EA',           // Near white
+    50: '#F2F2F7',            // Off white
   },
 
   // Semantic colors
-  success: '#4ade80',
-  warning: '#fbbf24',
-  error: '#ef4444',
-  info: '#3b82f6',
+  success: '#6B8068',         // Sage green
+  warning: '#D4A84B',         // Warm amber
+  error: '#C14F4F',           // Muted red
+  info: '#4A6B8A',            // Slate blue
 
-  // Mode-specific colors
+  // Mode-specific colors (for grammar gym legacy support)
   modes: {
-    open: '#4ECDC4',
-    topic: '#FF6B6B',
-    vocabulary: '#45B7D1',
-    grammar: '#96CEB4',
-    roleplay: '#DDA0DD',
+    open: '#4A6B8A',
+    topic: '#B76E79',
+    vocabulary: '#6B8068',
+    grammar: '#8B2942',
+    roleplay: '#9B7BB8',
   },
 
   // Text colors
   text: {
-    primary: '#faf8f5',      // Light text on dark bg
-    secondary: '#b4bcd0',    // Muted text
-    inverse: '#1a1f36',      // Dark text on light bg
-    accent: '#f4b942',       // Gold accent text
+    primary: '#F5F2EB',        // Cream on dark
+    secondary: '#AEAEB2',      // Muted gray
+    tertiary: '#636366',       // Even more muted
+    inverse: '#0A0A0B',        // Dark text on light
+    accent: '#C9A962',         // Gold accent text
+    muted: '#8E8E93',          // Subtle text
   },
 
   // Background colors
   background: {
-    primary: '#1a1f36',
-    secondary: '#0f1219',
-    elevated: '#2a3152',
-    card: '#232942',
+    primary: '#0A0A0B',        // Main background
+    secondary: '#121214',      // Slightly elevated
+    elevated: '#1C1C1E',       // Cards, surfaces
+    card: '#1C1C1E',           // Card background
+    modal: '#2C2C2E',          // Modal overlay
+    input: '#2C2C2E',          // Input fields
   },
 
   // Border colors
   border: {
-    default: '#3d4567',
-    light: '#5a6380',
-    focus: '#f4b942',
+    default: '#3A3A3C',        // Standard border
+    light: '#48484A',          // Lighter border
+    subtle: '#2C2C2E',         // Very subtle
+    focus: '#C9A962',          // Focus state (gold)
+    accent: '#8B2942',         // Accent border (tango)
   },
 
   // Gradient presets
   gradients: {
-    primary: ['#1a1f36', '#2a3152'],
-    gold: ['#f4b942', '#e5a83a'],
-    sunset: ['#c45d3a', '#e07a5f'],
-    night: ['#0f1219', '#1a1f36'],
+    primary: ['#0A0A0B', '#1C1C1E'],
+    hero: ['#121214', '#1C1C1E', '#2C2C2E'],
+    gold: ['#C9A962', '#A68B4B'],
+    goldSubtle: ['rgba(201,169,98,0.15)', 'rgba(201,169,98,0.05)'],
+    tango: ['#8B2942', '#722F37'],
+    tangoSubtle: ['rgba(139,41,66,0.2)', 'rgba(139,41,66,0.1)'],
+    night: ['#0A0A0B', '#121214'],
+    card: ['#1C1C1E', '#232325'],
+  },
+
+  // Episode/Story specific colors
+  story: {
+    progress: '#C9A962',       // Progress bar
+    star: '#D4A84B',           // Star rating
+    starEmpty: '#3A3A3C',      // Empty star
+    locked: '#48484A',         // Locked content
+  },
+
+  // Character colors (for avatar accents)
+  characters: {
+    florencia: '#75AADB',      // Argentina blue
+    ana_maria: '#006847',      // Mexico green
+    marcela: '#FCD116',        // Colombia yellow
   },
 } as const;
 
-// Light theme overrides (for future use)
-export const lightColors = {
-  ...colors,
-  background: {
-    primary: '#faf8f5',
-    secondary: '#f0ede8',
-    elevated: '#ffffff',
-    card: '#ffffff',
-  },
-  text: {
-    primary: '#1a1f36',
-    secondary: '#5a6380',
-    inverse: '#faf8f5',
-    accent: '#c45d3a',
-  },
-  border: {
-    default: '#d6dce8',
-    light: '#eef1f6',
-    focus: '#f4b942',
-  },
-} as const;
-
+// Type exports
 export type ColorScheme = typeof colors;
-
+export type GradientKey = keyof typeof colors.gradients;

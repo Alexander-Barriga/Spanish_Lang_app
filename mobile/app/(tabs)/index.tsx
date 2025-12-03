@@ -1,15 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { api, UserCurriculumProgress, CurriculumWeek, DailyLesson } from '../../src/services/api';
+import { api } from '../../src/services/api';
+import { authTokenManager } from '../../src/services/authToken';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 
 const { width } = Dimensions.get('window');
+
+interface StoryProgress {
+  hasStarted: boolean;
+  arc: any;
+  progress: any;
+  currentEpisode: any;
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -17,84 +25,85 @@ export default function HomeScreen() {
   const streak = user?.progress?.current_streak || 0;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [curriculumProgress, setCurriculumProgress] = useState<UserCurriculumProgress | null>(null);
-  const [todaysCurriculum, setTodaysCurriculum] = useState<CurriculumWeek | null>(null);
-  const [todaysLesson, setTodaysLesson] = useState<DailyLesson | null>(null);
-  const [needsPlacement, setNeedsPlacement] = useState(true); // Default to true for new users
+  const [storyData, setStoryData] = useState<StoryProgress | null>(null);
+  const [journalStats, setJournalStats] = useState<any>(null);
 
   useFocusEffect(
     useCallback(() => {
-      loadTodayData();
-    }, [])
+      // Only load data if user is authenticated
+      if (user) {
+        loadHomeData();
+      } else {
+        setIsLoading(false);
+      }
+    }, [user])
   );
 
-  const loadTodayData = async () => {
+  const loadHomeData = async () => {
+    // Skip API calls if user is not authenticated or no auth token yet
+    if (!user || !authTokenManager.hasToken()) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
-      setHasError(false);
-      const result = await api.getTodayLesson();
       
-      if (result.error) {
-        console.error('API Error loading today data:', result.error);
-        // If authentication fails, assume new user needs placement
-        setNeedsPlacement(true);
-        return;
+      // Fetch current story progress
+      const storyResult = await api.getCurrentStory();
+      if (storyResult.data) {
+        setStoryData(storyResult.data);
       }
-      
-      if (result.data) {
-        setNeedsPlacement(result.data.needsPlacement);
-        setCurriculumProgress(result.data.progress);
-        setTodaysCurriculum(result.data.curriculum || null);
-        setTodaysLesson(result.data.lesson || null);
+
+      // Fetch journal stats (silently ignore errors for now)
+      try {
+        const journalResult = await api.getJournalStats();
+        if (journalResult.data) {
+          setJournalStats(journalResult.data);
+        }
+      } catch {
+        // Journal stats endpoint might not exist yet
       }
     } catch (error) {
-      console.error('Error loading today data:', error);
-      setHasError(true);
-      setNeedsPlacement(true); // Assume new user needs placement
+      console.error('Error loading home data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleStartWorkout = () => {
+  const handleStartStory = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    if (needsPlacement) {
-      router.push('/placement-test');
-    } else if (todaysCurriculum && curriculumProgress) {
+    if (!storyData?.hasStarted && storyData?.arc) {
+      // Start the story arc
+      const result = await api.startStoryArc(storyData.arc.id);
+      if (result.data?.firstEpisode) {
+        router.push({
+          pathname: '/story/[episode]',
+          params: { episode: result.data.firstEpisode.id }
+        });
+      }
+    } else if (storyData?.currentEpisode) {
       router.push({
-        pathname: '/workout/[week]',
-        params: {
-          week: curriculumProgress.current_week,
-          day: curriculumProgress.current_day,
-          level: curriculumProgress.level,
-        },
+        pathname: '/story/[episode]',
+        params: { episode: storyData.currentEpisode.id }
       });
     }
   };
 
-  const handleQuickMission = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const handleOpenJournal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/journal');
+  };
+
+  const handleQuickPractice = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/quick-mission');
   };
 
-  const handleTakePlacement = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/placement-test');
-  };
-
-  // Get greeting based on time of day
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '¡Buenos días';
-    if (hour < 18) return '¡Buenas tardes';
-    return '¡Buenas noches';
-  };
-
-  // Calculate week progress percentage
-  const weekProgress = curriculumProgress 
-    ? ((curriculumProgress.current_day - 1) / 7) * 100 
+  // Calculate episode progress
+  const episodeProgress = storyData?.progress 
+    ? (storyData.progress.episodes_completed / (storyData.arc?.total_episodes || 8)) * 100 
     : 0;
 
   if (isLoading) {
@@ -102,6 +111,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary.gold} />
+          <Text style={styles.loadingText}>Loading your story...</Text>
         </View>
       </SafeAreaView>
     );
@@ -114,155 +124,193 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Minimal Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()}, {displayName}!</Text>
-            <Text style={styles.subGreeting}>
-              {needsPlacement ? 'Let\'s find your level' : 'Ready to practice?'}
-            </Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.brandText}>LoboLingo</Text>
           </View>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakEmoji}>🔥</Text>
+            <Ionicons name="flame" size={16} color={colors.warning} />
             <Text style={styles.streakNumber}>{streak}</Text>
           </View>
         </View>
 
-        {/* Placement Test Needed */}
-        {needsPlacement && (
-          <Pressable onPress={handleTakePlacement}>
-            <LinearGradient
-              colors={['#667eea', '#764ba2']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.placementCard}
-            >
-              <View style={styles.placementContent}>
-                <Text style={styles.placementEmoji}>🎯</Text>
-                <View style={styles.placementText}>
-                  <Text style={styles.placementTitle}>Take Placement Test</Text>
-                  <Text style={styles.placementSubtitle}>
-                    5 minutes to find your personalized path
+        {/* Story Hero Card */}
+        <Pressable onPress={handleStartStory} style={styles.heroCard}>
+          <LinearGradient
+            colors={colors.gradients.tangoSubtle as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroGradient}
+          >
+            {/* Decorative accent line */}
+            <View style={styles.accentLine} />
+            
+            {/* Story info */}
+            <View style={styles.heroContent}>
+              <Text style={styles.overlineText}>
+                {storyData?.hasStarted ? 'CONTINUE YOUR STORY' : 'BEGIN YOUR JOURNEY'}
+              </Text>
+              
+              <Text style={styles.storyTitle}>
+                {storyData?.arc?.title_es || 'Encuentros en Buenos Aires'}
+              </Text>
+              
+              <Text style={styles.storySubtitle}>
+                {storyData?.arc?.title_en || 'Encounters in Buenos Aires'}
+              </Text>
+
+              {storyData?.currentEpisode && (
+                <View style={styles.episodeInfo}>
+                  <Text style={styles.episodeLabel}>
+                    Episode {storyData.currentEpisode.episode_number} of {storyData.arc?.total_episodes || 8}
+                  </Text>
+                  <Text style={styles.episodeTitle}>
+                    {storyData.currentEpisode.title_es}
                   </Text>
                 </View>
-              </View>
-              <Ionicons name="arrow-forward" size={24} color="#fff" />
-            </LinearGradient>
-          </Pressable>
-        )}
+              )}
 
-        {/* Grammar Gym Card - Main Learning Path */}
-        {!needsPlacement && curriculumProgress && (
-          <Pressable onPress={handleStartWorkout}>
-            <LinearGradient
-              colors={[colors.primary.gold, '#e5a83a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.learningPathCard}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.levelBadge}>
-                  <Text style={styles.levelText}>{curriculumProgress.level}</Text>
+              {/* Progress bar */}
+              {storyData?.hasStarted && (
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${episodeProgress}%` }]} />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {storyData.progress?.episodes_completed || 0} / {storyData.arc?.total_episodes || 8} episodes
+                  </Text>
                 </View>
-                <Text style={styles.xpText}>
-                  {curriculumProgress.total_xp} XP
+              )}
+
+              {/* CTA Button */}
+              <View style={styles.ctaButton}>
+                <Ionicons 
+                  name={storyData?.hasStarted ? "play" : "sparkles"} 
+                  size={20} 
+                  color={colors.neutral[950]} 
+                />
+                <Text style={styles.ctaText}>
+                  {storyData?.hasStarted ? 'Continue' : 'Start Story'}
                 </Text>
               </View>
+            </View>
 
-              <View style={styles.cardContent}>
-                <Text style={styles.weekLabel}>Week {curriculumProgress.current_week} of 12</Text>
-                <Text style={styles.grammarTitle}>
-                  {todaysCurriculum?.title_en || 'Loading...'}
-                </Text>
-                <Text style={styles.dayLabel}>
-                  Day {curriculumProgress.current_day} • {todaysLesson?.title || 'Today\'s Workout'}
-                </Text>
-              </View>
-
-              <View style={styles.progressSection}>
-                <View style={styles.weekProgressBar}>
-                  <View style={[styles.weekProgressFill, { width: `${weekProgress}%` }]} />
-                </View>
-                <View style={styles.startWorkoutButton}>
-                  <Ionicons name="play" size={20} color={colors.primary.gold} />
-                  <Text style={styles.startWorkoutText}>Start Workout</Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {/* Divider */}
-        {!needsPlacement && (
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or practice freely</Text>
-            <View style={styles.dividerLine} />
-          </View>
-        )}
-
-        {/* Quick Mission Card */}
-        <Pressable onPress={handleQuickMission} style={styles.quickMissionCard}>
-          <View style={styles.quickMissionIcon}>
-            <Ionicons name="flash" size={28} color={colors.primary.gold} />
-          </View>
-          <View style={styles.quickMissionContent}>
-            <Text style={styles.quickMissionTitle}>Quick Mission</Text>
-            <Text style={styles.quickMissionSubtitle}>
-              Pick a topic, practice 3-5 minutes
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color={colors.neutral[500]} />
+            {/* Character indicator */}
+            <View style={styles.characterBadge}>
+              <Text style={styles.characterFlag}>🇦🇷</Text>
+              <Text style={styles.characterName}>Florencia</Text>
+            </View>
+          </LinearGradient>
         </Pressable>
 
-        {/* Today's Writing Rep (if curriculum active) */}
-        {!needsPlacement && curriculumProgress && (
-          <Link href="/(tabs)/writing" asChild>
-            <Pressable style={styles.writingPromptCard}>
-              <View style={styles.writingIcon}>
-                <Ionicons name="pencil" size={20} color={colors.primary.gold} />
-              </View>
-              <View style={styles.writingContent}>
-                <Text style={styles.writingTitle}>Today's Writing Rep</Text>
-                <Text style={styles.writingSubtitle}>
-                  Complete for +50 XP bonus
-                </Text>
-              </View>
-              <View style={styles.writingBadge}>
-                <Text style={styles.writingBadgeText}>+50</Text>
-              </View>
-            </Pressable>
-          </Link>
-        )}
-
-        {/* Stats Summary */}
-        <View style={styles.statsSection}>
-          <Text style={styles.statsSectionTitle}>This Week</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name="flame" size={24} color={colors.warning} />
-              <Text style={styles.statValue}>{streak}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <View style={styles.statIcon}>
+              <Ionicons name="star" size={18} color={colors.story.star} />
             </View>
-            <View style={styles.statCard}>
-              <Ionicons name="star" size={24} color={colors.primary.gold} />
-              <Text style={styles.statValue}>{curriculumProgress?.total_xp || 0}</Text>
-              <Text style={styles.statLabel}>Total XP</Text>
+            <Text style={styles.statValue}>{storyData?.progress?.total_stars || 0}</Text>
+            <Text style={styles.statLabel}>Stars</Text>
+          </View>
+          
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statItem}>
+            <View style={styles.statIcon}>
+              <Ionicons name="trophy" size={18} color={colors.primary.gold} />
             </View>
+            <Text style={styles.statValue}>{storyData?.progress?.total_xp || 0}</Text>
+            <Text style={styles.statLabel}>XP</Text>
+          </View>
+          
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statItem}>
+            <View style={styles.statIcon}>
+              <Ionicons name="book" size={18} color={colors.accent.sage} />
+            </View>
+            <Text style={styles.statValue}>{journalStats?.totalEntries || 0}</Text>
+            <Text style={styles.statLabel}>Journal</Text>
           </View>
         </View>
 
-        {/* Tip of the Day */}
-        <View style={styles.tipCard}>
-          <View style={styles.tipHeader}>
-            <Text style={styles.tipEmoji}>💡</Text>
-            <Text style={styles.tipLabel}>Tip of the Day</Text>
+        {/* Action Cards */}
+        <View style={styles.actionCards}>
+          {/* Journal Card */}
+          <Pressable onPress={handleOpenJournal} style={styles.actionCard}>
+            <LinearGradient
+              colors={['rgba(107,128,104,0.15)', 'rgba(107,128,104,0.05)']}
+              style={styles.actionCardGradient}
+            >
+              <View style={styles.actionCardIcon}>
+                <Ionicons name="journal" size={24} color={colors.accent.sage} />
+              </View>
+              <Text style={styles.actionCardTitle}>Spanish Journal</Text>
+              <Text style={styles.actionCardSubtitle}>
+                {journalStats?.currentStreak || 0} day streak
+              </Text>
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={colors.neutral[500]} 
+                style={styles.actionCardArrow}
+              />
+            </LinearGradient>
+          </Pressable>
+
+          {/* Quick Practice Card */}
+          <Pressable onPress={handleQuickPractice} style={styles.actionCard}>
+            <LinearGradient
+              colors={['rgba(74,107,138,0.15)', 'rgba(74,107,138,0.05)']}
+              style={styles.actionCardGradient}
+            >
+              <View style={styles.actionCardIcon}>
+                <Ionicons name="flash" size={24} color={colors.accent.sky} />
+              </View>
+              <Text style={styles.actionCardTitle}>Quick Practice</Text>
+              <Text style={styles.actionCardSubtitle}>
+                3-5 min conversation
+              </Text>
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={colors.neutral[500]} 
+                style={styles.actionCardArrow}
+              />
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        {/* Grammar Focus Card */}
+        {storyData?.currentEpisode && (
+          <View style={styles.grammarCard}>
+            <View style={styles.grammarHeader}>
+              <Ionicons name="school-outline" size={18} color={colors.accent.tango} />
+              <Text style={styles.grammarLabel}>This Episode's Grammar</Text>
+            </View>
+            <Text style={styles.grammarFocus}>
+              {storyData.currentEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
+            </Text>
+            {storyData.currentEpisode.grammar_triggers?.length > 0 && (
+              <View style={styles.triggersContainer}>
+                {storyData.currentEpisode.grammar_triggers.slice(0, 3).map((trigger: string, index: number) => (
+                  <View key={index} style={styles.triggerBadge}>
+                    <Text style={styles.triggerText}>{trigger}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
-          <Text style={styles.tipText}>
-            {curriculumProgress?.level === 'B2'
-              ? 'Practice using "como si" + imperfect subjunctive to describe how things appear!'
-              : 'Remember: after "es importante que", always use the subjunctive!'
-            }
+        )}
+
+        {/* Motivational Quote */}
+        <View style={styles.quoteCard}>
+          <Text style={styles.quoteText}>
+            "El que habla dos idiomas vale por dos."
+          </Text>
+          <Text style={styles.quoteTranslation}>
+            One who speaks two languages is worth two people.
           </Text>
         </View>
       </ScrollView>
@@ -279,6 +327,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing[4],
+  },
+  loadingText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
   },
   scrollView: {
     flex: 1,
@@ -287,284 +340,279 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[10],
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing[6],
+    paddingVertical: spacing[4],
   },
-  greeting: {
-    ...textStyles.h3,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandText: {
+    ...textStyles.h4,
     color: colors.text.primary,
-  },
-  subGreeting: {
-    ...textStyles.body,
-    color: colors.text.secondary,
-    marginTop: spacing[1],
+    letterSpacing: -0.5,
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.card,
-    paddingVertical: spacing[2],
+    backgroundColor: colors.background.elevated,
+    paddingVertical: spacing[1.5],
     paddingHorizontal: spacing[3],
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  streakEmoji: {
-    fontSize: 18,
-    marginRight: spacing[1],
+    borderRadius: borderRadius.full,
+    gap: spacing[1],
   },
   streakNumber: {
-    ...textStyles.body,
+    ...textStyles.label,
     color: colors.text.primary,
     fontWeight: '700',
   },
-  placementCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing[5],
+
+  // Hero Card
+  heroCard: {
+    marginBottom: spacing[5],
     borderRadius: borderRadius['2xl'],
-    marginBottom: spacing[4],
-    ...shadows.lg,
+    overflow: 'hidden',
+    ...shadows.card,
   },
-  placementContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  heroGradient: {
+    padding: spacing[6],
+    minHeight: 280,
+    justifyContent: 'flex-end',
   },
-  placementEmoji: {
-    fontSize: 40,
-    marginRight: spacing[4],
+  accentLine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: colors.primary.gold,
   },
-  placementText: {
-    flex: 1,
+  heroContent: {
+    gap: spacing[2],
   },
-  placementTitle: {
-    ...textStyles.h4,
-    color: '#fff',
-  },
-  placementSubtitle: {
-    ...textStyles.bodySmall,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: spacing[0.5],
-  },
-  learningPathCard: {
-    padding: spacing[5],
-    borderRadius: borderRadius['2xl'],
-    marginBottom: spacing[4],
-    ...shadows.lg,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing[3],
-  },
-  levelBadge: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.full,
-  },
-  levelText: {
-    ...textStyles.labelSmall,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  xpText: {
-    ...textStyles.bodySmall,
-    color: 'rgba(0,0,0,0.6)',
-    fontWeight: '600',
-  },
-  cardContent: {
-    marginBottom: spacing[4],
-  },
-  weekLabel: {
-    ...textStyles.labelSmall,
-    color: 'rgba(0,0,0,0.5)',
+  overlineText: {
+    ...textStyles.overline,
+    color: colors.primary.gold,
     marginBottom: spacing[1],
   },
-  grammarTitle: {
-    ...textStyles.h4,
-    color: colors.neutral[900],
-    marginBottom: spacing[1],
+  storyTitle: {
+    ...textStyles.h2,
+    color: colors.text.primary,
+    lineHeight: 38,
   },
-  dayLabel: {
+  storySubtitle: {
     ...textStyles.body,
-    color: 'rgba(0,0,0,0.6)',
+    color: colors.text.secondary,
+    fontStyle: 'italic',
   },
-  progressSection: {
-    gap: spacing[3],
+  episodeInfo: {
+    marginTop: spacing[4],
+    paddingTop: spacing[4],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
   },
-  weekProgressBar: {
-    height: 6,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+  episodeLabel: {
+    ...textStyles.labelSmall,
+    color: colors.text.tertiary,
+    marginBottom: spacing[1],
+  },
+  episodeTitle: {
+    ...textStyles.h5,
+    color: colors.text.primary,
+  },
+  progressContainer: {
+    marginTop: spacing[4],
+    gap: spacing[2],
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: colors.neutral[800],
     borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
-  weekProgressFill: {
+  progressFill: {
     height: '100%',
-    backgroundColor: colors.neutral[900],
+    backgroundColor: colors.primary.gold,
     borderRadius: borderRadius.full,
   },
-  startWorkoutButton: {
+  progressText: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+  },
+  ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.neutral[900],
+    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[3],
+    paddingHorizontal: spacing[6],
     borderRadius: borderRadius.lg,
+    marginTop: spacing[4],
     gap: spacing[2],
+    alignSelf: 'flex-start',
   },
-  startWorkoutText: {
+  ctaText: {
     ...textStyles.button,
-    color: colors.primary.gold,
+    color: colors.neutral[950],
   },
-  divider: {
+  characterBadge: {
+    position: 'absolute',
+    top: spacing[5],
+    right: spacing[5],
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing[4],
+    backgroundColor: colors.background.elevated,
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[2],
+    borderRadius: borderRadius.full,
+    gap: spacing[1],
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border.default,
+  characterFlag: {
+    fontSize: 14,
   },
-  dividerText: {
-    ...textStyles.bodySmall,
-    color: colors.text.secondary,
-    paddingHorizontal: spacing[4],
-  },
-  quickMissionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.card,
-    padding: spacing[4],
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    marginBottom: spacing[3],
-  },
-  quickMissionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary.gold + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing[4],
-  },
-  quickMissionContent: {
-    flex: 1,
-  },
-  quickMissionTitle: {
-    ...textStyles.body,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  quickMissionSubtitle: {
-    ...textStyles.bodySmall,
-    color: colors.text.secondary,
-    marginTop: spacing[0.5],
-  },
-  writingPromptCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.card,
-    padding: spacing[4],
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.primary.gold + '30',
-    marginBottom: spacing[6],
-  },
-  writingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary.gold + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing[3],
-  },
-  writingContent: {
-    flex: 1,
-  },
-  writingTitle: {
-    ...textStyles.body,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  writingSubtitle: {
+  characterName: {
     ...textStyles.caption,
     color: colors.text.secondary,
   },
-  writingBadge: {
-    backgroundColor: colors.primary.gold,
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.md,
-  },
-  writingBadgeText: {
-    ...textStyles.labelSmall,
-    color: colors.neutral[900],
-    fontWeight: '700',
-  },
-  statsSection: {
-    marginBottom: spacing[4],
-  },
-  statsSectionTitle: {
-    ...textStyles.labelSmall,
-    color: colors.text.secondary,
-    marginBottom: spacing[3],
-  },
-  statsGrid: {
+
+  // Stats Row
+  statsRow: {
     flexDirection: 'row',
-    gap: spacing[3],
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.background.card,
+    backgroundColor: colors.background.elevated,
     borderRadius: borderRadius.xl,
     padding: spacing[4],
+    marginBottom: spacing[5],
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.default,
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statIcon: {
+    marginBottom: spacing[1],
   },
   statValue: {
-    ...textStyles.h3,
+    ...textStyles.h4,
     color: colors.text.primary,
-    marginTop: spacing[2],
   },
   statLabel: {
     ...textStyles.caption,
-    color: colors.text.secondary,
+    color: colors.text.tertiary,
   },
-  tipCard: {
-    backgroundColor: colors.background.card,
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.border.subtle,
+  },
+
+  // Action Cards
+  actionCards: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    marginBottom: spacing[5],
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+  },
+  actionCardGradient: {
+    padding: spacing[4],
+    minHeight: 120,
+    justifyContent: 'flex-end',
+    position: 'relative',
+  },
+  actionCardIcon: {
+    position: 'absolute',
+    top: spacing[4],
+    left: spacing[4],
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.lg,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionCardTitle: {
+    ...textStyles.label,
+    color: colors.text.primary,
+    marginTop: spacing[6],
+  },
+  actionCardSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+  },
+  actionCardArrow: {
+    position: 'absolute',
+    top: spacing[4],
+    right: spacing[4],
+  },
+
+  // Grammar Card
+  grammarCard: {
+    backgroundColor: colors.background.elevated,
     borderRadius: borderRadius.xl,
     padding: spacing[5],
-    borderWidth: 1,
-    borderColor: colors.border.default,
+    marginBottom: spacing[5],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent.tango,
   },
-  tipHeader: {
+  grammarHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  grammarLabel: {
+    ...textStyles.labelSmall,
+    color: colors.accent.tango,
+  },
+  grammarFocus: {
+    ...textStyles.h5,
+    color: colors.text.primary,
     marginBottom: spacing[3],
   },
-  tipEmoji: {
-    fontSize: 20,
-    marginRight: spacing[2],
+  triggersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
   },
-  tipLabel: {
-    ...textStyles.labelSmall,
-    color: colors.primary.gold,
+  triggerBadge: {
+    backgroundColor: colors.neutral[800],
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[2],
+    borderRadius: borderRadius.md,
   },
-  tipText: {
-    ...textStyles.body,
+  triggerText: {
+    ...textStyles.caption,
     color: colors.text.secondary,
-    lineHeight: 24,
+    fontStyle: 'italic',
+  },
+
+  // Quote Card
+  quoteCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.xl,
+    padding: spacing[5],
+    alignItems: 'center',
+  },
+  quoteText: {
+    ...textStyles.dialogue,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: spacing[2],
+  },
+  quoteTranslation: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
+

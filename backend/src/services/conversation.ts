@@ -63,7 +63,7 @@ export class ConversationService {
       const profile = getCharacterProfile(characterId);
       if (profile) {
         const greetings: Record<string, string[]> = {
-          'malena': [
+          'florencia': [
             `¡Hola! Soy ${profile.name}, de Buenos Aires. ¿Cómo andás? Contame algo de vos.`,
             `¡Che, qué bueno conocerte! Soy ${profile.name}. ¿Qué querés practicar hoy?`,
             `¡Hola! Acá ${profile.name}, lista para charlar. ¿Arrancamos?`,
@@ -79,7 +79,7 @@ export class ConversationService {
             `¡Ey! ${profile.name} aquí, desde la Comuna 13. ¿Arrancamos pues?`,
           ],
         };
-        const options = greetings[characterId] || greetings['malena'];
+        const options = greetings[characterId] || greetings['florencia'];
         return {
           text: options[Math.floor(Math.random() * options.length)],
         };

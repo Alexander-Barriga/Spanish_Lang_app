@@ -67,11 +67,25 @@ export const shadows = {
     elevation: 12,
   },
   glow: {
-    shadowColor: '#f4b942',
+    shadowColor: '#C9A962',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.4,
     shadowRadius: 20,
     elevation: 0,
+  },
+  glowSubtle: {
+    shadowColor: '#C9A962',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 0,
+  },
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
 } as const;
 

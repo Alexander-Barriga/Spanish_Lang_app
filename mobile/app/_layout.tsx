@@ -66,23 +66,23 @@ function RootLayoutNav() {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="conversation/[id]" 
-          options={{ 
-            headerShown: false,
-            presentation: 'fullScreenModal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen 
-          name="mode-setup" 
-          options={{ 
-            headerShown: false,
-            presentation: 'modal',
-          }} 
-        />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen 
+              name="conversation/[id]" 
+              options={{ 
+                headerShown: false,
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }} 
+            />
+            <Stack.Screen 
+              name="mode-setup" 
+              options={{ 
+                headerShown: false,
+                presentation: 'modal',
+              }} 
+            />
         <Stack.Screen 
           name="placement-test" 
           options={{ 
@@ -102,6 +102,21 @@ function RootLayoutNav() {
           options={{ 
             headerShown: false,
             presentation: 'fullScreenModal',
+          }} 
+        />
+        <Stack.Screen 
+          name="story/[episode]" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }} 
+        />
+        <Stack.Screen 
+          name="journal" 
+          options={{ 
+            headerShown: false,
+            presentation: 'modal',
           }} 
         />
       </Stack>

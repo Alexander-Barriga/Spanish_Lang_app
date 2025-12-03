@@ -19,10 +19,10 @@ if (!ELEVENLABS_API_KEY) {
 
 // Greeting texts for each character (matching conversation.ts)
 const GREETINGS: Record<string, string[]> = {
-  malena: [
-    '¡Hola! Soy Malena, de Buenos Aires. ¿Cómo andás? Contame algo de vos.',
-    '¡Che, qué bueno conocerte! Soy Malena. ¿Qué querés practicar hoy?',
-    '¡Hola! Acá Malena, lista para charlar. ¿Arrancamos?',
+  florencia: [
+    '¡Hola! Soy Florencia, de Buenos Aires. ¿Cómo andás? Contame algo de vos.',
+    '¡Che, qué bueno conocerte! Soy Florencia. ¿Qué querés practicar hoy?',
+    '¡Hola! Acá Florencia, lista para charlar. ¿Arrancamos?',
   ],
   ana_maria: [
     '¡Hola! Soy Ana María, de Oaxaca. ¡Qué gusto conocerte! ¿Cómo estás?',
@@ -174,7 +174,7 @@ async function generateAllGreetings(): Promise<void> {
   await initializeBucket();
   console.log('');
 
-  const characters = ['malena', 'ana_maria', 'marcela'];
+  const characters = ['florencia', 'ana_maria', 'marcela'];
   let totalCost = 0;
 
   for (const characterId of characters) {

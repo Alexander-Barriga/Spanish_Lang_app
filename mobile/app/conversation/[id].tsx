@@ -640,7 +640,7 @@ export default function ConversationScreen() {
       case 'processing':
         return colors.warning;
       case 'speaking':
-        return colors.secondary.teal;
+        return colors.info;
       default:
         return colors.primary.gold;
     }
@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   micButtonSpeaking: {
-    backgroundColor: colors.secondary.teal,
+    backgroundColor: colors.info,
     opacity: 0.7,
   },
 });

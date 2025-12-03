@@ -27,11 +27,20 @@ export default function ProgressScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadAllStats();
-    }, [])
+      if (user) {
+        loadAllStats();
+      } else {
+        setIsLoading(false);
+      }
+    }, [user])
   );
 
   const loadAllStats = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -232,7 +241,7 @@ export default function ProgressScreen() {
             </Text>
           </View>
           <View style={styles.goalProgressBar}>
-            <View 
+        <View 
               style={[
                 styles.goalProgressFill, 
                 { width: `${Math.min((workoutStats?.this_week_workouts || 0) / 5 * 100, 100)}%` }
