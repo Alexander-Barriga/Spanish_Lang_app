@@ -196,16 +196,9 @@ export default function EpisodePlayer() {
     const uri = await stopRecording();
     
     if (uri) {
-      // Transcribe the recording
+      // Transcribe the recording - pass the URI directly, not FormData
       try {
-        const formData = new FormData();
-        formData.append('audio', {
-          uri,
-          type: 'audio/m4a',
-          name: 'recording.m4a',
-        } as any);
-
-        const result = await api.transcribeAudio(formData);
+        const result = await api.transcribeAudio(uri);
         if (result.data?.transcript) {
           setUserTranscription(result.data.transcript);
           setSpeakingCount(prev => prev + 1);
@@ -224,9 +217,14 @@ export default function EpisodePlayer() {
           }
           
           setCurrentPhase('feedback');
+        } else if (result.error) {
+          console.error('Transcription failed:', result.error);
+          setFeedbackMessage('Could not transcribe. Try speaking more clearly.');
+          setCurrentPhase('feedback');
         }
       } catch (error) {
         console.error('Transcription error:', error);
+        setFeedbackMessage('Recording failed. Please try again.');
         setCurrentPhase('response');
       }
     }
