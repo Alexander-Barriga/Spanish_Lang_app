@@ -135,6 +135,9 @@ export default function EpisodePlayer() {
   const playCurrentSceneAudio = async () => {
     if (!currentScene) return;
     
+    // Stop any currently playing audio first to prevent overlapping
+    await stopAudio();
+    
     // Try to play pre-generated audio
     try {
       const audioResult = await api.getPreGeneratedAudio(currentScene.audio_key);
@@ -147,8 +150,11 @@ export default function EpisodePlayer() {
     }
   };
 
-  const handleSelectOption = (option: { text: string; next_scene: string; grammar_correct?: boolean; uses_subjunctive?: boolean }) => {
+  const handleSelectOption = async (option: { text: string; next_scene: string; grammar_correct?: boolean; uses_subjunctive?: boolean }) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Stop any currently playing audio first
+    await stopAudio();
     
     // Track path and grammar
     setPathTaken([...pathTaken, option.next_scene]);
@@ -165,7 +171,8 @@ export default function EpisodePlayer() {
       setCurrentSceneIndex(prev => prev + 1);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
-      setTimeout(() => playCurrentSceneAudio(), 500);
+      // Wait for state to update, then play audio
+      setTimeout(() => playCurrentSceneAudio(), 300);
     } else {
       // End of episode
       handleEpisodeComplete();
@@ -219,8 +226,11 @@ export default function EpisodePlayer() {
     }
   };
 
-  const handleContinueAfterFeedback = () => {
+  const handleContinueAfterFeedback = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Stop any currently playing audio first
+    await stopAudio();
     
     // Move to next scene or end
     const nextSceneIndex = currentSceneIndex + 1;
@@ -230,7 +240,8 @@ export default function EpisodePlayer() {
       setCurrentPhase('scene');
       setUserTranscription('');
       setFeedbackMessage('');
-      setTimeout(() => playCurrentSceneAudio(), 500);
+      // Wait for state to update, then play audio
+      setTimeout(() => playCurrentSceneAudio(), 300);
     } else {
       handleEpisodeComplete();
     }
@@ -411,10 +422,20 @@ export default function EpisodePlayer() {
                 </Text>
               </View>
 
-              {/* Replay button */}
-              <Pressable onPress={playCurrentSceneAudio} style={styles.replayButton}>
-                <Ionicons name="refresh" size={16} color={colors.text.secondary} />
-                <Text style={styles.replayText}>Replay</Text>
+              {/* Replay button - disabled while audio is playing */}
+              <Pressable 
+                onPress={playCurrentSceneAudio} 
+                style={[styles.replayButton, isPlaying && styles.replayButtonDisabled]}
+                disabled={isPlaying}
+              >
+                <Ionicons 
+                  name={isPlaying ? "volume-high" : "refresh"} 
+                  size={16} 
+                  color={isPlaying ? colors.primary.gold : colors.text.secondary} 
+                />
+                <Text style={[styles.replayText, isPlaying && styles.replayTextPlaying]}>
+                  {isPlaying ? 'Playing...' : 'Replay'}
+                </Text>
               </Pressable>
             </Animated.View>
 
@@ -772,9 +793,15 @@ const styles = StyleSheet.create({
     padding: spacing[2],
     alignSelf: 'flex-start',
   },
+  replayButtonDisabled: {
+    opacity: 0.7,
+  },
   replayText: {
     ...textStyles.caption,
     color: colors.text.secondary,
+  },
+  replayTextPlaying: {
+    color: colors.primary.gold,
   },
   responseSection: {
     marginTop: spacing[4],
