@@ -140,6 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Load tutor character preference
         await loadSelectedTutor();
+        
+        // Try to restore auth token from SecureStore first
+        await authTokenManager.restoreToken();
 
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -245,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await SecureStore.setItemAsync('auth_token', signInData.session.access_token);
             authTokenManager.setToken(signInData.session.access_token);
             console.log('✅ Auth token stored after auto sign-in');
-          } else {
+      } else {
             console.log('⚠️ Auto sign-in failed, email confirmation may be required');
           }
         } catch (e) {

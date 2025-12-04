@@ -60,10 +60,19 @@ class ApiClient {
 
   private async getAuthToken(): Promise<string | null> {
     // Get token from the in-memory token manager (set by AuthContext)
-    const token = authTokenManager.getToken();
+    let token = authTokenManager.getToken();
     
     if (token) {
-      console.log('🔑 Auth token available');
+      console.log('🔑 Auth token available (in-memory)');
+      return token;
+    }
+    
+    // Try to restore from SecureStore if not in memory
+    console.log('🔍 Token not in memory, checking SecureStore...');
+    token = await authTokenManager.getTokenAsync();
+    
+    if (token) {
+      console.log('🔑 Auth token restored from SecureStore');
       return token;
     }
     
@@ -101,6 +110,13 @@ class ApiClient {
 
       if (!response.ok) {
         console.error(`❌ API Error: ${data.error || 'Request failed'}`);
+        
+        // If token is invalid/expired, clear it so user can re-authenticate
+        if (response.status === 401 || data.error?.includes('Invalid') || data.error?.includes('expired')) {
+          console.log('🔓 Clearing invalid/expired token');
+          authTokenManager.setToken(null);
+        }
+        
         return { error: data.error || 'Request failed' };
       }
 

@@ -97,10 +97,14 @@ export default function SignupScreen() {
                     style={styles.input}
                     placeholder="How should we call you?"
                     placeholderTextColor={colors.neutral[500]}
+                    selectionColor={colors.primary.gold}
+                    cursorColor={colors.primary.gold}
+                    keyboardAppearance="dark"
                     value={displayName}
                     onChangeText={setDisplayName}
                     autoCapitalize="words"
-                    autoComplete="name"
+                    autoComplete="off"
+                    textContentType="name"
                   />
                 </View>
               </View>
@@ -118,11 +122,15 @@ export default function SignupScreen() {
                     style={styles.input}
                     placeholder="your@email.com"
                     placeholderTextColor={colors.neutral[500]}
+                    selectionColor={colors.primary.gold}
+                    cursorColor={colors.primary.gold}
+                    keyboardAppearance="dark"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
                     keyboardType="email-address"
-                    autoComplete="email"
+                    autoComplete="off"
+                    textContentType="emailAddress"
                   />
                 </View>
               </View>
@@ -140,10 +148,15 @@ export default function SignupScreen() {
                     style={styles.input}
                     placeholder="At least 6 characters"
                     placeholderTextColor={colors.neutral[500]}
+                    selectionColor={colors.primary.gold}
+                    cursorColor={colors.primary.gold}
+                    keyboardAppearance="dark"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
-                    autoComplete="new-password"
+                    autoComplete="off"
+                    textContentType="oneTimeCode"
+                    autoCorrect={false}
                   />
                   <Pressable 
                     onPress={() => setShowPassword(!showPassword)}
@@ -171,10 +184,15 @@ export default function SignupScreen() {
                     style={styles.input}
                     placeholder="••••••••"
                     placeholderTextColor={colors.neutral[500]}
+                    selectionColor={colors.primary.gold}
+                    cursorColor={colors.primary.gold}
+                    keyboardAppearance="dark"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showPassword}
-                    autoComplete="new-password"
+                    autoComplete="off"
+                    textContentType="oneTimeCode"
+                    autoCorrect={false}
                   />
                 </View>
               </View>
@@ -296,6 +314,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...textStyles.body,
     color: colors.text.primary,
+    backgroundColor: 'transparent',
     paddingVertical: spacing[4],
   },
   eyeButton: {

@@ -78,11 +78,15 @@ export default function LoginScreen() {
                   style={styles.input}
                   placeholder="your@email.com"
                   placeholderTextColor={colors.neutral[500]}
+                  selectionColor={colors.primary.gold}
+                  cursorColor={colors.primary.gold}
+                  keyboardAppearance="dark"
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  autoComplete="email"
+                  autoComplete="off"
+                  textContentType="emailAddress"
                 />
               </View>
             </View>
@@ -100,10 +104,15 @@ export default function LoginScreen() {
                   style={styles.input}
                   placeholder="••••••••"
                   placeholderTextColor={colors.neutral[500]}
+                  selectionColor={colors.primary.gold}
+                  cursorColor={colors.primary.gold}
+                  keyboardAppearance="dark"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  autoComplete="password"
+                  autoComplete="off"
+                  textContentType="oneTimeCode"
+                  autoCorrect={false}
                 />
                 <Pressable 
                   onPress={() => setShowPassword(!showPassword)}
@@ -215,6 +224,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...textStyles.body,
     color: colors.text.primary,
+    backgroundColor: 'transparent',
     paddingVertical: spacing[4],
   },
   eyeButton: {

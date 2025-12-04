@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image } from 'react-native';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useAuth } from '../../src/contexts/AuthContext';
+import * as SecureStore from 'expo-secure-store';
+import { useAuth, supabase } from '../../src/contexts/AuthContext';
 import { api } from '../../src/services/api';
 import { authTokenManager } from '../../src/services/authToken';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
@@ -27,6 +28,12 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [storyData, setStoryData] = useState<StoryProgress | null>(null);
   const [journalStats, setJournalStats] = useState<any>(null);
+  
+  // Use a ref to always have the latest storyData in callbacks (avoids closure issues)
+  const storyDataRef = useRef<StoryProgress | null>(null);
+  useEffect(() => {
+    storyDataRef.current = storyData;
+  }, [storyData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,19 +47,49 @@ export default function HomeScreen() {
   );
 
   const loadHomeData = async () => {
-    // Skip API calls if user is not authenticated or no auth token yet
-    if (!user || !authTokenManager.hasToken()) {
+    // Skip API calls if user is not authenticated
+    if (!user) {
+      console.log('⚠️ No user, skipping API calls');
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
+      console.log('📡 Loading home data...');
+      
+      // Ensure we have the token from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authTokenManager.setToken(session.access_token);
+        console.log('🔑 Token synced from Supabase session');
+      } else {
+        console.log('⚠️ No Supabase session, API calls may fail');
+      }
       
       // Fetch current story progress
       const storyResult = await api.getCurrentStory();
+      console.log('📋 getCurrentStory result:', JSON.stringify(storyResult, null, 2));
+      
       if (storyResult.data) {
         setStoryData(storyResult.data);
+        console.log('✅ Story data loaded successfully');
+      } else if (storyResult.error) {
+        console.log('⚠️ getCurrentStory error:', storyResult.error);
+        // Fallback: fetch story arcs directly (public endpoint)
+        const arcsResult = await api.getStoryArcs();
+        console.log('📋 Fallback getStoryArcs result:', JSON.stringify(arcsResult, null, 2));
+        
+        if (arcsResult.data?.arcs?.[0]) {
+          // Create a storyData object from the first arc
+          setStoryData({
+            hasStarted: false,
+            arc: arcsResult.data.arcs[0],
+            progress: null,
+            currentEpisode: null,
+          });
+          console.log('✅ Fallback story data set from arcs');
+        }
       }
 
       // Fetch journal stats (silently ignore errors for now)
@@ -65,31 +102,156 @@ export default function HomeScreen() {
         // Journal stats endpoint might not exist yet
       }
     } catch (error) {
-      console.error('Error loading home data:', error);
+      console.error('❌ Error loading home data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleStartStory = async () => {
+  const handleStartStory = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    if (!storyData?.hasStarted && storyData?.arc) {
-      // Start the story arc
-      const result = await api.startStoryArc(storyData.arc.id);
-      if (result.data?.firstEpisode) {
+    // Use the ref to get the LATEST storyData value (avoids stale closure)
+    const currentStoryData = storyDataRef.current;
+    
+    console.log('🎬 handleStartStory called');
+    console.log('🔐 User authenticated:', !!user);
+    console.log('📊 storyData from ref:', JSON.stringify(currentStoryData, null, 2));
+    
+    // Check if user is authenticated
+    if (!user) {
+      console.log('❌ No user');
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to start your story.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    // User is authenticated - ensure we have the token
+    // First try memory, then SecureStore, then Supabase session
+    let token = authTokenManager.getToken();
+    console.log('🔍 Token in memory:', token ? 'YES' : 'NO');
+    
+    if (!token) {
+      console.log('🔍 Restoring from SecureStore...');
+      token = await authTokenManager.restoreToken();
+      console.log('🔍 Token from SecureStore:', token ? 'YES' : 'NO');
+    }
+    
+    if (!token) {
+      // Try Supabase session
+      console.log('🔍 Trying Supabase getSession...');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        token = session.access_token;
+        authTokenManager.setToken(token);
+        // Also persist to SecureStore
+        await SecureStore.setItemAsync('auth_token', token);
+        console.log('✅ Token retrieved and stored from Supabase session');
+      }
+    }
+    
+    if (!token) {
+      // Last resort: try to refresh the session
+      console.log('🔍 Trying to refresh session...');
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (session?.access_token && !error) {
+        token = session.access_token;
+        authTokenManager.setToken(token);
+        await SecureStore.setItemAsync('auth_token', token);
+        console.log('✅ Token retrieved from refreshed session');
+      } else {
+        console.log('❌ Session refresh failed:', error?.message);
+      }
+    }
+    
+    if (!token) {
+      console.log('❌ Could not get auth token from any source');
+      Alert.alert(
+        'Authentication Error',
+        'Unable to verify your session. Please sign out and sign in again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    console.log('✅ Auth token available, length:', token.length);
+    
+    try {
+      // If we don't have story data, try to fetch it first
+      if (!currentStoryData?.arc) {
+        console.log('⚠️ No storyData, fetching arcs...');
+        const arcsResult = await api.getStoryArcs();
+        if (arcsResult.data?.arcs?.[0]) {
+          const arc = arcsResult.data.arcs[0];
+          console.log('🚀 Starting story arc directly:', arc.id);
+          const result = await api.startStoryArc(arc.id);
+          
+          if (result.error) {
+            console.error('❌ Error starting story:', result.error);
+            Alert.alert('Error', result.error);
+            return;
+          }
+          
+          if (result.data?.firstEpisode) {
+            console.log('✅ Navigating to episode:', result.data.firstEpisode.id);
+            router.push({
+              pathname: '/story/[episode]',
+              params: { episode: result.data.firstEpisode.id }
+            });
+          } else {
+            Alert.alert('Error', 'Could not load first episode');
+          }
+          return;
+        } else {
+          Alert.alert('Error', 'No stories available. Please try again later.');
+          return;
+        }
+      }
+      
+      if (!currentStoryData.hasStarted && currentStoryData.arc) {
+        // Start the story arc
+        console.log('🚀 Starting story arc:', currentStoryData.arc.id);
+        const result = await api.startStoryArc(currentStoryData.arc.id);
+        
+        console.log('📋 startStoryArc result:', JSON.stringify(result, null, 2));
+        
+        if (result.error) {
+          console.error('❌ Error starting story:', result.error);
+          Alert.alert('Error', result.error);
+          return;
+        }
+        
+        if (result.data?.firstEpisode) {
+          console.log('✅ Navigating to episode:', result.data.firstEpisode.id);
+          router.push({
+            pathname: '/story/[episode]',
+            params: { episode: result.data.firstEpisode.id }
+          });
+        } else {
+          console.error('❌ No firstEpisode in response');
+          Alert.alert('Error', 'Could not load first episode');
+        }
+      } else if (currentStoryData.currentEpisode) {
+        console.log('▶️ Continuing to episode:', currentStoryData.currentEpisode.id);
         router.push({
           pathname: '/story/[episode]',
-          params: { episode: result.data.firstEpisode.id }
+          params: { episode: currentStoryData.currentEpisode.id }
         });
+      } else {
+        console.log('⚠️ No valid story state to handle');
+        console.log('hasStarted:', currentStoryData.hasStarted);
+        console.log('arc:', currentStoryData.arc);
+        console.log('currentEpisode:', currentStoryData.currentEpisode);
+        Alert.alert('Error', 'Story not available. Please try again.');
       }
-    } else if (storyData?.currentEpisode) {
-      router.push({
-        pathname: '/story/[episode]',
-        params: { episode: storyData.currentEpisode.id }
-      });
+    } catch (error) {
+      console.error('❌ Exception in handleStartStory:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
-  };
+  }, [storyData, user]);
 
   const handleOpenJournal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -137,12 +299,12 @@ export default function HomeScreen() {
 
         {/* Story Hero Card */}
         <Pressable onPress={handleStartStory} style={styles.heroCard}>
-          <LinearGradient
+              <LinearGradient
             colors={colors.gradients.tangoSubtle as any}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             style={styles.heroGradient}
-          >
+              >
             {/* Decorative accent line */}
             <View style={styles.accentLine} />
             
@@ -167,7 +329,7 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={styles.episodeTitle}>
                     {storyData.currentEpisode.title_es}
-                  </Text>
+                    </Text>
                 </View>
               )}
 
@@ -200,9 +362,9 @@ export default function HomeScreen() {
             <View style={styles.characterBadge}>
               <Text style={styles.characterFlag}>🇦🇷</Text>
               <Text style={styles.characterName}>Florencia</Text>
-            </View>
-          </LinearGradient>
-        </Pressable>
+                </View>
+              </LinearGradient>
+            </Pressable>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -212,8 +374,8 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.statValue}>{storyData?.progress?.total_stars || 0}</Text>
             <Text style={styles.statLabel}>Stars</Text>
-          </View>
-          
+        </View>
+
           <View style={styles.statDivider} />
           
           <View style={styles.statItem}>
@@ -229,7 +391,7 @@ export default function HomeScreen() {
           <View style={styles.statItem}>
             <View style={styles.statIcon}>
               <Ionicons name="book" size={18} color={colors.accent.sage} />
-            </View>
+                    </View>
             <Text style={styles.statValue}>{journalStats?.totalEntries || 0}</Text>
             <Text style={styles.statLabel}>Journal</Text>
           </View>
