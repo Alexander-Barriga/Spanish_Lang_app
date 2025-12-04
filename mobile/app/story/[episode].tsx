@@ -129,18 +129,19 @@ export default function EpisodePlayer() {
   const handleStartEpisode = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCurrentPhase('scene');
-    playCurrentSceneAudio();
+    // Pass scene directly to avoid stale closure issues
+    playSceneAudio(currentScene);
   };
 
-  const playCurrentSceneAudio = async () => {
-    if (!currentScene) return;
+  const playSceneAudio = async (scene: Scene | null) => {
+    if (!scene) return;
     
     // Stop any currently playing audio first to prevent overlapping
     await stopAudio();
     
     // Try to play pre-generated audio
     try {
-      const audioResult = await api.getPreGeneratedAudio(currentScene.audio_key);
+      const audioResult = await api.getPreGeneratedAudio(scene.audio_key);
       if (audioResult.data?.audioUrl) {
         await playAudio(audioResult.data.audioUrl);
       }
@@ -148,6 +149,11 @@ export default function EpisodePlayer() {
       console.log('Pre-generated audio not available, using TTS');
       // Fallback to TTS would go here
     }
+  };
+
+  // Wrapper for replay button that uses current scene from state
+  const playCurrentSceneAudio = async () => {
+    await playSceneAudio(currentScene);
   };
 
   const handleSelectOption = async (option: { text: string; next_scene: string; grammar_correct?: boolean; uses_subjunctive?: boolean }) => {
@@ -171,8 +177,8 @@ export default function EpisodePlayer() {
       setCurrentSceneIndex(prev => prev + 1);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
-      // Wait for state to update, then play audio
-      setTimeout(() => playCurrentSceneAudio(), 300);
+      // Pass nextScene directly to avoid stale closure issues
+      setTimeout(() => playSceneAudio(nextScene), 300);
     } else {
       // End of episode
       handleEpisodeComplete();
@@ -235,13 +241,14 @@ export default function EpisodePlayer() {
     // Move to next scene or end
     const nextSceneIndex = currentSceneIndex + 1;
     if (episode?.scenes && nextSceneIndex < episode.scenes.length) {
+      const nextScene = episode.scenes[nextSceneIndex];
       setCurrentSceneIndex(nextSceneIndex);
-      setCurrentScene(episode.scenes[nextSceneIndex]);
+      setCurrentScene(nextScene);
       setCurrentPhase('scene');
       setUserTranscription('');
       setFeedbackMessage('');
-      // Wait for state to update, then play audio
-      setTimeout(() => playCurrentSceneAudio(), 300);
+      // Pass nextScene directly to avoid stale closure issues
+      setTimeout(() => playSceneAudio(nextScene), 300);
     } else {
       handleEpisodeComplete();
     }
