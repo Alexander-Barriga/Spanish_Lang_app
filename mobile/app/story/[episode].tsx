@@ -79,6 +79,7 @@ export default function EpisodePlayer() {
   const { playAudio, stopAudio, isPlaying } = useAudioPlayback();
   
   // Separate playback hook for user's recorded voice (to avoid conflicts with scene audio)
+  // Volume boost of 1.0 (max) helps amplify user recordings to match Florencia's volume
   const { 
     playAudio: playUserRecording, 
     stopAudio: stopUserRecording,
@@ -86,7 +87,8 @@ export default function EpisodePlayer() {
   } = useAudioPlayback({
     onPlaybackComplete: () => {
       setUserPlaybackComplete(true);
-    }
+    },
+    volumeBoost: 1.0, // Max volume for user recordings
   });
   
   // Playback hook for correction practice recording
@@ -97,7 +99,8 @@ export default function EpisodePlayer() {
   } = useAudioPlayback({
     onPlaybackComplete: () => {
       setCorrectionPlaybackComplete(true);
-    }
+    },
+    volumeBoost: 1.0, // Max volume for correction recordings
   });
   
   const { 

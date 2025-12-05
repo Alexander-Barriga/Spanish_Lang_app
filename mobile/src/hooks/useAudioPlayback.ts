@@ -4,6 +4,8 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 interface UseAudioPlaybackOptions {
   onPlaybackComplete?: () => void;
   onError?: (error: Error) => void;
+  // Volume boost for user recordings (1.0 = normal, 1.5 = 50% louder)
+  volumeBoost?: number;
 }
 
 interface UseAudioPlaybackReturn {
@@ -11,17 +13,18 @@ interface UseAudioPlaybackReturn {
   isLoading: boolean;
   duration: number;
   position: number;
-  playAudio: (uri: string) => Promise<void>;
+  playAudio: (uri: string, options?: { volumeBoost?: number }) => Promise<void>;
   playFromBuffer: (buffer: ArrayBuffer) => Promise<void>;
   pauseAudio: () => Promise<void>;
   resumeAudio: () => Promise<void>;
   stopAudio: () => Promise<void>;
   seekTo: (position: number) => Promise<void>;
   setPlaybackRate: (rate: number) => Promise<void>;
+  setVolume: (volume: number) => Promise<void>;
 }
 
 export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudioPlaybackReturn {
-  const { onPlaybackComplete, onError } = options;
+  const { onPlaybackComplete, onError, volumeBoost = 1.0 } = options;
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,7 +76,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
     }
   }, [onPlaybackComplete]);
 
-  const playAudio = useCallback(async (uri: string) => {
+  const playAudio = useCallback(async (uri: string, playOptions?: { volumeBoost?: number }) => {
     try {
       await cleanup();
       setIsLoading(true);
@@ -91,9 +94,12 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         interruptionModeAndroid: 1, // Duck others
       });
 
+      // Apply volume boost (useful for user recordings which may be quieter)
+      const effectiveVolume = Math.min(1.0, playOptions?.volumeBoost ?? volumeBoost);
+
       const { sound } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: true },
+        { shouldPlay: true, volume: effectiveVolume },
         onPlaybackStatusUpdate
       );
 
@@ -105,7 +111,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       setIsLoading(false);
       onError?.(error instanceof Error ? error : new Error('Failed to play audio'));
     }
-  }, [cleanup, onPlaybackStatusUpdate, onError]);
+  }, [cleanup, onPlaybackStatusUpdate, onError, volumeBoost]);
 
   const playFromBuffer = useCallback(async (buffer: ArrayBuffer) => {
     try {
@@ -230,6 +236,19 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
     }
   }, [onError]);
 
+  const setVolume = useCallback(async (volume: number) => {
+    try {
+      if (soundRef.current) {
+        // Clamp volume between 0 and 1
+        const clampedVolume = Math.max(0, Math.min(1, volume));
+        await soundRef.current.setVolumeAsync(clampedVolume);
+      }
+    } catch (error) {
+      console.error('Error setting volume:', error);
+      onError?.(error instanceof Error ? error : new Error('Failed to set volume'));
+    }
+  }, [onError]);
+
   return {
     isPlaying,
     isLoading,
@@ -242,6 +261,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
     stopAudio,
     seekTo,
     setPlaybackRate,
+    setVolume,
   };
 }
 

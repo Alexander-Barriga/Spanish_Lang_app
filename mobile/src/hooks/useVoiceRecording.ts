@@ -1,7 +1,35 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Audio } from 'expo-av';
+import { Audio, RecordingOptions } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { VAD_CONFIG } from '../config/constants';
+
+// High-quality lossless recording options for better playback quality
+const LOSSLESS_RECORDING_OPTIONS: RecordingOptions = {
+  isMeteringEnabled: true,
+  android: {
+    extension: '.wav',
+    outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+    audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+    sampleRate: 44100,
+    numberOfChannels: 1,
+    bitRate: 705600, // 44100 * 16 bits * 1 channel
+  },
+  ios: {
+    extension: '.wav',
+    outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+    audioQuality: Audio.IOSAudioQuality.MAX,
+    sampleRate: 44100,
+    numberOfChannels: 1,
+    bitRate: 705600,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/wav',
+    bitsPerSecond: 705600,
+  },
+};
 
 interface UseVoiceRecordingOptions {
   onSilenceDetected?: () => void;
@@ -87,9 +115,9 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}): UseVo
         playThroughEarpieceAndroid: false,
       });
 
-      // Create and start recording
+      // Create and start recording with lossless WAV format
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        LOSSLESS_RECORDING_OPTIONS,
         (status) => {
           if (status.isRecording && status.metering !== undefined) {
             // Voice Activity Detection based on audio level
