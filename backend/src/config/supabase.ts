@@ -1,13 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
 // Load .env from backend directory (handles different working directories)
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+const envPath = path.resolve(__dirname, '../../.env');
+
+// Manually check if .env exists and load it
+if (fs.existsSync(envPath)) {
+  const result = dotenv.config({ path: envPath });
+  if (result.error) {
+    console.error('Error loading .env file:', result.error);
+  } else if (result.parsed) {
+    // dotenv v17 may not auto-inject, so manually set if needed
+    Object.keys(result.parsed).forEach(key => {
+      if (!process.env[key]) {
+        process.env[key] = result.parsed![key];
+      }
+    });
+  }
+} else {
+  console.error('Warning: .env file not found at', envPath);
+}
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+// Debug: log what we got (masked)
+if (!supabaseUrl) {
+  console.error('SUPABASE_URL is not set!');
+  console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPA')));
+}
 
 // Client for public operations (respects RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
