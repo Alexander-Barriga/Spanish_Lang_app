@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +28,8 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [storyData, setStoryData] = useState<StoryProgress | null>(null);
   const [journalStats, setJournalStats] = useState<any>(null);
+  const [showEpisodesModal, setShowEpisodesModal] = useState(false);
+  const [episodes, setEpisodes] = useState<any[]>([]);
   
   // Use a ref to always have the latest storyData in callbacks (avoids closure issues)
   const storyDataRef = useRef<StoryProgress | null>(null);
@@ -253,6 +255,38 @@ export default function HomeScreen() {
     }
   }, [storyData, user]);
 
+  const handleOpenEpisodes = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    if (!storyData?.arc?.id) {
+      Alert.alert('No Story', 'Start your story first to see episodes.');
+      return;
+    }
+    
+    try {
+      const result = await api.getStoryArc(storyData.arc.id);
+      if (result.data?.episodes) {
+        setEpisodes(result.data.episodes);
+      }
+    } catch (error) {
+      console.error('Error fetching episodes:', error);
+    }
+    
+    setShowEpisodesModal(true);
+  };
+  
+  const handleSelectEpisode = (episode: any, isUnlocked: boolean) => {
+    if (!isUnlocked) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert('Locked', 'Complete previous episodes to unlock this one.');
+      return;
+    }
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowEpisodesModal(false);
+    router.push(`/story/${episode.id}`);
+  };
+
   const handleOpenJournal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/journal');
@@ -345,16 +379,31 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* CTA Button */}
-              <View style={styles.ctaButton}>
-                <Ionicons 
-                  name={storyData?.hasStarted ? "play" : "sparkles"} 
-                  size={20} 
-                  color={colors.neutral[950]} 
-                />
-                <Text style={styles.ctaText}>
-                  {storyData?.hasStarted ? 'Continue' : 'Start Story'}
-                </Text>
+              {/* CTA Buttons Row */}
+              <View style={styles.ctaRow}>
+                <View style={styles.ctaButton}>
+                  <Ionicons 
+                    name={storyData?.hasStarted ? "play" : "sparkles"} 
+                    size={20} 
+                    color={colors.neutral[950]} 
+                  />
+                  <Text style={styles.ctaText}>
+                    {storyData?.hasStarted ? 'Continue' : 'Start Story'}
+                  </Text>
+                </View>
+                
+                {storyData?.hasStarted && (
+                  <Pressable 
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleOpenEpisodes();
+                    }} 
+                    style={styles.episodesButton}
+                  >
+                    <Ionicons name="list" size={18} color={colors.text.primary} />
+                    <Text style={styles.episodesButtonText}>Episodes</Text>
+                  </Pressable>
+                )}
               </View>
             </View>
 
@@ -476,6 +525,91 @@ export default function HomeScreen() {
           </Text>
         </View>
       </ScrollView>
+      
+      {/* Episodes Modal */}
+      <Modal
+        visible={showEpisodesModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEpisodesModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Episodes</Text>
+              <Pressable 
+                onPress={() => setShowEpisodesModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={colors.text.primary} />
+              </Pressable>
+            </View>
+            
+            <ScrollView style={styles.episodesList}>
+              {episodes.map((episode, index) => {
+                const episodesCompleted = storyData?.progress?.episodes_completed || 0;
+                const currentEpisodeNum = storyData?.progress?.current_episode || 1;
+                const isCompleted = episode.episode_number < currentEpisodeNum;
+                const isCurrentOrCompleted = episode.episode_number <= currentEpisodeNum;
+                const isUnlocked = isCurrentOrCompleted;
+                
+                return (
+                  <Pressable
+                    key={episode.id}
+                    onPress={() => handleSelectEpisode(episode, isUnlocked)}
+                    style={[
+                      styles.episodeItem,
+                      !isUnlocked && styles.episodeItemLocked,
+                    ]}
+                  >
+                    <View style={[
+                      styles.episodeInfo,
+                      !isUnlocked && styles.episodeInfoBlurred,
+                    ]}>
+                      <Text style={[
+                        styles.episodeNumber,
+                        !isUnlocked && styles.textBlurred,
+                      ]}>
+                        {episode.episode_number}.
+                      </Text>
+                      <View style={styles.episodeTitleContainer}>
+                        <Text style={[
+                          styles.episodeTitle,
+                          !isUnlocked && styles.textBlurred,
+                        ]}>
+                          {episode.title_es}
+                        </Text>
+                        <Text style={[
+                          styles.episodeSubtitle,
+                          !isUnlocked && styles.textBlurred,
+                        ]}>
+                          {episode.title_en}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.episodeStatus}>
+                      {isCompleted ? (
+                        <View style={styles.completedBadge}>
+                          <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+                        </View>
+                      ) : isUnlocked ? (
+                        <View style={styles.currentBadge}>
+                          <Ionicons name="play-circle" size={22} color={colors.primary.gold} />
+                        </View>
+                      ) : (
+                        <View style={styles.lockedBadge}>
+                          <Ionicons name="lock-closed" size={20} color={colors.error} />
+                        </View>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -614,13 +748,33 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.lg,
-    marginTop: spacing[4],
     gap: spacing[2],
-    alignSelf: 'flex-start',
   },
   ctaText: {
     ...textStyles.button,
     color: colors.neutral[950],
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    marginTop: spacing[4],
+  },
+  episodesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.neutral[800],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.lg,
+    gap: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.neutral[700],
+  },
+  episodesButtonText: {
+    ...textStyles.button,
+    color: colors.text.primary,
+    fontSize: 14,
   },
   characterBadge: {
     position: 'absolute',
@@ -775,6 +929,93 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background.primary,
+    borderTopLeftRadius: borderRadius['2xl'],
+    borderTopRightRadius: borderRadius['2xl'],
+    maxHeight: '80%',
+    paddingBottom: spacing[8],
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing[5],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[800],
+  },
+  modalTitle: {
+    ...textStyles.h3,
+    color: colors.text.primary,
+  },
+  modalCloseButton: {
+    padding: spacing[2],
+  },
+  episodesList: {
+    padding: spacing[4],
+  },
+  episodeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background.elevated,
+    padding: spacing[4],
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing[3],
+  },
+  episodeItemLocked: {
+    backgroundColor: colors.neutral[900],
+    opacity: 0.7,
+  },
+  episodeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing[3],
+  },
+  episodeInfoBlurred: {
+    opacity: 0.5,
+  },
+  episodeNumber: {
+    ...textStyles.h3,
+    color: colors.primary.gold,
+    width: 30,
+  },
+  episodeTitleContainer: {
+    flex: 1,
+  },
+  episodeTitle: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  episodeSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  textBlurred: {
+    color: colors.text.muted,
+  },
+  episodeStatus: {
+    marginLeft: spacing[3],
+  },
+  completedBadge: {
+    // Completed episode indicator
+  },
+  currentBadge: {
+    // Current episode indicator
+  },
+  lockedBadge: {
+    // Locked episode indicator
   },
 });
 
