@@ -499,7 +499,7 @@ export default function EpisodePlayer() {
                         <Text style={styles.hintText}>{currentScene.grammar_hint}</Text>
                       </View>
                     )}
-                    <Pressable onPress={handleStartRecording} style={styles.recordButton}>
+                    <Pressable onPress={handleStartRecording} style={styles.recordButtonRaised}>
                       <LinearGradient
                         colors={colors.gradients.tango as any}
                         style={styles.recordButtonGradient}
@@ -531,9 +531,11 @@ export default function EpisodePlayer() {
           <Text style={styles.recordingText}>Recording...</Text>
           <Text style={styles.recordingHint}>Speak your response in Spanish</Text>
           
-          <Pressable onPress={handleStopRecording} style={styles.stopButton}>
-            <Ionicons name="stop" size={24} color={colors.text.primary} />
-            <Text style={styles.stopButtonText}>Stop Recording</Text>
+          <Pressable onPress={handleStopRecording} style={styles.stopButtonSunken}>
+            <View style={styles.stopButtonInner}>
+              <Ionicons name="stop" size={24} color={colors.text.primary} />
+              <Text style={styles.stopButtonText}>Stop Recording</Text>
+            </View>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -878,9 +880,16 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     flex: 1,
   },
-  recordButton: {
+  recordButtonRaised: {
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
+    // Raised/elevated effect with shadow
+    shadowColor: colors.accent.tango,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 10,
+    transform: [{ translateY: -2 }],
   },
   recordButtonGradient: {
     flexDirection: 'row',
@@ -921,15 +930,32 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.text.secondary,
   },
-  stopButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    backgroundColor: colors.neutral[800],
-    paddingVertical: spacing[4],
-    paddingHorizontal: spacing[6],
+  stopButtonSunken: {
+    // Sunken/pressed effect - darker background, inset shadow look
+    backgroundColor: colors.neutral[900],
     borderRadius: borderRadius.xl,
     marginTop: spacing[6],
+    // Inner shadow effect via border
+    borderWidth: 3,
+    borderTopColor: colors.neutral[900],
+    borderLeftColor: colors.neutral[900],
+    borderBottomColor: colors.neutral[600],
+    borderRightColor: colors.neutral[600],
+    // Pressed down transform
+    transform: [{ translateY: 2 }, { scale: 0.98 }],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  stopButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[6],
   },
   stopButtonText: {
     ...textStyles.button,
