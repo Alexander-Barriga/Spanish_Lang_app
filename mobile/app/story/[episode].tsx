@@ -74,9 +74,15 @@ export default function EpisodePlayer() {
   const [needsCorrection, setNeedsCorrection] = useState(false);
   const [correctionRecordingUri, setCorrectionRecordingUri] = useState<string | null>(null);
   const [correctionPlaybackComplete, setCorrectionPlaybackComplete] = useState(false);
+  const [sceneAudioPlayed, setSceneAudioPlayed] = useState(false); // Tracks if scene audio has completed
 
   // Audio and recording hooks
-  const { playAudio, stopAudio, isPlaying } = useAudioPlayback();
+  // Main hook for Florencia's dialogue - marks scene audio as played when complete
+  const { playAudio, stopAudio, isPlaying } = useAudioPlayback({
+    onPlaybackComplete: () => {
+      setSceneAudioPlayed(true);
+    }
+  });
   
   // Separate playback hook for user's recorded voice (to avoid conflicts with scene audio)
   // Volume boost of 1.0 (max) helps amplify user recordings to match Florencia's volume
@@ -173,6 +179,7 @@ export default function EpisodePlayer() {
   const handleStartEpisode = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCurrentPhase('scene');
+    setSceneAudioPlayed(false); // Reset so response section waits for audio
     // Pass scene directly to avoid stale closure issues
     playSceneAudio(currentScene);
   };
@@ -221,6 +228,7 @@ export default function EpisodePlayer() {
       setCurrentSceneIndex(prev => prev + 1);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
+      setSceneAudioPlayed(false); // Reset so response section waits for audio
       // Pass nextScene directly to avoid stale closure issues
       setTimeout(() => playSceneAudio(nextScene), 300);
     } else {
@@ -390,6 +398,7 @@ export default function EpisodePlayer() {
       setCurrentSceneIndex(nextSceneIndex);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
+      setSceneAudioPlayed(false); // Reset so response section waits for audio
       setTimeout(() => playSceneAudio(nextScene), 300);
     } else {
       handleEpisodeComplete();
@@ -417,6 +426,7 @@ export default function EpisodePlayer() {
       setCurrentPhase('scene');
       setUserTranscription('');
       setFeedbackMessage('');
+      setSceneAudioPlayed(false); // Reset so response section waits for audio
       // Pass nextScene directly to avoid stale closure issues
       setTimeout(() => playSceneAudio(nextScene), 300);
     } else {
@@ -616,8 +626,8 @@ export default function EpisodePlayer() {
               </Pressable>
             </Animated.View>
 
-            {/* Response section */}
-            {currentPhase === 'scene' && !isPlaying && (
+            {/* Response section - only show after scene audio has played */}
+            {currentPhase === 'scene' && !isPlaying && sceneAudioPlayed && (
               <Animated.View 
                 style={[
                   styles.responseSection,
