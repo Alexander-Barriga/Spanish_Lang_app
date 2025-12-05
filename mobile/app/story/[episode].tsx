@@ -495,8 +495,22 @@ export default function EpisodePlayer() {
                   <View style={styles.speakSection}>
                     {currentScene?.grammar_hint && (
                       <View style={styles.hintBox}>
-                        <Ionicons name="bulb-outline" size={16} color={colors.primary.gold} />
-                        <Text style={styles.hintText}>{currentScene.grammar_hint}</Text>
+                        <View style={styles.hintHeader}>
+                          <Ionicons name="bulb-outline" size={16} color={colors.primary.gold} />
+                          <Text style={styles.hintText}>{currentScene.grammar_hint}</Text>
+                        </View>
+                        {currentScene?.expected_patterns && currentScene.expected_patterns.length > 0 && (
+                          <View style={styles.starterPhrases}>
+                            <Text style={styles.starterLabel}>Try starting with:</Text>
+                            <View style={styles.phraseChips}>
+                              {currentScene.expected_patterns.slice(0, 2).map((phrase, idx) => (
+                                <View key={idx} style={styles.phraseChip}>
+                                  <Text style={styles.phraseText}>"{phrase}..."</Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        )}
                       </View>
                     )}
                     <Pressable onPress={handleStartRecording} style={styles.recordButtonRaised}>
@@ -866,14 +880,44 @@ const styles = StyleSheet.create({
     gap: spacing[4],
   },
   hintBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
     backgroundColor: colors.background.elevated,
     padding: spacing[4],
     borderRadius: borderRadius.lg,
     borderLeftWidth: 3,
     borderLeftColor: colors.primary.gold,
+    gap: spacing[3],
+  },
+  hintHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+  },
+  starterPhrases: {
+    marginLeft: spacing[6], // Align with text after icon
+    gap: spacing[2],
+  },
+  starterLabel: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+  },
+  phraseChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  phraseChip: {
+    backgroundColor: colors.neutral[800],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '40', // 40 = 25% opacity
+  },
+  phraseText: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontSize: 14,
   },
   hintText: {
     ...textStyles.hint,
