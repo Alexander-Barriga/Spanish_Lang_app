@@ -193,40 +193,65 @@ export default function EpisodePlayer() {
 
   const handleStopRecording = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const uri = await stopRecording();
     
-    if (uri) {
-      // Transcribe the recording - pass the URI directly, not FormData
-      try {
-        const result = await api.transcribeAudio(uri);
-        if (result.data?.transcript) {
-          setUserTranscription(result.data.transcript);
-          setSpeakingCount(prev => prev + 1);
-          
-          // Simple grammar check
-          if (currentScene?.expected_patterns) {
-            const hasPattern = currentScene.expected_patterns.some(
-              p => result.data!.transcript.toLowerCase().includes(p.toLowerCase())
-            );
-            if (hasPattern) {
-              setGrammarScore(prev => prev + 15);
-              setFeedbackMessage('¡Muy bien! Good use of the target grammar.');
-            } else {
-              setFeedbackMessage('Good try! Keep practicing the grammar patterns.');
-            }
+    let uri: string | null = null;
+    try {
+      uri = await stopRecording();
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+    }
+    
+    // If no recording URI, skip transcription and move to next scene
+    if (!uri) {
+      console.log('No recording URI, skipping transcription');
+      setFeedbackMessage('Recording not captured. Moving on...');
+      setCurrentPhase('feedback');
+      return;
+    }
+
+    // Transcribe the recording with timeout
+    try {
+      // Create a timeout promise
+      const timeoutPromise = new Promise<{ error: string }>((_, reject) => 
+        setTimeout(() => reject({ error: 'Transcription timed out' }), 30000)
+      );
+      
+      // Race between transcription and timeout
+      const result = await Promise.race([
+        api.transcribeAudio(uri),
+        timeoutPromise
+      ]);
+      
+      if (result.data?.transcript) {
+        setUserTranscription(result.data.transcript);
+        setSpeakingCount(prev => prev + 1);
+        
+        // Simple grammar check
+        if (currentScene?.expected_patterns) {
+          const hasPattern = currentScene.expected_patterns.some(
+            p => result.data!.transcript.toLowerCase().includes(p.toLowerCase())
+          );
+          if (hasPattern) {
+            setGrammarScore(prev => prev + 15);
+            setFeedbackMessage('¡Muy bien! Good use of the target grammar.');
+          } else {
+            setFeedbackMessage('Good try! Keep practicing the grammar patterns.');
           }
-          
-          setCurrentPhase('feedback');
-        } else if (result.error) {
-          console.error('Transcription failed:', result.error);
-          setFeedbackMessage('Could not transcribe. Try speaking more clearly.');
-          setCurrentPhase('feedback');
+        } else {
+          setFeedbackMessage('Great job speaking Spanish!');
         }
-      } catch (error) {
-        console.error('Transcription error:', error);
-        setFeedbackMessage('Recording failed. Please try again.');
-        setCurrentPhase('response');
+        
+        setCurrentPhase('feedback');
+      } else {
+        // Any other case (error or unexpected response)
+        console.error('Transcription issue:', result.error || 'Unknown error');
+        setFeedbackMessage('Could not transcribe. Try speaking more clearly.');
+        setCurrentPhase('feedback');
       }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      setFeedbackMessage('Transcription failed. Moving on...');
+      setCurrentPhase('feedback');
     }
   };
 
