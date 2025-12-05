@@ -39,7 +39,18 @@ interface Scene {
   expected_patterns?: string[];
 }
 
-type PhaseType = 'intro' | 'scene' | 'response' | 'recording' | 'feedback' | 'summary';
+type PhaseType = 'intro' | 'scene' | 'response' | 'recording' | 'feedback' | 'correction_practice' | 'summary';
+
+interface GrammarAnalysis {
+  usedCorrectExpression: boolean;
+  usedCorrectConjugation: boolean;
+  overallCorrect: boolean;
+  expressionUsed: string | null;
+  feedbackMessage: string;
+  detailedFeedback: string | null;
+  correctedVersion: string | null;
+  correctionExplanation: string | null;
+}
 
 export default function EpisodePlayer() {
   const { episode: episodeId } = useLocalSearchParams<{ episode: string }>();
@@ -58,6 +69,11 @@ export default function EpisodePlayer() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [userRecordingUri, setUserRecordingUri] = useState<string | null>(null);
   const [userPlaybackComplete, setUserPlaybackComplete] = useState(false);
+  const [grammarAnalysis, setGrammarAnalysis] = useState<GrammarAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [needsCorrection, setNeedsCorrection] = useState(false);
+  const [correctionRecordingUri, setCorrectionRecordingUri] = useState<string | null>(null);
+  const [correctionPlaybackComplete, setCorrectionPlaybackComplete] = useState(false);
 
   // Audio and recording hooks
   const { playAudio, stopAudio, isPlaying } = useAudioPlayback();
@@ -70,6 +86,17 @@ export default function EpisodePlayer() {
   } = useAudioPlayback({
     onPlaybackComplete: () => {
       setUserPlaybackComplete(true);
+    }
+  });
+  
+  // Playback hook for correction practice recording
+  const {
+    playAudio: playCorrectionRecording,
+    stopAudio: stopCorrectionRecording,
+    isPlaying: isPlayingCorrectionRecording
+  } = useAudioPlayback({
+    onPlaybackComplete: () => {
+      setCorrectionPlaybackComplete(true);
     }
   });
   
@@ -245,19 +272,40 @@ export default function EpisodePlayer() {
         setUserTranscription(result.data.transcript);
         setSpeakingCount(prev => prev + 1);
         
-        // Simple grammar check
-        if (currentScene?.expected_patterns) {
-          const hasPattern = currentScene.expected_patterns.some(
-            p => result.data!.transcript.toLowerCase().includes(p.toLowerCase())
-          );
-          if (hasPattern) {
-            setGrammarScore(prev => prev + 15);
-            setFeedbackMessage('¡Muy bien! Good use of the target grammar.');
+        // AI-powered grammar analysis
+        setIsAnalyzing(true);
+        try {
+          const analysisResult = await api.analyzeGrammarResponse({
+            userResponse: result.data.transcript,
+            grammarFocus: episode?.grammar_focus,
+            expectedPatterns: currentScene?.expected_patterns,
+            grammarHint: currentScene?.grammar_hint,
+            contextDialogue: currentScene?.florencia_says,
+          });
+          
+          if (analysisResult.data?.analysis) {
+            const analysis = analysisResult.data.analysis;
+            setGrammarAnalysis(analysis);
+            setFeedbackMessage(analysis.feedbackMessage);
+            
+            // Determine if correction practice is needed
+            if (analysis.overallCorrect) {
+              setGrammarScore(prev => prev + 15);
+              setNeedsCorrection(false);
+            } else {
+              setNeedsCorrection(true);
+            }
           } else {
-            setFeedbackMessage('Good try! Keep practicing the grammar patterns.');
+            // Fallback if analysis fails
+            setFeedbackMessage('Good effort! Keep practicing.');
+            setNeedsCorrection(false);
           }
-        } else {
-          setFeedbackMessage('Great job speaking Spanish!');
+        } catch (analysisError) {
+          console.error('Grammar analysis error:', analysisError);
+          setFeedbackMessage('Good effort! Keep practicing.');
+          setNeedsCorrection(false);
+        } finally {
+          setIsAnalyzing(false);
         }
         
         setCurrentPhase('feedback');
@@ -285,6 +333,66 @@ export default function EpisodePlayer() {
     }
   }, [currentPhase, userRecordingUri, userPlaybackComplete]);
 
+  const handleStartCorrectionPractice = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setCorrectionRecordingUri(null);
+    setCorrectionPlaybackComplete(false);
+    setCurrentPhase('correction_practice');
+  };
+  
+  const handleStartCorrectionRecording = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await startRecording();
+  };
+  
+  const handleStopCorrectionRecording = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    let uri: string | null = null;
+    try {
+      uri = await stopRecording();
+    } catch (error) {
+      console.error('Error stopping correction recording:', error);
+    }
+    
+    if (uri) {
+      setCorrectionRecordingUri(uri);
+      setCorrectionPlaybackComplete(false);
+      // Auto-play the correction recording
+      setTimeout(() => playCorrectionRecording(uri), 500);
+    } else {
+      // If no recording, still mark as complete
+      setCorrectionPlaybackComplete(true);
+    }
+  };
+  
+  const handleContinueAfterCorrection = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Stop any playing audio
+    await stopCorrectionRecording();
+    
+    // Reset correction state
+    setCorrectionRecordingUri(null);
+    setCorrectionPlaybackComplete(false);
+    setNeedsCorrection(false);
+    
+    // Give partial credit for practicing the correction
+    setGrammarScore(prev => prev + 5);
+    
+    // Move to next scene
+    const nextSceneIndex = currentSceneIndex + 1;
+    if (episode?.scenes && nextSceneIndex < episode.scenes.length) {
+      const nextScene = episode.scenes[nextSceneIndex];
+      setCurrentSceneIndex(nextSceneIndex);
+      setCurrentScene(nextScene);
+      setCurrentPhase('scene');
+      setTimeout(() => playSceneAudio(nextScene), 300);
+    } else {
+      handleEpisodeComplete();
+    }
+  };
+
   const handleContinueAfterFeedback = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
@@ -295,6 +403,7 @@ export default function EpisodePlayer() {
     // Reset user recording state for next recording
     setUserRecordingUri(null);
     setUserPlaybackComplete(false);
+    setGrammarAnalysis(null);
     
     // Move to next scene or end
     const nextSceneIndex = currentSceneIndex + 1;
@@ -595,7 +704,7 @@ export default function EpisodePlayer() {
   if (currentPhase === 'feedback') {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.feedbackContainer}>
+        <ScrollView style={styles.feedbackScroll} contentContainerStyle={styles.feedbackScrollContent}>
           <View style={styles.feedbackCard}>
             <Ionicons name="chatbubble-ellipses" size={32} color={colors.primary.gold} />
             <Text style={styles.feedbackLabel}>You said:</Text>
@@ -609,22 +718,193 @@ export default function EpisodePlayer() {
               </View>
             )}
             
-            {feedbackMessage && (
+            {/* Analyzing indicator */}
+            {isAnalyzing && (
+              <View style={styles.playbackIndicator}>
+                <ActivityIndicator size="small" color={colors.primary.gold} />
+                <Text style={styles.playbackText}>Analyzing your grammar...</Text>
+              </View>
+            )}
+            
+            {/* Grammar analysis feedback */}
+            {grammarAnalysis && !isAnalyzing && (
+              <View style={styles.analysisContainer}>
+                {/* Status indicators */}
+                <View style={styles.analysisStatusRow}>
+                  <View style={[
+                    styles.statusBadge,
+                    grammarAnalysis.usedCorrectExpression ? styles.statusBadgeSuccess : styles.statusBadgeError
+                  ]}>
+                    <Ionicons 
+                      name={grammarAnalysis.usedCorrectExpression ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={grammarAnalysis.usedCorrectExpression ? colors.success : colors.error} 
+                    />
+                    <Text style={[
+                      styles.statusBadgeText,
+                      grammarAnalysis.usedCorrectExpression ? styles.statusTextSuccess : styles.statusTextError
+                    ]}>
+                      {grammarAnalysis.usedCorrectExpression ? 'Correct Expression' : 'Expression Needed'}
+                    </Text>
+                  </View>
+                  
+                  <View style={[
+                    styles.statusBadge,
+                    grammarAnalysis.usedCorrectConjugation ? styles.statusBadgeSuccess : styles.statusBadgeError
+                  ]}>
+                    <Ionicons 
+                      name={grammarAnalysis.usedCorrectConjugation ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={grammarAnalysis.usedCorrectConjugation ? colors.success : colors.error} 
+                    />
+                    <Text style={[
+                      styles.statusBadgeText,
+                      grammarAnalysis.usedCorrectConjugation ? styles.statusTextSuccess : styles.statusTextError
+                    ]}>
+                      {grammarAnalysis.usedCorrectConjugation ? 'Good Conjugation' : 'Check Conjugation'}
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Main feedback message */}
+                <View style={[
+                  styles.feedbackMessageBox,
+                  grammarAnalysis.overallCorrect ? styles.feedbackBoxSuccess : styles.feedbackBoxCorrection
+                ]}>
+                  <Text style={[
+                    styles.feedbackMessageText,
+                    grammarAnalysis.overallCorrect ? styles.feedbackTextSuccess : styles.feedbackTextCorrection
+                  ]}>
+                    {grammarAnalysis.feedbackMessage}
+                  </Text>
+                </View>
+                
+                {/* Detailed feedback if there's an issue */}
+                {grammarAnalysis.detailedFeedback && !grammarAnalysis.overallCorrect && (
+                  <View style={styles.detailedFeedbackBox}>
+                    <Text style={styles.detailedFeedbackText}>
+                      {grammarAnalysis.detailedFeedback}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Corrected version if needed */}
+                {grammarAnalysis.correctedVersion && !grammarAnalysis.overallCorrect && (
+                  <View style={styles.correctionBox}>
+                    <Text style={styles.correctionLabel}>Try saying:</Text>
+                    <Text style={styles.correctionText}>"{grammarAnalysis.correctedVersion}"</Text>
+                    {grammarAnalysis.correctionExplanation && (
+                      <Text style={styles.correctionExplanation}>
+                        {grammarAnalysis.correctionExplanation}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {/* Fallback feedback if no analysis */}
+            {!grammarAnalysis && !isAnalyzing && feedbackMessage && (
               <View style={styles.feedbackMessageBox}>
                 <Text style={styles.feedbackMessageText}>{feedbackMessage}</Text>
               </View>
             )}
           </View>
 
-          {/* Show Continue button only after playback is complete */}
-          {userPlaybackComplete ? (
-            <Pressable onPress={handleContinueAfterFeedback} style={styles.continueButton}>
-              <Text style={styles.continueButtonText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
-            </Pressable>
+          {/* Action buttons */}
+          {userPlaybackComplete && !isAnalyzing ? (
+            <View style={styles.feedbackActions}>
+              {needsCorrection && grammarAnalysis?.correctedVersion ? (
+                <>
+                  <Pressable onPress={handleStartCorrectionPractice} style={styles.correctionButton}>
+                    <Ionicons name="mic" size={20} color={colors.text.primary} />
+                    <Text style={styles.correctionButtonText}>Practice Correction</Text>
+                  </Pressable>
+                  <Pressable onPress={handleContinueAfterFeedback} style={styles.skipButton}>
+                    <Text style={styles.skipButtonText}>Skip for now</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable onPress={handleContinueAfterFeedback} style={styles.continueButton}>
+                  <Text style={styles.continueButtonText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+                </Pressable>
+              )}
+            </View>
           ) : (
             <View style={styles.waitingForPlayback}>
-              <Text style={styles.waitingText}>Listen to your response...</Text>
+              <Text style={styles.waitingText}>
+                {isAnalyzing ? 'Analyzing...' : 'Listen to your response...'}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+  
+  // Correction Practice Phase
+  if (currentPhase === 'correction_practice') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.correctionPracticeContainer}>
+          <Text style={styles.correctionPracticeTitle}>Practice the Correction</Text>
+          <Text style={styles.correctionPracticeSubtitle}>
+            Record yourself saying the corrected version
+          </Text>
+          
+          <View style={styles.correctionTargetBox}>
+            <Ionicons name="chatbubble-outline" size={24} color={colors.primary.gold} />
+            <Text style={styles.correctionTargetText}>
+              "{grammarAnalysis?.correctedVersion}"
+            </Text>
+          </View>
+          
+          {!correctionRecordingUri ? (
+            // Recording controls
+            <View style={styles.correctionRecordingSection}>
+              {!isRecording ? (
+                <Pressable onPress={handleStartCorrectionRecording} style={styles.recordButtonRaised}>
+                  <LinearGradient
+                    colors={colors.gradients.tango as any}
+                    style={styles.recordButtonGradient}
+                  >
+                    <Ionicons name="mic" size={28} color={colors.text.primary} />
+                    <Text style={styles.recordButtonText}>Record</Text>
+                  </LinearGradient>
+                </Pressable>
+              ) : (
+                <Pressable onPress={handleStopCorrectionRecording} style={styles.stopButtonSunken}>
+                  <View style={styles.stopButtonInner}>
+                    <Ionicons name="stop" size={24} color={colors.text.primary} />
+                    <Text style={styles.stopButtonText}>Stop</Text>
+                  </View>
+                </Pressable>
+              )}
+            </View>
+          ) : (
+            // Playback and continue
+            <View style={styles.correctionPlaybackSection}>
+              {isPlayingCorrectionRecording && (
+                <View style={styles.playbackIndicator}>
+                  <ActivityIndicator size="small" color={colors.primary.gold} />
+                  <Text style={styles.playbackText}>Playing your recording...</Text>
+                </View>
+              )}
+              
+              {correctionPlaybackComplete && (
+                <View style={styles.correctionSuccessBox}>
+                  <Ionicons name="checkmark-circle" size={32} color={colors.success} />
+                  <Text style={styles.correctionSuccessText}>Great practice!</Text>
+                </View>
+              )}
+              
+              {correctionPlaybackComplete && (
+                <Pressable onPress={handleContinueAfterCorrection} style={styles.continueButton}>
+                  <Text style={styles.continueButtonText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+                </Pressable>
+              )}
             </View>
           )}
         </View>
@@ -1111,6 +1391,182 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontStyle: 'italic',
   },
+  
+  // Feedback scroll for longer content
+  feedbackScroll: {
+    flex: 1,
+  },
+  feedbackScrollContent: {
+    padding: spacing[6],
+    gap: spacing[6],
+  },
+  
+  // Analysis styles
+  analysisContainer: {
+    width: '100%',
+    gap: spacing[3],
+  },
+  analysisStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+    justifyContent: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  statusBadgeSuccess: {
+    backgroundColor: colors.success + '20',
+    borderColor: colors.success + '40',
+  },
+  statusBadgeError: {
+    backgroundColor: colors.error + '20',
+    borderColor: colors.error + '40',
+  },
+  statusBadgeText: {
+    ...textStyles.caption,
+    fontWeight: '600',
+  },
+  statusTextSuccess: {
+    color: colors.success,
+  },
+  statusTextError: {
+    color: colors.error,
+  },
+  feedbackBoxSuccess: {
+    backgroundColor: colors.success + '15',
+    borderLeftColor: colors.success,
+    borderLeftWidth: 3,
+  },
+  feedbackBoxCorrection: {
+    backgroundColor: colors.primary.gold + '15',
+    borderLeftColor: colors.primary.gold,
+    borderLeftWidth: 3,
+  },
+  feedbackTextSuccess: {
+    color: colors.success,
+  },
+  feedbackTextCorrection: {
+    color: colors.primary.gold,
+  },
+  detailedFeedbackBox: {
+    backgroundColor: colors.neutral[800],
+    padding: spacing[3],
+    borderRadius: borderRadius.md,
+  },
+  detailedFeedbackText: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+  },
+  correctionBox: {
+    backgroundColor: colors.background.elevated,
+    padding: spacing[4],
+    borderRadius: borderRadius.lg,
+    gap: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '40',
+  },
+  correctionLabel: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  correctionText: {
+    ...textStyles.dialogue,
+    color: colors.primary.gold,
+    fontStyle: 'italic',
+  },
+  correctionExplanation: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    marginTop: spacing[1],
+  },
+  feedbackActions: {
+    gap: spacing[3],
+    alignItems: 'center',
+  },
+  correctionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.tango,
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[6],
+    borderRadius: borderRadius.xl,
+    gap: spacing[2],
+    width: '100%',
+  },
+  correctionButtonText: {
+    ...textStyles.button,
+    color: colors.text.primary,
+  },
+  skipButton: {
+    paddingVertical: spacing[2],
+  },
+  skipButtonText: {
+    ...textStyles.body,
+    color: colors.text.muted,
+    textDecorationLine: 'underline',
+  },
+  
+  // Correction practice styles
+  correctionPracticeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[6],
+    gap: spacing[5],
+  },
+  correctionPracticeTitle: {
+    ...textStyles.h2,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  correctionPracticeSubtitle: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  correctionTargetBox: {
+    backgroundColor: colors.background.elevated,
+    padding: spacing[5],
+    borderRadius: borderRadius.xl,
+    gap: spacing[3],
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 2,
+    borderColor: colors.primary.gold + '40',
+  },
+  correctionTargetText: {
+    ...textStyles.dialogue,
+    color: colors.primary.gold,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  correctionRecordingSection: {
+    marginTop: spacing[4],
+  },
+  correctionPlaybackSection: {
+    alignItems: 'center',
+    gap: spacing[4],
+    marginTop: spacing[4],
+  },
+  correctionSuccessBox: {
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  correctionSuccessText: {
+    ...textStyles.body,
+    color: colors.success,
+    fontWeight: '600',
+  },
+  
   continueButton: {
     flexDirection: 'row',
     alignItems: 'center',

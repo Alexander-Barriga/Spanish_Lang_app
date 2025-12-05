@@ -653,6 +653,30 @@ class ApiClient {
     }>('/stories/current');
   }
 
+  async analyzeGrammarResponse(params: {
+    userResponse: string;
+    grammarFocus?: string;
+    expectedPatterns?: string[];
+    grammarHint?: string;
+    contextDialogue?: string;
+  }) {
+    return this.request<{
+      analysis: {
+        usedCorrectExpression: boolean;
+        usedCorrectConjugation: boolean;
+        overallCorrect: boolean;
+        expressionUsed: string | null;
+        feedbackMessage: string;
+        detailedFeedback: string | null;
+        correctedVersion: string | null;
+        correctionExplanation: string | null;
+      };
+    }>('/stories/analyze-response', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
   async getStoryProgress() {
     return this.request<{
       arcs: (StoryArc & { progress: UserStoryProgress | null; isUnlocked: boolean })[];

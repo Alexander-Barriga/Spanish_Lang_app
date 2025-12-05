@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticateToken as authMiddleware } from '../middleware/auth';
+import { openai } from '../config/openai';
 
 const router = Router();
 
@@ -546,6 +547,100 @@ router.get('/current', authMiddleware, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error in GET /stories/current:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// POST /stories/analyze-response - Analyze user's spoken response for grammar
+// ============================================
+router.post('/analyze-response', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { 
+      userResponse,        // The transcribed text of what the user said
+      grammarFocus,        // e.g., "subjunctive_desires" 
+      expectedPatterns,    // e.g., ["Quiero que", "Prefiero que", "Me gustaría que"]
+      grammarHint,         // The instruction given to the user
+      contextDialogue      // What Florencia said (for context)
+    } = req.body;
+
+    if (!userResponse) {
+      return res.status(400).json({ error: 'userResponse is required' });
+    }
+
+    // Build the analysis prompt
+    const analysisPrompt = `You are a Spanish language teacher analyzing a student's spoken response.
+
+CONTEXT:
+- Grammar Focus: ${grammarFocus || 'general Spanish grammar'}
+- Expected Patterns: ${expectedPatterns?.join(', ') || 'any appropriate Spanish'}
+- Instruction Given: "${grammarHint || 'Respond in Spanish'}"
+- Conversation Context: "${contextDialogue || 'General conversation'}"
+
+STUDENT'S RESPONSE:
+"${userResponse}"
+
+Analyze the response and provide feedback in the following JSON format:
+{
+  "usedCorrectExpression": boolean,  // Did they use the type of expression they were asked to use?
+  "usedCorrectConjugation": boolean, // Is their verb conjugation correct?
+  "overallCorrect": boolean,         // Is the response sufficiently correct overall?
+  "expressionUsed": "string or null", // What expression pattern did they use (if any)?
+  "feedbackMessage": "string",       // Short encouraging feedback in English (1-2 sentences)
+  "detailedFeedback": "string",      // More detailed explanation if there's an error
+  "correctedVersion": "string or null", // If incorrect, provide a corrected version that keeps their intent
+  "correctionExplanation": "string or null" // Brief explanation of the correction
+}
+
+GUIDELINES:
+- Be encouraging but accurate
+- If they used a relevant subjunctive expression (even if not exactly from the expected list), consider it correct
+- Focus on the main grammar point, don't nitpick minor errors
+- The correctedVersion should feel natural and preserve what they were trying to say
+- For Argentine Spanish, "vos" forms are acceptable
+
+Respond ONLY with the JSON object, no other text.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful Spanish language teacher. Respond only with valid JSON.' },
+        { role: 'user', content: analysisPrompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+    });
+
+    const responseText = completion.choices[0]?.message?.content || '{}';
+    
+    // Parse the JSON response
+    let analysis;
+    try {
+      // Clean up the response if it has markdown code blocks
+      const cleanedResponse = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      analysis = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Error parsing AI response:', parseError);
+      console.error('Raw response:', responseText);
+      // Fallback analysis
+      analysis = {
+        usedCorrectExpression: true,
+        usedCorrectConjugation: true,
+        overallCorrect: true,
+        expressionUsed: null,
+        feedbackMessage: '¡Muy bien! Good effort with your Spanish.',
+        detailedFeedback: null,
+        correctedVersion: null,
+        correctionExplanation: null
+      };
+    }
+
+    res.json({ analysis });
+  } catch (error) {
+    console.error('Error in POST /stories/analyze-response:', error);
+    res.status(500).json({ error: 'Failed to analyze response' });
   }
 });
 
