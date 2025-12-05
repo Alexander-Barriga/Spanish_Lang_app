@@ -56,9 +56,23 @@ export default function EpisodePlayer() {
   const [startTime, setStartTime] = useState<number>(0);
   const [userTranscription, setUserTranscription] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [userRecordingUri, setUserRecordingUri] = useState<string | null>(null);
+  const [userPlaybackComplete, setUserPlaybackComplete] = useState(false);
 
   // Audio and recording hooks
   const { playAudio, stopAudio, isPlaying } = useAudioPlayback();
+  
+  // Separate playback hook for user's recorded voice (to avoid conflicts with scene audio)
+  const { 
+    playAudio: playUserRecording, 
+    stopAudio: stopUserRecording,
+    isPlaying: isPlayingUserRecording 
+  } = useAudioPlayback({
+    onPlaybackComplete: () => {
+      setUserPlaybackComplete(true);
+    }
+  });
+  
   const { 
     startRecording, 
     stopRecording, 
@@ -201,10 +215,15 @@ export default function EpisodePlayer() {
       console.error('Error stopping recording:', error);
     }
     
+    // Reset playback state for feedback phase
+    setUserPlaybackComplete(false);
+    setUserRecordingUri(uri);
+    
     // If no recording URI, skip transcription and move to next scene
     if (!uri) {
       console.log('No recording URI, skipping transcription');
       setFeedbackMessage('Recording not captured. Moving on...');
+      setUserPlaybackComplete(true); // No recording to play, so mark as complete
       setCurrentPhase('feedback');
       return;
     }
@@ -254,12 +273,28 @@ export default function EpisodePlayer() {
       setCurrentPhase('feedback');
     }
   };
+  
+  // Auto-play user's recording when entering feedback phase
+  useEffect(() => {
+    if (currentPhase === 'feedback' && userRecordingUri && !userPlaybackComplete) {
+      // Small delay to let the UI render first
+      const timer = setTimeout(() => {
+        playUserRecording(userRecordingUri);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentPhase, userRecordingUri, userPlaybackComplete]);
 
   const handleContinueAfterFeedback = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     // Stop any currently playing audio first
     await stopAudio();
+    await stopUserRecording();
+    
+    // Reset user recording state for next recording
+    setUserRecordingUri(null);
+    setUserPlaybackComplete(false);
     
     // Move to next scene or end
     const nextSceneIndex = currentSceneIndex + 1;
@@ -566,6 +601,14 @@ export default function EpisodePlayer() {
             <Text style={styles.feedbackLabel}>You said:</Text>
             <Text style={styles.userSpeechText}>"{userTranscription}"</Text>
             
+            {/* Playback indicator */}
+            {isPlayingUserRecording && (
+              <View style={styles.playbackIndicator}>
+                <ActivityIndicator size="small" color={colors.primary.gold} />
+                <Text style={styles.playbackText}>Playing your recording...</Text>
+              </View>
+            )}
+            
             {feedbackMessage && (
               <View style={styles.feedbackMessageBox}>
                 <Text style={styles.feedbackMessageText}>{feedbackMessage}</Text>
@@ -573,10 +616,17 @@ export default function EpisodePlayer() {
             )}
           </View>
 
-          <Pressable onPress={handleContinueAfterFeedback} style={styles.continueButton}>
-            <Text style={styles.continueButtonText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
-          </Pressable>
+          {/* Show Continue button only after playback is complete */}
+          {userPlaybackComplete ? (
+            <Pressable onPress={handleContinueAfterFeedback} style={styles.continueButton}>
+              <Text style={styles.continueButtonText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+            </Pressable>
+          ) : (
+            <View style={styles.waitingForPlayback}>
+              <Text style={styles.waitingText}>Listen to your response...</Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -1039,6 +1089,27 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.accent.sage,
     textAlign: 'center',
+  },
+  playbackIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginTop: spacing[2],
+  },
+  playbackText: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    fontStyle: 'italic',
+  },
+  waitingForPlayback: {
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[6],
+    alignItems: 'center',
+  },
+  waitingText: {
+    ...textStyles.body,
+    color: colors.text.muted,
+    fontStyle: 'italic',
   },
   continueButton: {
     flexDirection: 'row',
