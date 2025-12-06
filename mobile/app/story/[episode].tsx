@@ -41,16 +41,40 @@ interface Scene {
 
 type PhaseType = 'intro' | 'scene' | 'response' | 'recording' | 'feedback' | 'correction_practice' | 'summary';
 
+interface GrammarError {
+  original: string;
+  correction: string;
+  category: string;
+  explanation: string;
+}
+
 interface GrammarAnalysis {
   usedCorrectExpression: boolean;
   usedCorrectConjugation: boolean;
   overallCorrect: boolean;
   expressionUsed: string | null;
+  patternsFound?: string[];
+  grammarErrors?: GrammarError[];
+  hasGrammarErrors?: boolean;
+  primaryErrorType?: string | null;
   feedbackMessage: string;
   detailedFeedback: string | null;
   correctedVersion: string | null;
   correctionExplanation: string | null;
 }
+
+// Category labels for display
+const errorCategoryLabels: Record<string, string> = {
+  gender: 'Gender Agreement',
+  subjunctive: 'Subjunctive Mood',
+  conjugation: 'Verb Conjugation',
+  reflexive: 'Reflexive Verb',
+  agreement: 'Agreement',
+  preposition: 'Preposition',
+  ser_estar: 'Ser vs Estar',
+  spelling: 'Spelling',
+  word_order: 'Word Order',
+};
 
 export default function EpisodePlayer() {
   const { episode: episodeId } = useLocalSearchParams<{ episode: string }>();
@@ -744,6 +768,7 @@ export default function EpisodePlayer() {
               <View style={styles.analysisContainer}>
                 {/* Status indicators */}
                 <View style={styles.analysisStatusRow}>
+                  {/* Expression badge - shows what pattern was used */}
                   <View style={[
                     styles.statusBadge,
                     grammarAnalysis.usedCorrectExpression ? styles.statusBadgeSuccess : styles.statusBadgeError
@@ -757,24 +782,31 @@ export default function EpisodePlayer() {
                       styles.statusBadgeText,
                       grammarAnalysis.usedCorrectExpression ? styles.statusTextSuccess : styles.statusTextError
                     ]}>
-                      {grammarAnalysis.usedCorrectExpression ? 'Correct Expression' : 'Expression Needed'}
+                      {grammarAnalysis.usedCorrectExpression 
+                        ? `Used "${grammarAnalysis.expressionUsed}"` 
+                        : 'Expression Needed'}
                     </Text>
                   </View>
                   
+                  {/* Grammar badge */}
                   <View style={[
                     styles.statusBadge,
-                    grammarAnalysis.usedCorrectConjugation ? styles.statusBadgeSuccess : styles.statusBadgeError
+                    !grammarAnalysis.hasGrammarErrors ? styles.statusBadgeSuccess : styles.statusBadgeError
                   ]}>
                     <Ionicons 
-                      name={grammarAnalysis.usedCorrectConjugation ? "checkmark-circle" : "close-circle"} 
+                      name={!grammarAnalysis.hasGrammarErrors ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={grammarAnalysis.usedCorrectConjugation ? colors.success : colors.error} 
+                      color={!grammarAnalysis.hasGrammarErrors ? colors.success : colors.error} 
                     />
                     <Text style={[
                       styles.statusBadgeText,
-                      grammarAnalysis.usedCorrectConjugation ? styles.statusTextSuccess : styles.statusTextError
+                      !grammarAnalysis.hasGrammarErrors ? styles.statusTextSuccess : styles.statusTextError
                     ]}>
-                      {grammarAnalysis.usedCorrectConjugation ? 'Good Conjugation' : 'Check Conjugation'}
+                      {!grammarAnalysis.hasGrammarErrors 
+                        ? 'Good Grammar' 
+                        : grammarAnalysis.primaryErrorType 
+                          ? errorCategoryLabels[grammarAnalysis.primaryErrorType] || 'Grammar Error'
+                          : 'Grammar Error'}
                     </Text>
                   </View>
                 </View>
@@ -792,25 +824,33 @@ export default function EpisodePlayer() {
                   </Text>
                 </View>
                 
-                {/* Detailed feedback if there's an issue */}
-                {grammarAnalysis.detailedFeedback && !grammarAnalysis.overallCorrect && (
-                  <View style={styles.detailedFeedbackBox}>
-                    <Text style={styles.detailedFeedbackText}>
-                      {grammarAnalysis.detailedFeedback}
-                    </Text>
+                {/* Specific grammar errors list */}
+                {grammarAnalysis.grammarErrors && grammarAnalysis.grammarErrors.length > 0 && (
+                  <View style={styles.grammarErrorsList}>
+                    <Text style={styles.grammarErrorsTitle}>Grammar Fixes:</Text>
+                    {grammarAnalysis.grammarErrors.map((error, index) => (
+                      <View key={index} style={styles.grammarErrorItem}>
+                        <View style={styles.grammarErrorHeader}>
+                          <Text style={styles.grammarErrorCategory}>
+                            {errorCategoryLabels[error.category] || error.category}
+                          </Text>
+                        </View>
+                        <View style={styles.grammarErrorCorrection}>
+                          <Text style={styles.grammarErrorOriginal}>"{error.original}"</Text>
+                          <Ionicons name="arrow-forward" size={14} color={colors.primary.gold} />
+                          <Text style={styles.grammarErrorFixed}>"{error.correction}"</Text>
+                        </View>
+                        <Text style={styles.grammarErrorExplanation}>{error.explanation}</Text>
+                      </View>
+                    ))}
                   </View>
                 )}
                 
                 {/* Corrected version if needed */}
-                {grammarAnalysis.correctedVersion && !grammarAnalysis.overallCorrect && (
+                {grammarAnalysis.correctedVersion && grammarAnalysis.hasGrammarErrors && (
                   <View style={styles.correctionBox}>
-                    <Text style={styles.correctionLabel}>Try saying:</Text>
+                    <Text style={styles.correctionLabel}>Your corrected sentence:</Text>
                     <Text style={styles.correctionText}>"{grammarAnalysis.correctedVersion}"</Text>
-                    {grammarAnalysis.correctionExplanation && (
-                      <Text style={styles.correctionExplanation}>
-                        {grammarAnalysis.correctionExplanation}
-                      </Text>
-                    )}
                   </View>
                 )}
               </View>
@@ -1477,6 +1517,59 @@ const styles = StyleSheet.create({
     ...textStyles.caption,
     color: colors.text.secondary,
   },
+  // Grammar errors list styles
+  grammarErrorsList: {
+    backgroundColor: colors.neutral[900],
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    gap: spacing[3],
+  },
+  grammarErrorsTitle: {
+    ...textStyles.label,
+    color: colors.text.secondary,
+    marginBottom: spacing[1],
+  },
+  grammarErrorItem: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.md,
+    padding: spacing[3],
+    gap: spacing[2],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error + '80',
+  },
+  grammarErrorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  grammarErrorCategory: {
+    ...textStyles.caption,
+    color: colors.error,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  grammarErrorCorrection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    flexWrap: 'wrap',
+  },
+  grammarErrorOriginal: {
+    ...textStyles.body,
+    color: colors.text.muted,
+    textDecorationLine: 'line-through',
+  },
+  grammarErrorFixed: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontWeight: '600',
+  },
+  grammarErrorExplanation: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  
   correctionBox: {
     backgroundColor: colors.background.elevated,
     padding: spacing[4],

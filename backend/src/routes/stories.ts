@@ -567,77 +567,175 @@ router.post('/analyze-response', authMiddleware, async (req: Request, res: Respo
       return res.status(400).json({ error: 'userResponse is required' });
     }
 
-    // Build the analysis prompt
-    const analysisPrompt = `You are a Spanish language teacher analyzing a student's spoken response.
+    // ============================================
+    // STEP 1: Local pattern detection (100% accurate)
+    // ============================================
+    // Normalize text for comparison (remove accents, lowercase)
+    const normalizeText = (text: string) => 
+      text.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accent marks
+        .trim();
+    
+    const normalizedResponse = normalizeText(userResponse);
+    const patternsFound: string[] = [];
 
-CONTEXT:
-- Grammar Focus: ${grammarFocus || 'general Spanish grammar'}
-- Expected Patterns: ${expectedPatterns?.join(', ') || 'any appropriate Spanish'}
-- Instruction Given: "${grammarHint || 'Respond in Spanish'}"
-- Conversation Context: "${contextDialogue || 'General conversation'}"
+    if (expectedPatterns && expectedPatterns.length > 0) {
+      for (const pattern of expectedPatterns) {
+        const normalizedPattern = normalizeText(pattern);
+        if (normalizedResponse.includes(normalizedPattern)) {
+          patternsFound.push(pattern);
+        }
+      }
+    }
+
+    const usedExpectedPattern = patternsFound.length > 0;
+    console.log('🔍 Pattern detection:', { 
+      userResponse, 
+      expectedPatterns, 
+      patternsFound, 
+      usedExpectedPattern 
+    });
+
+    // ============================================
+    // STEP 2: AI analysis for grammar errors only
+    // ============================================
+    
+    // Map grammar focus to human-readable description for better AI understanding
+    const grammarFocusDescriptions: Record<string, string> = {
+      'present_subjunctive_formation': 'Present subjunctive verb forms (e.g., hable, coma, viva)',
+      'subjunctive_emotions': 'Subjunctive with emotion expressions (me alegra que, es triste que)',
+      'subjunctive_doubt': 'Subjunctive with doubt expressions (no creo que, dudo que)',
+      'subjunctive_desires': 'Subjunctive with desire expressions (quiero que, prefiero que)',
+      'imperfect_subjunctive': 'Imperfect subjunctive (hablara/hablase, comiera/comiese)',
+      'preterite_vs_imperfect': 'Preterite vs imperfect tense usage',
+      'conditional': 'Conditional tense (hablaría, comería)',
+      'commands': 'Imperative/command forms',
+      'reflexive_verbs': 'Reflexive verb usage (me lavo, se viste)',
+      'ser_vs_estar': 'Ser vs estar distinction',
+      'por_vs_para': 'Por vs para usage',
+    };
+    
+    const grammarFocusDescription = grammarFocusDescriptions[grammarFocus || ''] || grammarFocus || 'general Spanish grammar';
+    
+    const analysisPrompt = `You are an expert Spanish language teacher analyzing a student's spoken response.
 
 STUDENT'S RESPONSE:
 "${userResponse}"
 
-Analyze the response and provide feedback in the following JSON format:
+LESSON CONTEXT:
+- Primary Grammar Focus: ${grammarFocusDescription}
+- Instruction Given: "${grammarHint || 'Respond in Spanish'}"
+- Conversation Context: "${contextDialogue || 'General conversation'}"
+
+PATTERN DETECTION (already verified - DO NOT contradict this):
+- Patterns found: ${patternsFound.length > 0 ? patternsFound.join(', ') : 'None'}
+- Used expected expression: ${usedExpectedPattern ? 'YES' : 'NO'}
+
+YOUR TASK:
+1. ${grammarFocus ? `Pay SPECIAL attention to: ${grammarFocusDescription}` : 'Check all grammar aspects'}
+2. Identify ALL grammar errors, categorized by type
+3. Provide encouraging feedback that acknowledges what they did correctly
+4. If there are errors, provide a fully corrected version
+
+ERROR CATEGORIES TO CHECK:
+- gender: Article/noun gender agreement (el/la, un/una)
+- subjunctive: Subjunctive vs indicative mood errors
+- conjugation: Verb conjugation errors (wrong tense, person, or form)
+- reflexive: Missing or incorrect reflexive pronouns
+- agreement: Subject-verb or adjective-noun agreement
+- preposition: Wrong preposition (por/para, a/en, etc.)
+- ser_estar: Incorrect ser/estar usage
+- spelling: Spelling or accent errors
+- word_order: Incorrect word order
+
+EXAMPLES OF ERROR FORMAT:
+[
+  {"original": "el imagen", "correction": "la imagen", "category": "gender", "explanation": "'Imagen' is feminine"},
+  {"original": "quiero que vienes", "correction": "quiero que vengas", "category": "subjunctive", "explanation": "'Quiero que' requires subjunctive"},
+  {"original": "yo lavo las manos", "correction": "me lavo las manos", "category": "reflexive", "explanation": "'Lavarse' is reflexive - needs 'me'"},
+  {"original": "ella es cansada", "correction": "ella está cansada", "category": "ser_estar", "explanation": "States/conditions use 'estar'"},
+  {"original": "los libros es", "correction": "los libros son", "category": "agreement", "explanation": "Plural subject requires plural verb"}
+]
+
+IMPORTANT RULES:
+- ${usedExpectedPattern ? `The student correctly used "${patternsFound[0]}" - PRAISE this in your feedback!` : 'The student did not use the expected expression patterns.'}
+- "Vos" conjugations are CORRECT for Argentine Spanish (vos tenés, vos querés)
+- Only flag actual errors, not stylistic preferences
+- Be encouraging while being accurate
+
+Return JSON:
 {
-  "usedCorrectExpression": boolean,  // Did they use the type of expression they were asked to use?
-  "usedCorrectConjugation": boolean, // Is their verb conjugation correct?
-  "overallCorrect": boolean,         // Is the response sufficiently correct overall?
-  "expressionUsed": "string or null", // What expression pattern did they use (if any)?
-  "feedbackMessage": "string",       // Short encouraging feedback in English (1-2 sentences)
-  "detailedFeedback": "string",      // More detailed explanation if there's an error
-  "correctedVersion": "string or null", // If incorrect, provide a corrected version that keeps their intent
-  "correctionExplanation": "string or null" // Brief explanation of the correction
+  "grammarErrors": [
+    {"original": "string", "correction": "string", "category": "string", "explanation": "string"}
+  ],
+  "hasGrammarErrors": boolean,
+  "primaryErrorType": "string or null - the main category of errors if any",
+  "feedbackMessage": "string - encouraging, personalized feedback (2-3 sentences)",
+  "correctedVersion": "string or null - full corrected sentence if errors exist",
+  "correctionExplanation": "string or null - brief summary of corrections made"
 }
 
-GUIDELINES:
-- Be encouraging but accurate
-- If they used a relevant subjunctive expression (even if not exactly from the expected list), consider it correct
-- Focus on the main grammar point, don't nitpick minor errors
-- The correctedVersion should feel natural and preserve what they were trying to say
-- For Argentine Spanish, "vos" forms are acceptable
-
-Respond ONLY with the JSON object, no other text.`;
+Respond ONLY with valid JSON.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: 'You are a helpful Spanish language teacher. Respond only with valid JSON.' },
+        { role: 'system', content: 'You are a helpful Spanish language teacher. Respond only with valid JSON. Trust the pattern detection results provided.' },
         { role: 'user', content: analysisPrompt }
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_tokens: 600,
     });
 
     const responseText = completion.choices[0]?.message?.content || '{}';
     
     // Parse the JSON response
-    let analysis;
+    let aiAnalysis;
     try {
-      // Clean up the response if it has markdown code blocks
       const cleanedResponse = responseText
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
-      analysis = JSON.parse(cleanedResponse);
+      aiAnalysis = JSON.parse(cleanedResponse);
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
       console.error('Raw response:', responseText);
-      // Fallback analysis
-      analysis = {
-        usedCorrectExpression: true,
-        usedCorrectConjugation: true,
-        overallCorrect: true,
-        expressionUsed: null,
+      aiAnalysis = {
+        grammarErrors: [],
+        hasGrammarErrors: false,
         feedbackMessage: '¡Muy bien! Good effort with your Spanish.',
-        detailedFeedback: null,
         correctedVersion: null,
         correctionExplanation: null
       };
     }
 
-    res.json({ analysis });
+    // ============================================
+    // STEP 3: Combine local detection with AI analysis
+    // ============================================
+    const finalAnalysis = {
+      // Pattern detection from local matching (100% accurate)
+      usedCorrectExpression: usedExpectedPattern,
+      expressionUsed: patternsFound.length > 0 ? patternsFound[0] : null,
+      patternsFound: patternsFound,
+      
+      // Grammar analysis from AI
+      usedCorrectConjugation: !aiAnalysis.hasGrammarErrors,
+      grammarErrors: aiAnalysis.grammarErrors || [],
+      hasGrammarErrors: aiAnalysis.hasGrammarErrors || false,
+      
+      // Overall correctness: used pattern AND no grammar errors
+      overallCorrect: usedExpectedPattern && !aiAnalysis.hasGrammarErrors,
+      
+      // Feedback from AI
+      feedbackMessage: aiAnalysis.feedbackMessage,
+      detailedFeedback: aiAnalysis.correctionExplanation,
+      correctedVersion: aiAnalysis.correctedVersion,
+      correctionExplanation: aiAnalysis.correctionExplanation
+    };
+
+    console.log('✅ Final analysis:', finalAnalysis);
+    res.json({ analysis: finalAnalysis });
   } catch (error) {
     console.error('Error in POST /stories/analyze-response:', error);
     res.status(500).json({ error: 'Failed to analyze response' });
