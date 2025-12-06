@@ -602,8 +602,8 @@ export default function EpisodePlayer() {
               { transform: [{ translateY: slideUp }] }
             ]}
           >
+            {/* Handle bar - outside scrollable area */}
             <Pressable onPress={(e) => e.stopPropagation()}>
-              {/* Handle bar */}
               <View style={styles.grammarPanelHandle}>
                 <View style={styles.grammarPanelHandleBar} />
               </View>
@@ -618,11 +618,16 @@ export default function EpisodePlayer() {
                   <Ionicons name="close" size={24} color={colors.text.secondary} />
                 </Pressable>
               </View>
+            </Pressable>
 
-              <ScrollView 
-                style={styles.grammarPanelScroll}
-                showsVerticalScrollIndicator={false}
-              >
+            {/* Scrollable content area */}
+            <ScrollView 
+              style={styles.grammarPanelScroll}
+              contentContainerStyle={styles.grammarPanelScrollContent}
+              showsVerticalScrollIndicator={true}
+              bounces={true}
+              nestedScrollEnabled={true}
+            >
                 {/* Key Phrases */}
                 <View style={styles.grammarPanelSection}>
                   <Text style={styles.grammarPanelSectionTitle}>Key Phrases</Text>
@@ -685,9 +690,8 @@ export default function EpisodePlayer() {
                   ))}
                 </View>
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 60 }} />
               </ScrollView>
-            </Pressable>
           </Animated.View>
         </Pressable>
       </Modal>
@@ -2021,8 +2025,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    maxHeight: height * 0.8,
-    paddingBottom: spacing[6],
+    maxHeight: height * 0.85,
+    minHeight: height * 0.5,
   },
   grammarPanelHandle: {
     alignItems: 'center',
@@ -2056,8 +2060,12 @@ const styles = StyleSheet.create({
     padding: spacing[1],
   },
   grammarPanelScroll: {
+    flex: 1,
+  },
+  grammarPanelScrollContent: {
     paddingHorizontal: spacing[5],
     paddingTop: spacing[4],
+    paddingBottom: spacing[8],
   },
   grammarPanelSection: {
     marginBottom: spacing[5],
