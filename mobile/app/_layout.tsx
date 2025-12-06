@@ -119,6 +119,14 @@ function RootLayoutNav() {
             presentation: 'modal',
           }} 
         />
+        <Stack.Screen 
+          name="grammar/[topic]" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }} 
+        />
       </Stack>
     </>
   );
