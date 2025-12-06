@@ -263,8 +263,27 @@ export default function EpisodePlayer() {
 
   const handleStartRecording = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCurrentPhase('recording');
-    await startRecording();
+    
+    // Clear all previous feedback state to prevent stale data
+    setUserTranscription('');
+    setFeedbackMessage('');
+    setGrammarAnalysis(null);
+    setNeedsCorrection(false);
+    setUserRecordingUri(null);
+    setUserPlaybackComplete(false);
+    setCorrectionRecordingUri(null);
+    setCorrectionPlaybackComplete(false);
+    setIsAnalyzing(false);
+    
+    // Start recording first, then change phase to prevent race condition
+    try {
+      await startRecording();
+      // Only change phase after recording has successfully started
+      setCurrentPhase('recording');
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      // Stay in current phase if recording fails to start
+    }
   };
 
   const handleStopRecording = async () => {
@@ -406,11 +425,18 @@ export default function EpisodePlayer() {
     
     // Stop any playing audio
     await stopCorrectionRecording();
+    await stopUserRecording();
     
-    // Reset correction state
+    // Reset all feedback-related state for next recording
     setCorrectionRecordingUri(null);
     setCorrectionPlaybackComplete(false);
     setNeedsCorrection(false);
+    setUserRecordingUri(null);
+    setUserPlaybackComplete(false);
+    setGrammarAnalysis(null);
+    setUserTranscription('');
+    setFeedbackMessage('');
+    setIsAnalyzing(false);
     
     // Give partial credit for practicing the correction
     setGrammarScore(prev => prev + 5);
@@ -436,10 +462,14 @@ export default function EpisodePlayer() {
     await stopAudio();
     await stopUserRecording();
     
-    // Reset user recording state for next recording
+    // Reset all feedback-related state for next recording
     setUserRecordingUri(null);
     setUserPlaybackComplete(false);
     setGrammarAnalysis(null);
+    setNeedsCorrection(false);
+    setCorrectionRecordingUri(null);
+    setCorrectionPlaybackComplete(false);
+    setIsAnalyzing(false);
     
     // Move to next scene or end
     const nextSceneIndex = currentSceneIndex + 1;
