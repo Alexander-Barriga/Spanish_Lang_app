@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
-  Alert 
+  Alert,
+  Modal 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -19,6 +20,7 @@ import { api, Episode } from '../../src/services/api';
 import { useAudioPlayback } from '../../src/hooks/useAudioPlayback';
 import { useVoiceRecording } from '../../src/hooks/useVoiceRecording';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
+import { getGrammarLesson, GrammarLesson } from '../../src/data/grammarLessons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -99,6 +101,8 @@ export default function EpisodePlayer() {
   const [correctionRecordingUri, setCorrectionRecordingUri] = useState<string | null>(null);
   const [correctionPlaybackComplete, setCorrectionPlaybackComplete] = useState(false);
   const [sceneAudioPlayed, setSceneAudioPlayed] = useState(false); // Tracks if scene audio has completed
+  const [grammarPanelVisible, setGrammarPanelVisible] = useState(false);
+  const grammarPanelAnim = useRef(new Animated.Value(0)).current;
 
   // Audio and recording hooks
   // Main hook for Florencia's dialogue - marks scene audio as played when complete
@@ -534,6 +538,162 @@ export default function EpisodePlayer() {
     });
   };
 
+  // Grammar Panel Functions
+  const toggleGrammarPanel = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (grammarPanelVisible) {
+      // Collapse down
+      Animated.timing(grammarPanelAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setGrammarPanelVisible(false));
+    } else {
+      // Slide up
+      setGrammarPanelVisible(true);
+      Animated.timing(grammarPanelAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const grammarLesson = episode?.grammar_focus ? getGrammarLesson(episode.grammar_focus) : null;
+
+  // Grammar Reference Button Component - shown on all episode phases
+  const GrammarReferenceButton = () => (
+    <Pressable 
+      style={styles.grammarRefButton}
+      onPress={toggleGrammarPanel}
+    >
+      <View style={styles.grammarRefButtonContent}>
+        <Ionicons name="school-outline" size={16} color={colors.accent.tango} />
+        <Text style={styles.grammarRefButtonText}>Grammar</Text>
+        <Ionicons 
+          name={grammarPanelVisible ? "chevron-down" : "chevron-up"} 
+          size={14} 
+          color={colors.accent.tango} 
+        />
+      </View>
+    </Pressable>
+  );
+
+  // Grammar Panel Component - slide-up modal
+  const GrammarPanel = () => {
+    if (!grammarLesson) return null;
+
+    const slideUp = grammarPanelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [height * 0.8, 0],
+    });
+
+    return (
+      <Modal
+        visible={grammarPanelVisible}
+        transparent
+        animationType="none"
+        onRequestClose={toggleGrammarPanel}
+      >
+        <Pressable style={styles.grammarPanelOverlay} onPress={toggleGrammarPanel}>
+          <Animated.View 
+            style={[
+              styles.grammarPanelContainer,
+              { transform: [{ translateY: slideUp }] }
+            ]}
+          >
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              {/* Handle bar */}
+              <View style={styles.grammarPanelHandle}>
+                <View style={styles.grammarPanelHandleBar} />
+              </View>
+
+              {/* Header */}
+              <View style={styles.grammarPanelHeader}>
+                <View>
+                  <Text style={styles.grammarPanelTitle}>{grammarLesson.title}</Text>
+                  <Text style={styles.grammarPanelSubtitle}>{grammarLesson.subtitle}</Text>
+                </View>
+                <Pressable onPress={toggleGrammarPanel} style={styles.grammarPanelClose}>
+                  <Ionicons name="close" size={24} color={colors.text.secondary} />
+                </Pressable>
+              </View>
+
+              <ScrollView 
+                style={styles.grammarPanelScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Key Phrases */}
+                <View style={styles.grammarPanelSection}>
+                  <Text style={styles.grammarPanelSectionTitle}>Key Phrases</Text>
+                  <View style={styles.grammarPanelTriggers}>
+                    {grammarLesson.triggers.map((trigger, index) => (
+                      <View key={index} style={styles.grammarPanelTriggerChip}>
+                        <Text style={styles.grammarPanelTriggerText}>{trigger}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Quick Explanation */}
+                <View style={styles.grammarPanelSection}>
+                  <Text style={styles.grammarPanelSectionTitle}>Quick Reference</Text>
+                  <Text style={styles.grammarPanelExplanation}>
+                    {grammarLesson.explanation.split('\n\n')[0]}
+                  </Text>
+                </View>
+
+                {/* Conjugation Table (if available) */}
+                {grammarLesson.conjugationTable && (
+                  <View style={styles.grammarPanelSection}>
+                    <Text style={styles.grammarPanelSectionTitle}>
+                      {grammarLesson.conjugationTable.verb.toUpperCase()} ({grammarLesson.conjugationTable.verbEnglish})
+                    </Text>
+                    <View style={styles.grammarPanelTable}>
+                      {Object.entries(grammarLesson.conjugationTable.forms).map(([pronoun, form]) => (
+                        <View key={pronoun} style={styles.grammarPanelTableRow}>
+                          <Text style={styles.grammarPanelTablePronoun}>
+                            {pronoun === 'tú' ? 'tú/vos' : pronoun === 'él' ? 'él/ella' : pronoun}
+                          </Text>
+                          <Text style={styles.grammarPanelTableForm}>{form}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Use Cases */}
+                <View style={styles.grammarPanelSection}>
+                  <Text style={styles.grammarPanelSectionTitle}>When to Use</Text>
+                  {grammarLesson.useCases.slice(0, 2).map((useCase, index) => (
+                    <View key={index} style={styles.grammarPanelUseCase}>
+                      <Text style={styles.grammarPanelUseCaseTitle}>{index + 1}. {useCase.title}</Text>
+                      <Text style={styles.grammarPanelExample}>"{useCase.example.spanish}"</Text>
+                      <Text style={styles.grammarPanelExampleEn}>{useCase.example.english}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Tips */}
+                <View style={styles.grammarPanelSection}>
+                  <Text style={styles.grammarPanelSectionTitle}>Tips</Text>
+                  {grammarLesson.tips.slice(0, 2).map((tip, index) => (
+                    <View key={index} style={styles.grammarPanelTip}>
+                      <Ionicons name="bulb-outline" size={14} color={colors.primary.gold} />
+                      <Text style={styles.grammarPanelTipText}>{tip}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={{ height: 40 }} />
+              </ScrollView>
+            </Pressable>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+    );
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -738,7 +898,13 @@ export default function EpisodePlayer() {
               </Animated.View>
             )}
           </ScrollView>
+          
+          {/* Grammar Reference Button */}
+          <GrammarReferenceButton />
         </View>
+        
+        {/* Grammar Panel Modal */}
+        <GrammarPanel />
       </SafeAreaView>
     );
   }
@@ -762,7 +928,13 @@ export default function EpisodePlayer() {
               <Text style={styles.stopButtonText}>Stop Recording</Text>
             </View>
           </Pressable>
+          
+          {/* Grammar Reference Button */}
+          <GrammarReferenceButton />
         </View>
+        
+        {/* Grammar Panel Modal */}
+        <GrammarPanel />
       </SafeAreaView>
     );
   }
@@ -922,6 +1094,12 @@ export default function EpisodePlayer() {
             </View>
           )}
         </ScrollView>
+        
+        {/* Grammar Reference Button */}
+        <GrammarReferenceButton />
+        
+        {/* Grammar Panel Modal */}
+        <GrammarPanel />
       </SafeAreaView>
     );
   }
@@ -990,7 +1168,13 @@ export default function EpisodePlayer() {
               )}
             </View>
           )}
+          
+          {/* Grammar Reference Button */}
+          <GrammarReferenceButton />
         </View>
+        
+        {/* Grammar Panel Modal */}
+        <GrammarPanel />
       </SafeAreaView>
     );
   }
@@ -1803,6 +1987,163 @@ const styles = StyleSheet.create({
   finishButtonText: {
     ...textStyles.button,
     color: colors.neutral[950],
+  },
+
+  // Grammar Reference Button & Panel Styles
+  grammarRefButton: {
+    position: 'absolute',
+    bottom: spacing[4],
+    alignSelf: 'center',
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.accent.tango + '60',
+    ...shadows.sm,
+  },
+  grammarRefButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  grammarRefButtonText: {
+    ...textStyles.caption,
+    color: colors.accent.tango,
+    fontWeight: '600',
+  },
+  grammarPanelOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  grammarPanelContainer: {
+    backgroundColor: colors.background.primary,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: height * 0.8,
+    paddingBottom: spacing[6],
+  },
+  grammarPanelHandle: {
+    alignItems: 'center',
+    paddingVertical: spacing[3],
+  },
+  grammarPanelHandleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.neutral[600],
+    borderRadius: 2,
+  },
+  grammarPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing[5],
+    paddingBottom: spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[800],
+  },
+  grammarPanelTitle: {
+    ...textStyles.h3,
+    color: colors.primary.gold,
+  },
+  grammarPanelSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  grammarPanelClose: {
+    padding: spacing[1],
+  },
+  grammarPanelScroll: {
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[4],
+  },
+  grammarPanelSection: {
+    marginBottom: spacing[5],
+  },
+  grammarPanelSectionTitle: {
+    ...textStyles.label,
+    color: colors.text.primary,
+    marginBottom: spacing[2],
+  },
+  grammarPanelTriggers: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  grammarPanelTriggerChip: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '50',
+  },
+  grammarPanelTriggerText: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    fontWeight: '600',
+  },
+  grammarPanelExplanation: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    lineHeight: 22,
+  },
+  grammarPanelTable: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  grammarPanelTableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[800],
+  },
+  grammarPanelTablePronoun: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+  },
+  grammarPanelTableForm: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontWeight: '600',
+  },
+  grammarPanelUseCase: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[3],
+    marginBottom: spacing[2],
+  },
+  grammarPanelUseCaseTitle: {
+    ...textStyles.caption,
+    color: colors.text.primary,
+    fontWeight: '600',
+    marginBottom: spacing[1],
+  },
+  grammarPanelExample: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontStyle: 'italic',
+  },
+  grammarPanelExampleEn: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    marginTop: spacing[1],
+  },
+  grammarPanelTip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  grammarPanelTipText: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    flex: 1,
   },
 });
 
