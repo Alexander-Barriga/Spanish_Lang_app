@@ -493,12 +493,29 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Grammar Focus Card */}
+        {/* Grammar Focus Card - Tappable to open lesson */}
         {storyData?.currentEpisode && (
-          <View style={styles.grammarCard}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.grammarCard,
+              pressed && styles.grammarCardPressed
+            ]}
+            onPress={() => {
+              const grammarFocus = storyData.currentEpisode?.grammar_focus;
+              const episodeId = storyData.currentEpisode?.id;
+              if (grammarFocus) {
+                router.push({
+                  pathname: '/grammar/[topic]',
+                  params: { topic: grammarFocus, episodeId: episodeId || '' }
+                });
+              }
+            }}
+          >
             <View style={styles.grammarHeader}>
               <Ionicons name="school-outline" size={18} color={colors.accent.tango} />
               <Text style={styles.grammarLabel}>This Episode's Grammar</Text>
+              <View style={{ flex: 1 }} />
+              <Ionicons name="chevron-forward" size={18} color={colors.accent.tango} />
             </View>
             <Text style={styles.grammarFocus}>
               {storyData.currentEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
@@ -512,7 +529,8 @@ export default function HomeScreen() {
                 ))}
               </View>
             )}
-          </View>
+            <Text style={styles.grammarHint}>Tap to learn more</Text>
+          </Pressable>
         )}
 
         {/* Motivational Quote */}
@@ -879,6 +897,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.accent.tango,
   },
+  grammarCardPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
   grammarHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -893,6 +915,12 @@ const styles = StyleSheet.create({
     ...textStyles.h5,
     color: colors.text.primary,
     marginBottom: spacing[3],
+  },
+  grammarHint: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    marginTop: spacing[2],
+    fontStyle: 'italic',
   },
   triggersContainer: {
     flexDirection: 'row',
