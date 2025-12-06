@@ -585,7 +585,7 @@ export default function EpisodePlayer() {
 
     const slideUp = grammarPanelAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: [height * 0.8, 0],
+      outputRange: [height * 0.85, 0],
     });
 
     return (
@@ -2025,8 +2025,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    maxHeight: height * 0.85,
-    minHeight: height * 0.5,
+    height: height * 0.85,
+    overflow: 'hidden',
+    flexDirection: 'column',
   },
   grammarPanelHandle: {
     alignItems: 'center',
