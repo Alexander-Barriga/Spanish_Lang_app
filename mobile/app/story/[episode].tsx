@@ -1025,25 +1025,22 @@ export default function EpisodePlayer() {
               <View style={styles.analysisContainer}>
                 {/* Status indicators */}
                 <View style={styles.analysisStatusRow}>
-                  {/* Expression badge - shows what pattern was used */}
-                  <View style={[
-                    styles.statusBadge,
-                    grammarAnalysis.usedCorrectExpression ? styles.statusBadgeSuccess : styles.statusBadgeError
-                  ]}>
-                    <Ionicons 
-                      name={grammarAnalysis.usedCorrectExpression ? "checkmark-circle" : "close-circle"} 
-                      size={16} 
-                      color={grammarAnalysis.usedCorrectExpression ? colors.success : colors.error} 
-                    />
-                    <Text style={[
-                      styles.statusBadgeText,
-                      grammarAnalysis.usedCorrectExpression ? styles.statusTextSuccess : styles.statusTextError
-                    ]}>
-                      {grammarAnalysis.usedCorrectExpression 
-                        ? `Used "${grammarAnalysis.expressionUsed}"` 
-                        : 'Expression Needed'}
-                    </Text>
-                  </View>
+                  {/* Expression badge - only show if expression was used OR if it was expected but missing */}
+                  {grammarAnalysis.expressionUsed ? (
+                    <View style={[styles.statusBadge, styles.statusBadgeSuccess]}>
+                      <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                      <Text style={[styles.statusBadgeText, styles.statusTextSuccess]}>
+                        Great Expression!
+                      </Text>
+                    </View>
+                  ) : currentScene?.expected_patterns?.length > 0 && !grammarAnalysis.usedCorrectExpression ? (
+                    <View style={[styles.statusBadge, styles.statusBadgeError]}>
+                      <Ionicons name="close-circle" size={16} color={colors.error} />
+                      <Text style={[styles.statusBadgeText, styles.statusTextError]}>
+                        Try the Key Phrase
+                      </Text>
+                    </View>
+                  ) : null}
                   
                   {/* Grammar badge */}
                   <View style={[

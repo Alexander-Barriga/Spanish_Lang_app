@@ -568,7 +568,7 @@ router.post('/analyze-response', authMiddleware, async (req: Request, res: Respo
     }
 
     // ============================================
-    // STEP 1: Local pattern detection (100% accurate)
+    // STEP 1: Local pattern detection (flexible matching)
     // ============================================
     // Normalize text for comparison (remove accents, lowercase)
     const normalizeText = (text: string) => 
@@ -577,22 +577,91 @@ router.post('/analyze-response', authMiddleware, async (req: Request, res: Respo
         .replace(/[\u0300-\u036f]/g, '') // Remove accent marks
         .trim();
     
+    // Convert pattern to flexible regex that matches conjugation variants
+    const patternToFlexibleRegex = (pattern: string): RegExp => {
+      const normalized = normalizeText(pattern);
+      
+      // Common subjunctive verb stems and their endings to match
+      // This handles cases like "Si tuviera" matching "Si tuvieras", "Si tuvieramos", etc.
+      const subjunctiveEndings = '(?:a|as|amos|ais|an|e|es|emos|eis|en|ra|ras|ramos|rais|ran|se|ses|semos|seis|sen)?';
+      
+      // List of common verb stems in patterns that need flexible matching
+      const verbPatterns: Record<string, string> = {
+        'tuviera': 'tuvier' + subjunctiveEndings,
+        'pudiera': 'pudier' + subjunctiveEndings,
+        'quisiera': 'quisier' + subjunctiveEndings,
+        'fuera': 'fuer' + subjunctiveEndings,
+        'hiciera': 'hicier' + subjunctiveEndings,
+        'dijera': 'dijer' + subjunctiveEndings,
+        'supiera': 'supier' + subjunctiveEndings,
+        'viniera': 'vinier' + subjunctiveEndings,
+        'hubiera': 'hubier' + subjunctiveEndings,
+        'estuviera': 'estuvier' + subjunctiveEndings,
+        'hablara': 'hablar' + subjunctiveEndings,
+        'comiera': 'comier' + subjunctiveEndings,
+        'viviera': 'vivier' + subjunctiveEndings,
+        // Present subjunctive stems
+        'hable': 'habl(?:e|es|emos|eis|en)',
+        'coma': 'com(?:a|as|amos|ais|an)',
+        'viva': 'viv(?:a|as|amos|ais|an)',
+        'tenga': 'teng(?:a|as|amos|ais|an)',
+        'venga': 'veng(?:a|as|amos|ais|an)',
+        'haga': 'hag(?:a|as|amos|ais|an)',
+        'diga': 'dig(?:a|as|amos|ais|an)',
+        'pueda': 'pued(?:a|as|amos|ais|an)',
+        'quiera': 'quier(?:a|as|amos|ais|an)',
+        'sepa': 'sep(?:a|as|amos|ais|an)',
+        'sea': 'se(?:a|as|amos|ais|an)',
+        'este': 'est(?:e|es|emos|eis|en)',
+        'vaya': 'vay(?:a|as|amos|ais|an)',
+      };
+      
+      let flexiblePattern = normalized;
+      
+      // Replace verb forms with flexible patterns
+      for (const [verb, replacement] of Object.entries(verbPatterns)) {
+        const verbNormalized = normalizeText(verb);
+        if (flexiblePattern.includes(verbNormalized)) {
+          flexiblePattern = flexiblePattern.replace(verbNormalized, replacement);
+        }
+      }
+      
+      // Escape special regex characters except our patterns
+      flexiblePattern = flexiblePattern
+        .replace(/[.*+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\\\?/g, '?'); // Un-escape our optional groups
+      
+      return new RegExp(flexiblePattern);
+    };
+    
     const normalizedResponse = normalizeText(userResponse);
     const patternsFound: string[] = [];
 
     if (expectedPatterns && expectedPatterns.length > 0) {
       for (const pattern of expectedPatterns) {
-        const normalizedPattern = normalizeText(pattern);
-        if (normalizedResponse.includes(normalizedPattern)) {
-          patternsFound.push(pattern);
+        try {
+          const flexibleRegex = patternToFlexibleRegex(pattern);
+          if (flexibleRegex.test(normalizedResponse)) {
+            patternsFound.push(pattern);
+          }
+        } catch (e) {
+          // Fallback to simple includes for malformed patterns
+          const normalizedPattern = normalizeText(pattern);
+          if (normalizedResponse.includes(normalizedPattern)) {
+            patternsFound.push(pattern);
+          }
         }
       }
     }
 
-    const usedExpectedPattern = patternsFound.length > 0;
+    // If no patterns expected, don't penalize the user
+    const hasExpectedPatterns = expectedPatterns && expectedPatterns.length > 0;
+    const usedExpectedPattern = hasExpectedPatterns ? patternsFound.length > 0 : true;
+    
     console.log('🔍 Pattern detection:', { 
       userResponse, 
       expectedPatterns, 
+      hasExpectedPatterns,
       patternsFound, 
       usedExpectedPattern 
     });
