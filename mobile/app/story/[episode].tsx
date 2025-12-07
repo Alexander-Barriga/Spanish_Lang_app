@@ -595,30 +595,35 @@ export default function EpisodePlayer() {
         animationType="none"
         onRequestClose={toggleGrammarPanel}
       >
-        <Pressable style={styles.grammarPanelOverlay} onPress={toggleGrammarPanel}>
+        <View style={styles.grammarPanelOverlay}>
+          {/* Tappable background to close */}
+          <Pressable 
+            style={StyleSheet.absoluteFill} 
+            onPress={toggleGrammarPanel} 
+          />
+          
+          {/* Panel content - doesn't close on touch */}
           <Animated.View 
             style={[
               styles.grammarPanelContainer,
               { transform: [{ translateY: slideUp }] }
             ]}
           >
-            {/* Handle bar - outside scrollable area */}
-            <Pressable onPress={(e) => e.stopPropagation()}>
-              <View style={styles.grammarPanelHandle}>
-                <View style={styles.grammarPanelHandleBar} />
-              </View>
+            {/* Handle bar */}
+            <View style={styles.grammarPanelHandle}>
+              <View style={styles.grammarPanelHandleBar} />
+            </View>
 
-              {/* Header */}
-              <View style={styles.grammarPanelHeader}>
-                <View>
-                  <Text style={styles.grammarPanelTitle}>{grammarLesson.title}</Text>
-                  <Text style={styles.grammarPanelSubtitle}>{grammarLesson.subtitle}</Text>
-                </View>
-                <Pressable onPress={toggleGrammarPanel} style={styles.grammarPanelClose}>
-                  <Ionicons name="close" size={24} color={colors.text.secondary} />
-                </Pressable>
+            {/* Header */}
+            <View style={styles.grammarPanelHeader}>
+              <View style={styles.grammarPanelHeaderText}>
+                <Text style={styles.grammarPanelTitle}>{grammarLesson.title}</Text>
+                <Text style={styles.grammarPanelSubtitle}>{grammarLesson.subtitle}</Text>
               </View>
-            </Pressable>
+              <Pressable onPress={toggleGrammarPanel} style={styles.grammarPanelClose}>
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </Pressable>
+            </View>
 
             {/* Scrollable content area */}
             <ScrollView 
@@ -626,74 +631,120 @@ export default function EpisodePlayer() {
               contentContainerStyle={styles.grammarPanelScrollContent}
               showsVerticalScrollIndicator={true}
               bounces={true}
-              nestedScrollEnabled={true}
             >
-                {/* Key Phrases */}
+              {/* What is it? - Full explanation */}
+              <View style={styles.grammarPanelSection}>
+                <View style={styles.grammarPanelSectionHeader}>
+                  <Ionicons name="book-outline" size={18} color={colors.primary.gold} />
+                  <Text style={styles.grammarPanelSectionTitle}>What is it?</Text>
+                </View>
+                <Text style={styles.grammarPanelExplanation}>
+                  {grammarLesson.explanation}
+                </Text>
+              </View>
+
+              {/* When to Use It - All use cases */}
+              <View style={styles.grammarPanelSection}>
+                <View style={styles.grammarPanelSectionHeader}>
+                  <Ionicons name="bulb-outline" size={18} color={colors.primary.gold} />
+                  <Text style={styles.grammarPanelSectionTitle}>When to Use It</Text>
+                </View>
+                {grammarLesson.useCases.map((useCase, index) => (
+                  <View key={index} style={styles.grammarPanelUseCaseCard}>
+                    <Text style={styles.grammarPanelUseCaseNumber}>{index + 1}</Text>
+                    <View style={styles.grammarPanelUseCaseContent}>
+                      <Text style={styles.grammarPanelUseCaseTitle}>{useCase.title}</Text>
+                      <Text style={styles.grammarPanelUseCaseDesc}>{useCase.description}</Text>
+                      <View style={styles.grammarPanelExampleBox}>
+                        <Text style={styles.grammarPanelExample}>"{useCase.example.spanish}"</Text>
+                        <Text style={styles.grammarPanelExampleEn}>{useCase.example.english}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* Conjugation Table */}
+              {grammarLesson.conjugationTable && (
                 <View style={styles.grammarPanelSection}>
-                  <Text style={styles.grammarPanelSectionTitle}>Key Phrases</Text>
-                  <View style={styles.grammarPanelTriggers}>
-                    {grammarLesson.triggers.map((trigger, index) => (
-                      <View key={index} style={styles.grammarPanelTriggerChip}>
-                        <Text style={styles.grammarPanelTriggerText}>{trigger}</Text>
+                  <View style={styles.grammarPanelSectionHeader}>
+                    <Ionicons name="grid-outline" size={18} color={colors.primary.gold} />
+                    <Text style={styles.grammarPanelSectionTitle}>
+                      Conjugation: {grammarLesson.conjugationTable.verb.toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.grammarPanelConjugationSubtitle}>
+                    {grammarLesson.conjugationTable.verbEnglish} • {grammarLesson.conjugationTable.tense}
+                  </Text>
+                  <View style={styles.grammarPanelTable}>
+                    {Object.entries(grammarLesson.conjugationTable.forms).map(([pronoun, form]) => (
+                      <View key={pronoun} style={styles.grammarPanelTableRow}>
+                        <Text style={styles.grammarPanelTablePronoun}>
+                          {pronoun === 'tú' ? 'tú / vos' : pronoun === 'él' ? 'él / ella' : pronoun}
+                        </Text>
+                        <Text style={styles.grammarPanelTableForm}>{form}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
+              )}
 
-                {/* Quick Explanation */}
-                <View style={styles.grammarPanelSection}>
-                  <Text style={styles.grammarPanelSectionTitle}>Quick Reference</Text>
-                  <Text style={styles.grammarPanelExplanation}>
-                    {grammarLesson.explanation.split('\n\n')[0]}
-                  </Text>
+              {/* In This Episode */}
+              <View style={styles.grammarPanelSection}>
+                <View style={styles.grammarPanelSectionHeader}>
+                  <Ionicons name="chatbubbles-outline" size={18} color={colors.primary.gold} />
+                  <Text style={styles.grammarPanelSectionTitle}>In This Episode</Text>
                 </View>
-
-                {/* Conjugation Table (if available) */}
-                {grammarLesson.conjugationTable && (
-                  <View style={styles.grammarPanelSection}>
-                    <Text style={styles.grammarPanelSectionTitle}>
-                      {grammarLesson.conjugationTable.verb.toUpperCase()} ({grammarLesson.conjugationTable.verbEnglish})
-                    </Text>
-                    <View style={styles.grammarPanelTable}>
-                      {Object.entries(grammarLesson.conjugationTable.forms).map(([pronoun, form]) => (
-                        <View key={pronoun} style={styles.grammarPanelTableRow}>
-                          <Text style={styles.grammarPanelTablePronoun}>
-                            {pronoun === 'tú' ? 'tú/vos' : pronoun === 'él' ? 'él/ella' : pronoun}
-                          </Text>
-                          <Text style={styles.grammarPanelTableForm}>{form}</Text>
-                        </View>
-                      ))}
+                <Text style={styles.grammarPanelStoryIntro}>
+                  You'll hear and practice these patterns:
+                </Text>
+                {grammarLesson.storyExamples.map((example, index) => (
+                  <View key={index} style={styles.grammarPanelStoryCard}>
+                    <Text style={styles.grammarPanelStorySpanish}>"{example.spanish}"</Text>
+                    <Text style={styles.grammarPanelStoryEnglish}>{example.english}</Text>
+                    <View style={styles.grammarPanelStoryContext}>
+                      <Ionicons name="person-outline" size={12} color={colors.text.muted} />
+                      <Text style={styles.grammarPanelStoryContextText}>{example.context}</Text>
                     </View>
                   </View>
-                )}
+                ))}
+              </View>
 
-                {/* Use Cases */}
-                <View style={styles.grammarPanelSection}>
-                  <Text style={styles.grammarPanelSectionTitle}>When to Use</Text>
-                  {grammarLesson.useCases.slice(0, 2).map((useCase, index) => (
-                    <View key={index} style={styles.grammarPanelUseCase}>
-                      <Text style={styles.grammarPanelUseCaseTitle}>{index + 1}. {useCase.title}</Text>
-                      <Text style={styles.grammarPanelExample}>"{useCase.example.spanish}"</Text>
-                      <Text style={styles.grammarPanelExampleEn}>{useCase.example.english}</Text>
+              {/* Pro Tips */}
+              <View style={styles.grammarPanelSection}>
+                <View style={styles.grammarPanelSectionHeader}>
+                  <Ionicons name="sparkles" size={18} color={colors.primary.gold} />
+                  <Text style={styles.grammarPanelSectionTitle}>Pro Tips</Text>
+                </View>
+                {grammarLesson.tips.map((tip, index) => (
+                  <View key={index} style={styles.grammarPanelTipRow}>
+                    <View style={styles.grammarPanelTipBullet}>
+                      <Ionicons name="checkmark" size={12} color={colors.primary.gold} />
+                    </View>
+                    <Text style={styles.grammarPanelTipText}>{tip}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Key Phrases */}
+              <View style={styles.grammarPanelSection}>
+                <View style={styles.grammarPanelSectionHeader}>
+                  <Ionicons name="flash-outline" size={18} color={colors.primary.gold} />
+                  <Text style={styles.grammarPanelSectionTitle}>Key Phrases to Use</Text>
+                </View>
+                <View style={styles.grammarPanelTriggers}>
+                  {grammarLesson.triggers.map((trigger, index) => (
+                    <View key={index} style={styles.grammarPanelTriggerChip}>
+                      <Text style={styles.grammarPanelTriggerText}>{trigger}</Text>
                     </View>
                   ))}
                 </View>
+              </View>
 
-                {/* Tips */}
-                <View style={styles.grammarPanelSection}>
-                  <Text style={styles.grammarPanelSectionTitle}>Tips</Text>
-                  {grammarLesson.tips.slice(0, 2).map((tip, index) => (
-                    <View key={index} style={styles.grammarPanelTip}>
-                      <Ionicons name="bulb-outline" size={14} color={colors.primary.gold} />
-                      <Text style={styles.grammarPanelTipText}>{tip}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <View style={{ height: 60 }} />
-              </ScrollView>
+              <View style={{ height: 80 }} />
+            </ScrollView>
           </Animated.View>
-        </Pressable>
+        </View>
       </Modal>
     );
   };
@@ -2018,16 +2069,15 @@ const styles = StyleSheet.create({
   },
   grammarPanelOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
   },
   grammarPanelContainer: {
     backgroundColor: colors.background.primary,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    height: height * 0.85,
+    height: height * 0.88,
     overflow: 'hidden',
-    flexDirection: 'column',
   },
   grammarPanelHandle: {
     alignItems: 'center',
@@ -2042,15 +2092,20 @@ const styles = StyleSheet.create({
   grammarPanelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[3],
     borderBottomWidth: 1,
     borderBottomColor: colors.neutral[800],
   },
+  grammarPanelHeaderText: {
+    flex: 1,
+  },
   grammarPanelTitle: {
     ...textStyles.h3,
     color: colors.primary.gold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   grammarPanelSubtitle: {
     ...textStyles.caption,
@@ -2058,46 +2113,82 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   grammarPanelClose: {
-    padding: spacing[1],
+    padding: spacing[2],
   },
   grammarPanelScroll: {
     flex: 1,
   },
   grammarPanelScrollContent: {
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[4],
-    paddingBottom: spacing[8],
+    padding: spacing[4],
   },
   grammarPanelSection: {
-    marginBottom: spacing[5],
+    marginBottom: spacing[6],
+  },
+  grammarPanelSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[3],
   },
   grammarPanelSectionTitle: {
     ...textStyles.label,
     color: colors.text.primary,
-    marginBottom: spacing[2],
-  },
-  grammarPanelTriggers: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
-  grammarPanelTriggerChip: {
-    backgroundColor: colors.background.elevated,
-    borderRadius: borderRadius.full,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
-    borderWidth: 1,
-    borderColor: colors.primary.gold + '50',
-  },
-  grammarPanelTriggerText: {
-    ...textStyles.caption,
-    color: colors.primary.gold,
-    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   grammarPanelExplanation: {
     ...textStyles.body,
     color: colors.text.secondary,
-    lineHeight: 22,
+    lineHeight: 24,
+  },
+  grammarPanelUseCaseCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  grammarPanelUseCaseNumber: {
+    ...textStyles.h2,
+    color: colors.primary.gold,
+    marginRight: spacing[3],
+    opacity: 0.5,
+  },
+  grammarPanelUseCaseContent: {
+    flex: 1,
+  },
+  grammarPanelUseCaseTitle: {
+    ...textStyles.label,
+    color: colors.text.primary,
+    marginBottom: spacing[1],
+  },
+  grammarPanelUseCaseDesc: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+  },
+  grammarPanelExampleBox: {
+    backgroundColor: colors.neutral[900],
+    borderRadius: borderRadius.md,
+    padding: spacing[3],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary.gold,
+  },
+  grammarPanelExample: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontStyle: 'italic',
+    marginBottom: spacing[1],
+  },
+  grammarPanelExampleEn: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+  },
+  grammarPanelConjugationSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing[3],
+    fontStyle: 'italic',
   },
   grammarPanelTable: {
     backgroundColor: colors.background.elevated,
@@ -2107,7 +2198,7 @@ const styles = StyleSheet.create({
   grammarPanelTableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
     borderBottomWidth: 1,
     borderBottomColor: colors.neutral[800],
@@ -2121,38 +2212,74 @@ const styles = StyleSheet.create({
     color: colors.primary.gold,
     fontWeight: '600',
   },
-  grammarPanelUseCase: {
-    backgroundColor: colors.background.elevated,
-    borderRadius: borderRadius.lg,
-    padding: spacing[3],
-    marginBottom: spacing[2],
-  },
-  grammarPanelUseCaseTitle: {
-    ...textStyles.caption,
-    color: colors.text.primary,
-    fontWeight: '600',
-    marginBottom: spacing[1],
-  },
-  grammarPanelExample: {
-    ...textStyles.body,
-    color: colors.primary.gold,
-    fontStyle: 'italic',
-  },
-  grammarPanelExampleEn: {
-    ...textStyles.caption,
-    color: colors.text.muted,
-    marginTop: spacing[1],
-  },
-  grammarPanelTip: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
-    marginBottom: spacing[2],
-  },
-  grammarPanelTipText: {
+  grammarPanelStoryIntro: {
     ...textStyles.caption,
     color: colors.text.secondary,
+    marginBottom: spacing[3],
+  },
+  grammarPanelStoryCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+    borderWidth: 1,
+    borderColor: colors.accent.tango + '40',
+  },
+  grammarPanelStorySpanish: {
+    ...textStyles.dialogue,
+    color: colors.text.primary,
+    marginBottom: spacing[1],
+  },
+  grammarPanelStoryEnglish: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+  },
+  grammarPanelStoryContext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  grammarPanelStoryContextText: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+  },
+  grammarPanelTipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing[2],
+  },
+  grammarPanelTipBullet: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary.gold + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing[2],
+  },
+  grammarPanelTipText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
     flex: 1,
+  },
+  grammarPanelTriggers: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  grammarPanelTriggerChip: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '60',
+  },
+  grammarPanelTriggerText: {
+    ...textStyles.body,
+    color: colors.primary.gold,
   },
 });
 
