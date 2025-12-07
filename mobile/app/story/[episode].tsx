@@ -31,6 +31,7 @@ interface Scene {
   audio_key: string;
   emotion: string;
   response_type: 'guided' | 'free_speak';
+  next_scene?: string; // For free_speak scenes, specifies the next scene
   options?: Array<{
     text: string;
     next_scene: string;
@@ -250,10 +251,11 @@ export default function EpisodePlayer() {
       setGrammarScore(prev => prev + 10);
     }
 
-    // Find next scene
-    const nextScene = episode?.scenes.find((s: Scene) => s.scene_id === option.next_scene);
-    if (nextScene) {
-      setCurrentSceneIndex(prev => prev + 1);
+    // Find next scene by scene_id AND get its actual index
+    const nextSceneIndex = episode?.scenes.findIndex((s: Scene) => s.scene_id === option.next_scene);
+    if (nextSceneIndex !== undefined && nextSceneIndex >= 0) {
+      const nextScene = episode.scenes[nextSceneIndex];
+      setCurrentSceneIndex(nextSceneIndex);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
       setSceneAudioPlayed(false); // Reset so response section waits for audio
@@ -445,9 +447,26 @@ export default function EpisodePlayer() {
     // Give partial credit for practicing the correction
     setGrammarScore(prev => prev + 5);
     
-    // Move to next scene
-    const nextSceneIndex = currentSceneIndex + 1;
-    if (episode?.scenes && nextSceneIndex < episode.scenes.length) {
+    // Find next scene - prioritize scene's next_scene property, then scene_number, then index
+    let nextSceneIndex = -1;
+    
+    if (currentScene?.next_scene && episode?.scenes) {
+      // If current scene has explicit next_scene, use that
+      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_id === currentScene.next_scene);
+    }
+    
+    if (nextSceneIndex < 0 && currentScene && episode?.scenes) {
+      // Fallback: find scene with next scene_number
+      const currentSceneNumber = currentScene.scene_number;
+      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_number === currentSceneNumber + 1);
+    }
+    
+    if (nextSceneIndex < 0 && episode?.scenes) {
+      // Final fallback: use array index + 1
+      nextSceneIndex = currentSceneIndex + 1;
+    }
+    
+    if (episode?.scenes && nextSceneIndex >= 0 && nextSceneIndex < episode.scenes.length) {
       const nextScene = episode.scenes[nextSceneIndex];
       setCurrentSceneIndex(nextSceneIndex);
       setCurrentScene(nextScene);
@@ -474,16 +493,33 @@ export default function EpisodePlayer() {
     setCorrectionRecordingUri(null);
     setCorrectionPlaybackComplete(false);
     setIsAnalyzing(false);
+    setUserTranscription('');
+    setFeedbackMessage('');
     
-    // Move to next scene or end
-    const nextSceneIndex = currentSceneIndex + 1;
-    if (episode?.scenes && nextSceneIndex < episode.scenes.length) {
+    // Find next scene - prioritize scene's next_scene property, then scene_number, then index
+    let nextSceneIndex = -1;
+    
+    if (currentScene?.next_scene && episode?.scenes) {
+      // If current scene has explicit next_scene, use that
+      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_id === currentScene.next_scene);
+    }
+    
+    if (nextSceneIndex < 0 && currentScene && episode?.scenes) {
+      // Fallback: find scene with next scene_number
+      const currentSceneNumber = currentScene.scene_number;
+      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_number === currentSceneNumber + 1);
+    }
+    
+    if (nextSceneIndex < 0 && episode?.scenes) {
+      // Final fallback: use array index + 1
+      nextSceneIndex = currentSceneIndex + 1;
+    }
+    
+    if (episode?.scenes && nextSceneIndex >= 0 && nextSceneIndex < episode.scenes.length) {
       const nextScene = episode.scenes[nextSceneIndex];
       setCurrentSceneIndex(nextSceneIndex);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
-      setUserTranscription('');
-      setFeedbackMessage('');
       setSceneAudioPlayed(false); // Reset so response section waits for audio
       // Pass nextScene directly to avoid stale closure issues
       setTimeout(() => playSceneAudio(nextScene), 300);
