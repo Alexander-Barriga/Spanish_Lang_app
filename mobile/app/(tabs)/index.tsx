@@ -415,36 +415,45 @@ export default function HomeScreen() {
               </LinearGradient>
             </Pressable>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <View style={styles.statIcon}>
-              <Ionicons name="star" size={18} color={colors.story.star} />
+        {/* Grammar Focus Card - Tappable to open lesson */}
+        {storyData?.currentEpisode && (
+          <Pressable 
+            style={({ pressed }) => [
+              styles.grammarCard,
+              pressed && styles.grammarCardPressed
+            ]}
+            onPress={() => {
+              const grammarFocus = storyData.currentEpisode?.grammar_focus;
+              const episodeId = storyData.currentEpisode?.id;
+              if (grammarFocus) {
+                router.push({
+                  pathname: '/grammar/[topic]',
+                  params: { topic: grammarFocus, episodeId: episodeId || '' }
+                });
+              }
+            }}
+          >
+            <View style={styles.grammarHeader}>
+              <Ionicons name="school-outline" size={18} color={colors.accent.tango} />
+              <Text style={styles.grammarLabel}>This Episode's Grammar</Text>
+              <View style={{ flex: 1 }} />
+              <Ionicons name="chevron-forward" size={18} color={colors.accent.tango} />
             </View>
-            <Text style={styles.statValue}>{storyData?.progress?.total_stars || 0}</Text>
-            <Text style={styles.statLabel}>Stars</Text>
-        </View>
-
-          <View style={styles.statDivider} />
-          
-          <View style={styles.statItem}>
-            <View style={styles.statIcon}>
-              <Ionicons name="trophy" size={18} color={colors.primary.gold} />
-            </View>
-            <Text style={styles.statValue}>{storyData?.progress?.total_xp || 0}</Text>
-            <Text style={styles.statLabel}>XP</Text>
-          </View>
-          
-          <View style={styles.statDivider} />
-          
-          <View style={styles.statItem}>
-            <View style={styles.statIcon}>
-              <Ionicons name="book" size={18} color={colors.accent.sage} />
-                    </View>
-            <Text style={styles.statValue}>{journalStats?.totalEntries || 0}</Text>
-            <Text style={styles.statLabel}>Journal</Text>
-          </View>
-        </View>
+            <Text style={styles.grammarFocus}>
+              {storyData.currentEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
+            </Text>
+            {storyData.currentEpisode.grammar_triggers?.length > 0 && (
+              <View style={styles.triggersContainer}>
+                {storyData.currentEpisode.grammar_triggers.slice(0, 3).map((trigger: string, index: number) => (
+                  <View key={index} style={styles.triggerBadge}>
+                    <Text style={styles.triggerText}>{trigger}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <Text style={styles.grammarHint}>Tap to learn more</Text>
+          </Pressable>
+        )}
 
         {/* Action Cards */}
         <View style={styles.actionCards}>
@@ -492,46 +501,6 @@ export default function HomeScreen() {
             </LinearGradient>
           </Pressable>
         </View>
-
-        {/* Grammar Focus Card - Tappable to open lesson */}
-        {storyData?.currentEpisode && (
-          <Pressable 
-            style={({ pressed }) => [
-              styles.grammarCard,
-              pressed && styles.grammarCardPressed
-            ]}
-            onPress={() => {
-              const grammarFocus = storyData.currentEpisode?.grammar_focus;
-              const episodeId = storyData.currentEpisode?.id;
-              if (grammarFocus) {
-                router.push({
-                  pathname: '/grammar/[topic]',
-                  params: { topic: grammarFocus, episodeId: episodeId || '' }
-                });
-              }
-            }}
-          >
-            <View style={styles.grammarHeader}>
-              <Ionicons name="school-outline" size={18} color={colors.accent.tango} />
-              <Text style={styles.grammarLabel}>This Episode's Grammar</Text>
-              <View style={{ flex: 1 }} />
-              <Ionicons name="chevron-forward" size={18} color={colors.accent.tango} />
-            </View>
-            <Text style={styles.grammarFocus}>
-              {storyData.currentEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
-            </Text>
-            {storyData.currentEpisode.grammar_triggers?.length > 0 && (
-              <View style={styles.triggersContainer}>
-                {storyData.currentEpisode.grammar_triggers.slice(0, 3).map((trigger: string, index: number) => (
-                  <View key={index} style={styles.triggerBadge}>
-                    <Text style={styles.triggerText}>{trigger}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            <Text style={styles.grammarHint}>Tap to learn more</Text>
-          </Pressable>
-        )}
 
         {/* Motivational Quote */}
         <View style={styles.quoteCard}>
@@ -812,37 +781,6 @@ const styles = StyleSheet.create({
   characterName: {
     ...textStyles.caption,
     color: colors.text.secondary,
-  },
-
-  // Stats Row
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.background.elevated,
-    borderRadius: borderRadius.xl,
-    padding: spacing[4],
-    marginBottom: spacing[5],
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statIcon: {
-    marginBottom: spacing[1],
-  },
-  statValue: {
-    ...textStyles.h4,
-    color: colors.text.primary,
-  },
-  statLabel: {
-    ...textStyles.caption,
-    color: colors.text.tertiary,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border.subtle,
   },
 
   // Action Cards

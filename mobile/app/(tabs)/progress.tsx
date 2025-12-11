@@ -108,8 +108,8 @@ export default function ProgressScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Your Progress</Text>
-          <Text style={styles.subtitle}>Keep up the great work!</Text>
+          <Text style={styles.title}>Grammar Gym</Text>
+          <Text style={styles.subtitle}>Build your Spanish muscles</Text>
         </View>
 
         {/* Curriculum Progress Card */}

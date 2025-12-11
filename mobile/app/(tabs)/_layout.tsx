@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors } from '../../src/theme';
 
 export default function TabsLayout() {
@@ -25,24 +25,27 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="articles"
+        options={{
+          title: 'Articles',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="start"
         options={{
-          title: '',
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.startButton}>
-              <Ionicons 
-                name="book" 
-                size={26} 
-                color={colors.neutral[950]} 
-              />
-            </View>
+          title: 'Speak',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="mic" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'Progress',
+          title: 'Gym',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="stats-chart" size={size} color={color} />
           ),
@@ -86,19 +89,5 @@ const styles = StyleSheet.create({
   tabBarLabel: {
     fontSize: 11,
     fontWeight: '500',
-  },
-  startButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary.gold,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: colors.primary.gold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
 });
