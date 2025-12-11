@@ -84,16 +84,19 @@ export default function ArticleReaderScreen() {
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
+    // Optimistically update UI
+    const wasIsFavorite = isFavorite;
+    setIsFavorite(!isFavorite);
+    
     try {
-      if (isFavorite) {
+      if (wasIsFavorite) {
         await api.removeArticleFromFavorites(id);
-        setIsFavorite(false);
       } else {
         await api.addArticleToFavorites(id);
-        setIsFavorite(true);
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
+    } catch {
+      // Revert on error - silently handle (user profile may not exist yet)
+      setIsFavorite(wasIsFavorite);
     }
   };
 

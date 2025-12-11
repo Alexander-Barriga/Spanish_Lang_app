@@ -352,6 +352,11 @@ router.post('/:id/favorite', authMiddleware, async (req: Request, res: Response)
         // Already favorited
         return res.json({ success: true, message: 'Already in favorites' });
       }
+      if (error.code === '23503') {
+        // User not in public.users table - log and return graceful error
+        console.log('Favorite skipped: user not in public.users table');
+        return res.status(400).json({ error: 'User profile not found. Please complete your profile setup.' });
+      }
       console.error('Error adding favorite:', error);
       return res.status(500).json({ error: 'Failed to add favorite' });
     }
