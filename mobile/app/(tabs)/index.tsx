@@ -74,6 +74,18 @@ export default function HomeScreen() {
       console.log('📋 getCurrentStory result:', JSON.stringify(storyResult, null, 2));
       
       if (storyResult.data) {
+        // If user hasn't started but we have arc data, fetch first episode for grammar preview
+        if (!storyResult.data.hasStarted && storyResult.data.arc && !storyResult.data.currentEpisode) {
+          try {
+            const firstEpisodeResult = await api.getEpisode(storyResult.data.arc.id, 1);
+            if (firstEpisodeResult.data?.episode) {
+              storyResult.data.currentEpisode = firstEpisodeResult.data.episode;
+              console.log('✅ Loaded first episode for grammar preview');
+            }
+          } catch (e) {
+            console.log('⚠️ Could not load first episode preview');
+          }
+        }
         setStoryData(storyResult.data);
         console.log('✅ Story data loaded successfully');
       } else if (storyResult.error) {
@@ -83,12 +95,25 @@ export default function HomeScreen() {
         console.log('📋 Fallback getStoryArcs result:', JSON.stringify(arcsResult, null, 2));
         
         if (arcsResult.data?.arcs?.[0]) {
+          const arc = arcsResult.data.arcs[0];
+          // Also fetch first episode for grammar preview
+          let firstEpisode = null;
+          try {
+            const firstEpisodeResult = await api.getEpisode(arc.id, 1);
+            if (firstEpisodeResult.data?.episode) {
+              firstEpisode = firstEpisodeResult.data.episode;
+              console.log('✅ Loaded first episode for grammar preview');
+            }
+          } catch (e) {
+            console.log('⚠️ Could not load first episode preview');
+          }
+          
           // Create a storyData object from the first arc
           setStoryData({
             hasStarted: false,
-            arc: arcsResult.data.arcs[0],
+            arc: arc,
             progress: null,
-            currentEpisode: null,
+            currentEpisode: firstEpisode,
           });
           console.log('✅ Fallback story data set from arcs');
         }
