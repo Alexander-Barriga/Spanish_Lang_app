@@ -77,9 +77,9 @@ export default function HomeScreen() {
         // If user hasn't started but we have arc data, fetch first episode for grammar preview
         if (!storyResult.data.hasStarted && storyResult.data.arc && !storyResult.data.currentEpisode) {
           try {
-            const firstEpisodeResult = await api.getEpisode(storyResult.data.arc.id, 1);
-            if (firstEpisodeResult.data?.episode) {
-              storyResult.data.currentEpisode = firstEpisodeResult.data.episode;
+            const arcResult = await api.getStoryArc(storyResult.data.arc.id);
+            if (arcResult.data?.episodes?.[0]) {
+              storyResult.data.currentEpisode = arcResult.data.episodes[0];
               console.log('✅ Loaded first episode for grammar preview');
             }
           } catch (e) {
@@ -99,9 +99,9 @@ export default function HomeScreen() {
           // Also fetch first episode for grammar preview
           let firstEpisode = null;
           try {
-            const firstEpisodeResult = await api.getEpisode(arc.id, 1);
-            if (firstEpisodeResult.data?.episode) {
-              firstEpisode = firstEpisodeResult.data.episode;
+            const arcResult = await api.getStoryArc(arc.id);
+            if (arcResult.data?.episodes?.[0]) {
+              firstEpisode = arcResult.data.episodes[0];
               console.log('✅ Loaded first episode for grammar preview');
             }
           } catch (e) {
