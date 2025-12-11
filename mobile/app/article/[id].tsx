@@ -60,9 +60,8 @@ export default function ArticleReaderScreen() {
     const readSeconds = Math.round((Date.now() - readStartTime) / 1000);
     try {
       await api.trackArticleRead(id, readSeconds, Math.round(maxScrollPercent));
-    } catch {
-      // Silently ignore read tracking errors - non-critical feature
-      // Table may not exist yet or user may not be authenticated
+    } catch (error) {
+      console.error('Error tracking read:', error);
     }
   };
 
@@ -84,19 +83,16 @@ export default function ArticleReaderScreen() {
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Optimistically update UI
-    const wasIsFavorite = isFavorite;
-    setIsFavorite(!isFavorite);
-    
     try {
-      if (wasIsFavorite) {
+      if (isFavorite) {
         await api.removeArticleFromFavorites(id);
+        setIsFavorite(false);
       } else {
         await api.addArticleToFavorites(id);
+        setIsFavorite(true);
       }
-    } catch {
-      // Revert on error - silently handle (user profile may not exist yet)
-      setIsFavorite(wasIsFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
