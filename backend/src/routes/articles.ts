@@ -65,10 +65,10 @@ router.get('/', optionalAuth, async (req: Request, res: Response) => {
           .eq('article_id', article.id);
 
         const opens = reads?.length || 0;
-        const avgCompletion = reads?.length 
+        const avgCompletion = reads && reads.length > 0
           ? reads.reduce((sum, r) => sum + (r.completion_percent || 0), 0) / reads.length 
           : 0;
-        const totalReadMinutes = reads?.reduce((sum, r) => sum + (r.read_seconds || 0), 0) / 60 || 0;
+        const totalReadMinutes = (reads?.reduce((sum, r) => sum + (r.read_seconds || 0), 0) ?? 0) / 60;
 
         const popularityScore = (opens * 1.0) + (avgCompletion / 100 * 2.0) + (totalReadMinutes * 0.5);
 
