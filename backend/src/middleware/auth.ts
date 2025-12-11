@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { supabase } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
 
 // Extend Express Request type to include user
 declare global {
@@ -12,6 +12,52 @@ declare global {
     }
   }
 }
+
+/**
+ * Ensures the authenticated user has a row in public.users table.
+ * This handles cases where users signed up through Supabase Auth directly
+ * or where profile creation failed during signup.
+ */
+export const ensureUserExists = async (userId: string, email: string): Promise<boolean> => {
+  try {
+    // Check if user already exists
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (existingUser) {
+      return true; // User already exists
+    }
+
+    // Create the user profile
+    console.log('📝 Creating missing user profile for:', userId);
+    const { error: createError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: userId,
+        email: email,
+        spanish_level: 'A1',
+        goals: [],
+        preferred_topics: [],
+        correction_depth: 'standard',
+        voice_speed: 1.0,
+        accent_preference: 'mexico',
+      });
+
+    if (createError) {
+      console.error('❌ Failed to create user profile:', createError);
+      return false;
+    }
+
+    console.log('✅ Created user profile for:', userId);
+    return true;
+  } catch (error) {
+    console.error('Error in ensureUserExists:', error);
+    return false;
+  }
+};
 
 export const authenticateToken = async (
   req: Request,
@@ -32,6 +78,9 @@ export const authenticateToken = async (
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
+
+    // Ensure user exists in public.users table
+    await ensureUserExists(user.id, user.email || '');
 
     req.user = {
       id: user.id,
@@ -70,6 +119,10 @@ export const optionalAuth = async (
 
     if (user) {
       console.log('✅ User authenticated:', user.id);
+      
+      // Ensure user exists in public.users table
+      await ensureUserExists(user.id, user.email || '');
+      
       req.user = {
         id: user.id,
         email: user.email || '',
