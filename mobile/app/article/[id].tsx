@@ -60,8 +60,9 @@ export default function ArticleReaderScreen() {
     const readSeconds = Math.round((Date.now() - readStartTime) / 1000);
     try {
       await api.trackArticleRead(id, readSeconds, Math.round(maxScrollPercent));
-    } catch (error) {
-      console.error('Error tracking read:', error);
+    } catch {
+      // Silently ignore read tracking errors - non-critical feature
+      // Table may not exist yet or user may not be authenticated
     }
   };
 

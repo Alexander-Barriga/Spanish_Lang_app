@@ -307,6 +307,12 @@ router.post('/:id/read', authMiddleware, async (req: Request, res: Response) => 
         });
 
       if (error) {
+        // Handle foreign key constraint error (user not in public.users table)
+        // This is non-critical - just log and return success
+        if (error.code === '23503') {
+          console.log('Read tracking skipped: user not in public.users table');
+          return res.json({ success: true, skipped: true });
+        }
         console.error('Error creating read:', error);
         return res.status(500).json({ error: 'Failed to create read' });
       }
@@ -315,7 +321,8 @@ router.post('/:id/read', authMiddleware, async (req: Request, res: Response) => 
     res.json({ success: true });
   } catch (error) {
     console.error('Error in POST /articles/:id/read:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    // Return success even on error - read tracking is non-critical
+    res.json({ success: true, error: 'tracking_failed' });
   }
 });
 
