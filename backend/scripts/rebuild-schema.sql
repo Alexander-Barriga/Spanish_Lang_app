@@ -5,6 +5,9 @@
 -- ============================================
 
 -- Step 1: Drop all existing tables (in correct order for foreign keys)
+DROP TABLE IF EXISTS public.article_favorites CASCADE;
+DROP TABLE IF EXISTS public.article_reads CASCADE;
+DROP TABLE IF EXISTS public.articles CASCADE;
 DROP TABLE IF EXISTS public.pre_generated_audio CASCADE;
 DROP TABLE IF EXISTS public.journal_entries CASCADE;
 DROP TABLE IF EXISTS public.episode_attempts CASCADE;
@@ -328,6 +331,49 @@ CREATE TABLE public.pre_generated_audio (
 );
 
 -- ============================================
+-- ARTICLES TABLES (Substack Integration)
+-- ============================================
+
+-- Articles - Cached article data from Substack
+CREATE TABLE public.articles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    substack_id TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    slug TEXT NOT NULL,
+    image_url TEXT,
+    content_html TEXT,
+    author TEXT DEFAULT 'Alexander Barriga',
+    published_at TIMESTAMPTZ NOT NULL,
+    grammar_tags TEXT[] DEFAULT '{}',
+    word_count INTEGER DEFAULT 0,
+    estimated_read_minutes INTEGER DEFAULT 5,
+    substack_url TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Article Reads - Track opens and completion for popularity
+CREATE TABLE public.article_reads (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    article_id UUID REFERENCES public.articles(id) ON DELETE CASCADE,
+    opened_at TIMESTAMPTZ DEFAULT NOW(),
+    read_seconds INTEGER DEFAULT 0,
+    completion_percent INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Article Favorites - User's saved articles
+CREATE TABLE public.article_favorites (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    article_id UUID REFERENCES public.articles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, article_id)
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 
@@ -353,6 +399,12 @@ CREATE INDEX idx_episode_attempts_episode ON public.episode_attempts(episode_id)
 CREATE INDEX idx_journal_entries_user ON public.journal_entries(user_id);
 CREATE INDEX idx_journal_entries_episode ON public.journal_entries(episode_id);
 CREATE INDEX idx_pre_generated_audio_key ON public.pre_generated_audio(content_key);
+CREATE INDEX idx_articles_published ON public.articles(published_at DESC);
+CREATE INDEX idx_articles_grammar_tags ON public.articles USING GIN(grammar_tags);
+CREATE INDEX idx_article_reads_user ON public.article_reads(user_id);
+CREATE INDEX idx_article_reads_article ON public.article_reads(article_id);
+CREATE INDEX idx_article_favorites_user ON public.article_favorites(user_id);
+CREATE INDEX idx_article_favorites_article ON public.article_favorites(article_id);
 
 -- ============================================
 -- ROW LEVEL SECURITY
@@ -377,6 +429,9 @@ ALTER TABLE public.user_story_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.episode_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pre_generated_audio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.article_reads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.article_favorites ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
 CREATE POLICY "Users can view their own profile" ON public.users FOR SELECT USING (auth.uid() = id);
@@ -411,6 +466,15 @@ CREATE POLICY "Anyone can view quick mission topics" ON public.quick_mission_top
 CREATE POLICY "Anyone can view story arcs" ON public.story_arcs FOR SELECT USING (true);
 CREATE POLICY "Anyone can view episodes" ON public.episodes FOR SELECT USING (true);
 CREATE POLICY "Anyone can view pre-generated audio" ON public.pre_generated_audio FOR SELECT USING (true);
+
+-- Articles policies (public read, authenticated write for reads/favorites)
+CREATE POLICY "Anyone can view articles" ON public.articles FOR SELECT USING (true);
+CREATE POLICY "Users can view their own article reads" ON public.article_reads FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own article reads" ON public.article_reads FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own article reads" ON public.article_reads FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own favorites" ON public.article_favorites FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own favorites" ON public.article_favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own favorites" ON public.article_favorites FOR DELETE USING (auth.uid() = user_id);
 
 -- User curriculum progress policies
 CREATE POLICY "Users can view their own curriculum progress" ON public.user_curriculum_progress FOR SELECT USING (auth.uid() = user_id);

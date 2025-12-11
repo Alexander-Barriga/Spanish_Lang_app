@@ -812,11 +812,81 @@ class ApiClient {
       body: JSON.stringify({ contentKeys }),
     });
   }
+
+  // ============================================
+  // ARTICLES METHODS
+  // ============================================
+
+  async getArticles(tab: 'popular' | 'favorites' | 'search' = 'popular') {
+    return this.request<{ articles: Article[]; tab: string }>(`/articles?tab=${tab}`);
+  }
+
+  async getArticle(id: string) {
+    return this.request<{ article: Article }>(`/articles/${id}`);
+  }
+
+  async searchArticles(query?: string, grammar?: string) {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (grammar) params.append('grammar', grammar);
+    return this.request<{ articles: Article[] }>(`/articles/search?${params.toString()}`);
+  }
+
+  async getArticleAutocomplete(query: string) {
+    return this.request<{ suggestions: string[] }>(`/articles/autocomplete?q=${query}`);
+  }
+
+  async getGrammarTags() {
+    return this.request<{ tags: Array<{ grammar_focus: string; title_en: string }> }>('/articles/grammar-tags');
+  }
+
+  async trackArticleRead(articleId: string, readSeconds: number, completionPercent: number) {
+    return this.request<{ success: boolean }>(`/articles/${articleId}/read`, {
+      method: 'POST',
+      body: JSON.stringify({ read_seconds: readSeconds, completion_percent: completionPercent }),
+    });
+  }
+
+  async addArticleToFavorites(articleId: string) {
+    return this.request<{ success: boolean }>(`/articles/${articleId}/favorite`, {
+      method: 'POST',
+    });
+  }
+
+  async removeArticleFromFavorites(articleId: string) {
+    return this.request<{ success: boolean }>(`/articles/${articleId}/favorite`, {
+      method: 'DELETE',
+    });
+  }
+
+  async syncArticles() {
+    return this.request<{ success: boolean; synced: number; skipped: number; errors: string[] }>('/articles/sync', {
+      method: 'POST',
+    });
+  }
 }
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
+
+export interface Article {
+  id: string;
+  substack_id: string;
+  title: string;
+  subtitle: string | null;
+  slug: string;
+  image_url: string | null;
+  content_html: string | null;
+  author: string;
+  published_at: string;
+  grammar_tags: string[];
+  word_count: number;
+  estimated_read_minutes: number;
+  substack_url: string;
+  is_favorite: boolean;
+  popularity_score?: number;
+}
 
 export interface CurriculumWeek {
   id: string;

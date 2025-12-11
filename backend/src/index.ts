@@ -22,6 +22,7 @@ import placementRoutes from './routes/placement';
 import storiesRoutes from './routes/stories';
 import journalRoutes from './routes/journal';
 import audioCacheRoutes from './routes/audio-cache';
+import articlesRoutes from './routes/articles';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -66,6 +67,7 @@ app.use('/api/v1/placement', placementRoutes);
 app.use('/api/v1/stories', storiesRoutes);
 app.use('/api/v1/journal', journalRoutes);
 app.use('/api/v1/audio', audioCacheRoutes);
+app.use('/api/v1/articles', articlesRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
