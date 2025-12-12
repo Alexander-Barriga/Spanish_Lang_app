@@ -252,7 +252,14 @@ export default function ConversationScreen() {
   };
 
   // Text-to-Speech function with emotional voice synthesis
-  const speakText = async (text: string, emotion?: EmotionData) => {
+  const speakText = async (text: string | undefined, emotion?: EmotionData) => {
+    // Guard against undefined or empty text
+    if (!text || text.length === 0) {
+      console.warn('⚠️ speakText called with empty or undefined text');
+      setState('idle');
+      return;
+    }
+    
     try {
       console.log('🔊 Starting TTS...');
       console.log(`📏 Text length: ${text.length} characters`);
@@ -521,14 +528,18 @@ export default function ConversationScreen() {
           throw new Error(responseResult.error);
         }
         
-        if (responseResult.data) {
+        if (responseResult.data?.message) {
           // Extract emotion for human-like voice synthesis
           const emotion = responseResult.data.emotion || responseResult.data.message.emotion;
           
+          // Validate message content exists
+          const messageContent = responseResult.data.message.content || 
+            'Lo siento, no pude generar una respuesta. Por favor, intenta de nuevo.';
+          
           const aiMessage: Message = {
-            id: responseResult.data.message.id,
+            id: responseResult.data.message.id || Date.now().toString(),
             role: 'assistant',
-            content: responseResult.data.message.content,
+            content: messageContent,
             corrections: responseResult.data.corrections,
             emotion,
           };
@@ -549,7 +560,8 @@ export default function ConversationScreen() {
           console.log(`⏱️ TTS took: ${Date.now() - ttsStart}ms`);
           console.log(`⏱️ TOTAL response time: ${Date.now() - startTime}ms`);
         } else {
-          throw new Error('Failed to get AI response');
+          console.error('❌ Missing message in response:', responseResult.data);
+          throw new Error('Failed to get AI response - no message content');
         }
       } else {
         // Fallback if still no conversation ID
