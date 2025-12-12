@@ -430,6 +430,10 @@ class ApiClient {
   // CURRICULUM ENDPOINTS
   // ============================================
 
+  async getAllGrammarTopics() {
+    return this.request<{ grammarTopics: GrammarTopic[] }>('/curriculum/grammar/all');
+  }
+
   async getCurriculum(level: 'B1' | 'B2') {
     return this.request<{ curriculum: CurriculumWeek[] }>(`/curriculum/${level}`);
   }
@@ -899,6 +903,9 @@ export interface CurriculumWeek {
   triggers: string[];
   example_sentences: Array<{ spanish: string; english: string }>;
 }
+
+// Alias for grammar topic selection UI
+export type GrammarTopic = CurriculumWeek;
 
 export interface DailyLesson {
   id: string;

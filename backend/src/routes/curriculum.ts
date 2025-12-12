@@ -6,6 +6,27 @@ const router = Router();
 
 router.use(optionalAuth);
 
+// Get ALL grammar topics from curriculum (for grammar selection UI)
+router.get('/grammar/all', async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('grammar_curriculum')
+      .select('id, level, week_number, grammar_focus, title_es, title_en, description, triggers, example_sentences')
+      .order('level', { ascending: true })
+      .order('week_number', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching all grammar topics:', error);
+      return res.status(500).json({ error: 'Failed to fetch grammar topics' });
+    }
+
+    res.json({ grammarTopics: data || [] });
+  } catch (error) {
+    console.error('Grammar topics fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get curriculum for a specific level (B1 or B2)
 router.get('/:level', async (req: Request, res: Response) => {
   try {

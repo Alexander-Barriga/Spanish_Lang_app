@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,20 +6,48 @@ import {
   Pressable, 
   ScrollView,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withTiming,
+  FadeIn,
+  FadeOut,
+} from 'react-native-reanimated';
 import { 
   CONVERSATION_MODES, 
   DEFAULT_TOPICS, 
   DEFAULT_PERSONAS,
   SPANISH_LEVELS,
-  GRAMMAR_RULES,
 } from '../src/config/constants';
 import { colors, textStyles, spacing, borderRadius } from '../src/theme';
+import { api, GrammarTopic } from '../src/services/api';
 
 type ModeId = 'open' | 'topic' | 'vocabulary' | 'grammar' | 'roleplay';
+
+// Level descriptions for when user selects a broad level
+const LEVEL_DESCRIPTIONS: Record<string, { description: string; examples: string[] }> = {
+  'A1': {
+    description: 'Practice foundational Spanish grammar including basic verb conjugations, simple sentences, and common expressions. Perfect for beginners!',
+    examples: ['Present tense', 'Ser vs Estar', 'Basic questions'],
+  },
+  'A2': {
+    description: 'Build on your basics with more verb tenses, object pronouns, and comparative structures. Great for elementary learners!',
+    examples: ['Past tense basics', 'Reflexive verbs', 'Direct objects'],
+  },
+  'B1': {
+    description: 'Dive into intermediate grammar including the subjunctive mood, complex tenses, and nuanced expressions. Time to level up!',
+    examples: ['Present subjunctive', 'Conditional tense', 'Object pronoun combinations'],
+  },
+  'B2': {
+    description: 'Master advanced grammar including past subjunctive, passive voice, and sophisticated discourse structures. You\'re becoming fluent!',
+    examples: ['Imperfect subjunctive', 'Passive constructions', 'Advanced connectors'],
+  },
+};
 
 export default function ModeSetupScreen() {
   const { mode } = useLocalSearchParams<{ mode: ModeId }>();
@@ -29,8 +57,39 @@ export default function ModeSetupScreen() {
   const [customTopic, setCustomTopic] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedGrammar, setSelectedGrammar] = useState<string | null>(null);
+  const [expandedGrammar, setExpandedGrammar] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [customPersona, setCustomPersona] = useState('');
+  
+  // Grammar topics from API
+  const [grammarTopics, setGrammarTopics] = useState<GrammarTopic[]>([]);
+  const [isLoadingGrammar, setIsLoadingGrammar] = useState(false);
+  
+  // Fetch grammar topics when grammar mode is selected
+  useEffect(() => {
+    if (mode === 'grammar') {
+      loadGrammarTopics();
+    }
+  }, [mode]);
+  
+  const loadGrammarTopics = async () => {
+    setIsLoadingGrammar(true);
+    try {
+      const result = await api.getAllGrammarTopics();
+      if (result.data?.grammarTopics) {
+        setGrammarTopics(result.data.grammarTopics);
+      }
+    } catch (error) {
+      console.error('Error loading grammar topics:', error);
+    } finally {
+      setIsLoadingGrammar(false);
+    }
+  };
+  
+  // Filter grammar topics by level
+  const filteredGrammarTopics = selectedLevel 
+    ? grammarTopics.filter(t => t.level === selectedLevel)
+    : grammarTopics;
 
   const handleStartConversation = () => {
     const params: { id: string; mode: string; topic?: string; grammarFocus?: string; persona?: string } = {
@@ -114,9 +173,10 @@ export default function ModeSetupScreen() {
 
       case 'grammar':
         return (
-          <View>
+          <View style={styles.grammarContainer}>
             <Text style={styles.sectionTitle}>Select Grammar Focus</Text>
             
+            {/* Level Filter Buttons */}
             <Text style={styles.subSectionTitle}>By Level</Text>
             <View style={styles.levelsContainer}>
               {SPANISH_LEVELS.slice(0, 4).map((level) => (
@@ -124,16 +184,23 @@ export default function ModeSetupScreen() {
                   key={level.value}
                   style={[
                     styles.levelOption,
-                    selectedLevel === level.value && styles.levelOptionSelected,
+                    selectedLevel === level.value && !selectedGrammar && styles.levelOptionSelected,
                   ]}
                   onPress={() => {
-                    setSelectedLevel(level.value);
-                    setSelectedGrammar(null);
+                    if (selectedLevel === level.value && !selectedGrammar) {
+                      // Deselect level if already selected
+                      setSelectedLevel(null);
+                      setExpandedGrammar(null);
+                    } else {
+                      setSelectedLevel(level.value);
+                      setSelectedGrammar(null);
+                      setExpandedGrammar(null);
+                    }
                   }}
                 >
                   <Text style={[
                     styles.levelLabel,
-                    selectedLevel === level.value && styles.levelLabelSelected,
+                    selectedLevel === level.value && !selectedGrammar && styles.levelLabelSelected,
                   ]}>
                     {level.value}
                   </Text>
@@ -141,35 +208,126 @@ export default function ModeSetupScreen() {
               ))}
             </View>
 
+            {/* Level Description Card (when level selected but no specific grammar) */}
+            {selectedLevel && !selectedGrammar && LEVEL_DESCRIPTIONS[selectedLevel] && (
+              <Animated.View 
+                entering={FadeIn.duration(200)} 
+                exiting={FadeOut.duration(150)}
+                style={styles.levelDescriptionCard}
+              >
+                <View style={styles.levelDescriptionHeader}>
+                  <View style={styles.levelBadgeLarge}>
+                    <Text style={styles.levelBadgeLargeText}>{selectedLevel}</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={24} color={colors.primary.gold} />
+                </View>
+                <Text style={styles.levelDescriptionText}>
+                  {LEVEL_DESCRIPTIONS[selectedLevel].description}
+                </Text>
+                <View style={styles.levelExamples}>
+                  {LEVEL_DESCRIPTIONS[selectedLevel].examples.map((ex, i) => (
+                    <View key={i} style={styles.levelExampleBadge}>
+                      <Text style={styles.levelExampleText}>{ex}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Animated.View>
+            )}
+
             <Text style={styles.subSectionTitle}>Or Specific Grammar</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.grammarScroll}
-            >
-              {Object.entries(GRAMMAR_RULES).flatMap(([level, rules]) =>
-                rules.map((rule) => (
-                  <Pressable
-                    key={`${level}-${rule}`}
-                    style={[
-                      styles.grammarChip,
-                      selectedGrammar === rule && styles.grammarChipSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedGrammar(rule);
-                      setSelectedLevel(null);
-                    }}
-                  >
-                    <Text style={[
-                      styles.grammarText,
-                      selectedGrammar === rule && styles.grammarTextSelected,
-                    ]}>
-                      {rule}
-                    </Text>
-                  </Pressable>
-                ))
-              )}
-            </ScrollView>
+            
+            {isLoadingGrammar ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary.gold} />
+                <Text style={styles.loadingText}>Loading grammar topics...</Text>
+              </View>
+            ) : (
+              <View style={styles.grammarCardsContainer}>
+                {filteredGrammarTopics.map((topic) => {
+                  const isSelected = selectedGrammar === topic.grammar_focus;
+                  const isExpanded = expandedGrammar === topic.grammar_focus;
+                  
+                  return (
+                    <Pressable
+                      key={topic.id}
+                      style={[
+                        styles.grammarCard,
+                        isSelected && styles.grammarCardSelected,
+                      ]}
+                      onPress={() => {
+                        if (isExpanded) {
+                          // Collapse if already expanded
+                          setExpandedGrammar(null);
+                        } else {
+                          // Expand this card
+                          setExpandedGrammar(topic.grammar_focus);
+                        }
+                        // Always select on tap
+                        setSelectedGrammar(topic.grammar_focus);
+                        setSelectedLevel(null);
+                      }}
+                    >
+                      {/* Card Header */}
+                      <View style={styles.grammarCardHeader}>
+                        <View style={styles.grammarCardTitleRow}>
+                          <View style={[styles.levelBadge, topic.level === 'B2' && styles.levelBadgeB2]}>
+                            <Text style={styles.levelBadgeText}>{topic.level}</Text>
+                          </View>
+                          <Text style={[styles.grammarCardTitle, isSelected && styles.grammarCardTitleSelected]}>
+                            {topic.title_en}
+                          </Text>
+                        </View>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={22} color={colors.primary.gold} />
+                        )}
+                      </View>
+                      
+                      {/* Description Preview (always visible) */}
+                      <Text 
+                        style={styles.grammarCardPreview}
+                        numberOfLines={isExpanded ? undefined : 2}
+                      >
+                        {topic.description}
+                      </Text>
+                      
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <Animated.View entering={FadeIn.duration(200)}>
+                          {/* Triggers */}
+                          {topic.triggers && topic.triggers.length > 0 && (
+                            <View style={styles.triggersSection}>
+                              <Text style={styles.triggersSectionTitle}>Key Phrases:</Text>
+                              <View style={styles.triggersContainer}>
+                                {topic.triggers.slice(0, 4).map((trigger, index) => (
+                                  <View key={index} style={styles.triggerBadge}>
+                                    <Text style={styles.triggerText}>{trigger}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          )}
+                          
+                          {/* Example Sentences */}
+                          {topic.example_sentences && topic.example_sentences.length > 0 && (
+                            <View style={styles.examplesSection}>
+                              <Text style={styles.examplesSectionTitle}>Examples:</Text>
+                              {topic.example_sentences.slice(0, 2).map((example, index) => (
+                                <View key={index} style={styles.exampleItem}>
+                                  <Text style={styles.exampleSpanish}>{example.spanish}</Text>
+                                  <Text style={styles.exampleEnglish}>{example.english}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                          
+                          <Text style={styles.tapHint}>Tap "Start Conversation" to practice</Text>
+                        </Animated.View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
         );
 
@@ -405,29 +563,175 @@ const styles = StyleSheet.create({
   levelLabelSelected: {
     color: colors.primary.gold,
   },
-  grammarScroll: {
-    marginBottom: spacing[4],
+  // Grammar UI Styles
+  grammarContainer: {
+    flex: 1,
   },
-  grammarChip: {
+  grammarCardsContainer: {
+    gap: spacing[3],
+    paddingBottom: spacing[4],
+  },
+  grammarCard: {
     backgroundColor: colors.background.card,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
-    marginRight: spacing[2],
-    borderWidth: 1,
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+    borderWidth: 2,
     borderColor: colors.border.default,
   },
-  grammarChipSelected: {
+  grammarCardSelected: {
     borderColor: colors.primary.gold,
-    backgroundColor: colors.primary.gold + '15',
+    backgroundColor: colors.primary.gold + '08',
   },
-  grammarText: {
-    ...textStyles.bodySmall,
+  grammarCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing[2],
+  },
+  grammarCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing[2],
+  },
+  grammarCardTitle: {
+    ...textStyles.h5,
     color: colors.text.primary,
+    flex: 1,
   },
-  grammarTextSelected: {
+  grammarCardTitleSelected: {
     color: colors.primary.gold,
-    fontWeight: '600',
+  },
+  grammarCardPreview: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    lineHeight: 22,
+  },
+  levelBadge: {
+    backgroundColor: colors.accent.tango + '20',
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[2],
+    borderRadius: borderRadius.md,
+  },
+  levelBadgeB2: {
+    backgroundColor: colors.accent.sky + '20',
+  },
+  levelBadgeText: {
+    ...textStyles.labelSmall,
+    color: colors.accent.tango,
+    fontWeight: '700',
+  },
+  levelBadgeLarge: {
+    backgroundColor: colors.primary.gold + '20',
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.lg,
+  },
+  levelBadgeLargeText: {
+    ...textStyles.h4,
+    color: colors.primary.gold,
+    fontWeight: '700',
+  },
+  levelDescriptionCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.xl,
+    padding: spacing[5],
+    marginTop: spacing[4],
+    borderWidth: 2,
+    borderColor: colors.primary.gold,
+  },
+  levelDescriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[3],
+  },
+  levelDescriptionText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    lineHeight: 24,
+    marginBottom: spacing[3],
+  },
+  levelExamples: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  levelExampleBadge: {
+    backgroundColor: colors.primary.gold + '15',
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.full,
+  },
+  levelExampleText: {
+    ...textStyles.bodySmall,
+    color: colors.primary.gold,
+    fontWeight: '500',
+  },
+  triggersSection: {
+    marginTop: spacing[4],
+  },
+  triggersSectionTitle: {
+    ...textStyles.label,
+    color: colors.accent.tango,
+    marginBottom: spacing[2],
+  },
+  triggersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  triggerBadge: {
+    backgroundColor: colors.accent.tango + '15',
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.full,
+  },
+  triggerText: {
+    ...textStyles.bodySmall,
+    color: colors.accent.tango,
+    fontWeight: '500',
+  },
+  examplesSection: {
+    marginTop: spacing[4],
+  },
+  examplesSectionTitle: {
+    ...textStyles.label,
+    color: colors.accent.sage,
+    marginBottom: spacing[2],
+  },
+  exampleItem: {
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.lg,
+    padding: spacing[3],
+    marginBottom: spacing[2],
+  },
+  exampleSpanish: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontStyle: 'italic',
+    marginBottom: spacing[1],
+  },
+  exampleEnglish: {
+    ...textStyles.bodySmall,
+    color: colors.text.tertiary,
+  },
+  tapHint: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginTop: spacing[4],
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[10],
+    gap: spacing[3],
+  },
+  loadingText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
   },
   personasContainer: {
     gap: spacing[3],
