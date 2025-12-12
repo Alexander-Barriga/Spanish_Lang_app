@@ -11,13 +11,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withTiming,
-  FadeIn,
-  FadeOut,
-} from 'react-native-reanimated';
 import { 
   CONVERSATION_MODES, 
   DEFAULT_TOPICS, 
@@ -210,11 +203,7 @@ export default function ModeSetupScreen() {
 
             {/* Level Description Card (when level selected but no specific grammar) */}
             {selectedLevel && !selectedGrammar && LEVEL_DESCRIPTIONS[selectedLevel] && (
-              <Animated.View 
-                entering={FadeIn.duration(200)} 
-                exiting={FadeOut.duration(150)}
-                style={styles.levelDescriptionCard}
-              >
+              <View style={styles.levelDescriptionCard}>
                 <View style={styles.levelDescriptionHeader}>
                   <View style={styles.levelBadgeLarge}>
                     <Text style={styles.levelBadgeLargeText}>{selectedLevel}</Text>
@@ -231,7 +220,7 @@ export default function ModeSetupScreen() {
                     </View>
                   ))}
                 </View>
-              </Animated.View>
+              </View>
             )}
 
             <Text style={styles.subSectionTitle}>Or Specific Grammar</Text>
@@ -292,7 +281,7 @@ export default function ModeSetupScreen() {
                       
                       {/* Expanded Content */}
                       {isExpanded && (
-                        <Animated.View entering={FadeIn.duration(200)}>
+                        <View>
                           {/* Triggers */}
                           {topic.triggers && topic.triggers.length > 0 && (
                             <View style={styles.triggersSection}>
@@ -321,7 +310,7 @@ export default function ModeSetupScreen() {
                           )}
                           
                           <Text style={styles.tapHint}>Tap "Start Conversation" to practice</Text>
-                        </Animated.View>
+                        </View>
                       )}
                     </Pressable>
                   );
