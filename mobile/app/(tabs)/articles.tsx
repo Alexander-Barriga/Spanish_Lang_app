@@ -168,7 +168,7 @@ export default function ArticlesScreen() {
         </View>
       )}
       <View style={styles.articleContent}>
-        <Text style={styles.articleTitle} numberOfLines={2}>
+        <Text style={styles.articleTitle}>
           {article.title}
         </Text>
         <View style={styles.articleMeta}>
