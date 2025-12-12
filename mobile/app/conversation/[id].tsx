@@ -747,7 +747,7 @@ export default function ConversationScreen() {
               </Text>
 
               {/* Current Message Preview */}
-              {messages.length > 0 && state === 'idle' && (
+              {messages.length > 0 && state === 'idle' && messages[messages.length - 1]?.content && (
                 <View style={styles.messagePreview}>
                   <Text style={styles.messagePreviewText} numberOfLines={3}>
                     {messages[messages.length - 1].content}
