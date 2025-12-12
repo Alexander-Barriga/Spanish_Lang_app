@@ -22,16 +22,8 @@ import { api, GrammarTopic } from '../src/services/api';
 
 type ModeId = 'open' | 'topic' | 'vocabulary' | 'grammar' | 'roleplay';
 
-// Level descriptions for when user selects a broad level
+// Level descriptions for when user selects a broad level (B1/B2 only - targeting intermediate learners)
 const LEVEL_DESCRIPTIONS: Record<string, { description: string; examples: string[] }> = {
-  'A1': {
-    description: 'Practice foundational Spanish grammar including basic verb conjugations, simple sentences, and common expressions. Perfect for beginners!',
-    examples: ['Present tense', 'Ser vs Estar', 'Basic questions'],
-  },
-  'A2': {
-    description: 'Build on your basics with more verb tenses, object pronouns, and comparative structures. Great for elementary learners!',
-    examples: ['Past tense basics', 'Reflexive verbs', 'Direct objects'],
-  },
   'B1': {
     description: 'Dive into intermediate grammar including the subjunctive mood, complex tenses, and nuanced expressions. Time to level up!',
     examples: ['Present subjunctive', 'Conditional tense', 'Object pronoun combinations'],
@@ -169,10 +161,10 @@ export default function ModeSetupScreen() {
           <View style={styles.grammarContainer}>
             <Text style={styles.sectionTitle}>Select Grammar Focus</Text>
             
-            {/* Level Filter Buttons */}
+            {/* Level Filter Buttons - B1/B2 only (intermediate learners) */}
             <Text style={styles.subSectionTitle}>By Level</Text>
             <View style={styles.levelsContainer}>
-              {SPANISH_LEVELS.slice(0, 4).map((level) => (
+              {SPANISH_LEVELS.filter(l => l.value === 'B1' || l.value === 'B2').map((level) => (
                 <Pressable
                   key={level.value}
                   style={[
