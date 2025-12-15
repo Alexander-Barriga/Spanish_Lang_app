@@ -79,6 +79,16 @@ const errorCategoryLabels: Record<string, string> = {
   word_order: 'Word Order',
 };
 
+// Helper to convert ArrayBuffer to base64 for audio playback
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export default function EpisodePlayer() {
   const { episode: episodeId } = useLocalSearchParams<{ episode: string }>();
   
@@ -219,15 +229,45 @@ export default function EpisodePlayer() {
     // Stop any currently playing audio first to prevent overlapping
     await stopAudio();
     
-    // Try to play pre-generated audio
-    try {
-      const audioResult = await api.getPreGeneratedAudio(scene.audio_key);
-      if (audioResult.data?.audioUrl) {
+    // Try to play pre-generated audio first, fallback to TTS
+    const audioResult = await api.getPreGeneratedAudio(scene.audio_key);
+    if (audioResult.data?.audioUrl) {
+      try {
+        // Pre-generated audio available - try to play it
         await playAudio(audioResult.data.audioUrl);
+      } catch (playError) {
+        // Pre-generated audio URL failed (network error, file not found, etc.)
+        console.log('Pre-generated audio playback failed, falling back to TTS:', playError);
+        await fallbackToTTS(scene);
       }
-    } catch (error) {
-      console.log('Pre-generated audio not available, using TTS');
-      // Fallback to TTS would go here
+    } else {
+      // No pre-generated audio in database, use TTS
+      console.log('No pre-generated audio found, using TTS for:', scene.audio_key);
+      await fallbackToTTS(scene);
+    }
+  };
+
+  // TTS fallback when pre-generated audio isn't available
+  const fallbackToTTS = async (scene: Scene) => {
+    try {
+      const audioBuffer = await api.synthesizeSpeech(scene.florencia_says, 'florencia', {
+        type: scene.emotion || 'content',
+        intensity: 0.7,
+      });
+      
+      if (audioBuffer.byteLength > 0) {
+        const base64 = arrayBufferToBase64(audioBuffer);
+        const audioUri = `data:audio/mpeg;base64,${base64}`;
+        await playAudio(audioUri);
+      } else {
+        // Empty audio buffer - just mark scene as played so user can proceed
+        console.warn('TTS returned empty buffer');
+        setSceneAudioPlayed(true);
+      }
+    } catch (ttsError) {
+      console.error('TTS fallback also failed:', ttsError);
+      // Still allow user to proceed without audio
+      setSceneAudioPlayed(true);
     }
   };
 
