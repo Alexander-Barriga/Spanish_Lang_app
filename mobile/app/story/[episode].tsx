@@ -9,7 +9,10 @@ import {
   Animated,
   Dimensions,
   Alert,
-  Modal 
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -103,6 +106,11 @@ export default function EpisodePlayer() {
   const [correctionPlaybackComplete, setCorrectionPlaybackComplete] = useState(false);
   const [sceneAudioPlayed, setSceneAudioPlayed] = useState(false); // Tracks if scene audio has completed
   const [grammarPanelVisible, setGrammarPanelVisible] = useState(false);
+  
+  // Written response state
+  const [isWriteMode, setIsWriteMode] = useState(false);
+  const [writtenResponse, setWrittenResponse] = useState('');
+  const [responseWasWritten, setResponseWasWritten] = useState(false);
   const grammarPanelAnim = useRef(new Animated.Value(0)).current;
 
   // Audio and recording hooks
@@ -381,17 +389,83 @@ export default function EpisodePlayer() {
       setCurrentPhase('feedback');
     }
   };
-  
-  // Auto-play user's recording when entering feedback phase
-  useEffect(() => {
-    if (currentPhase === 'feedback' && userRecordingUri && !userPlaybackComplete) {
-      // Small delay to let the UI render first
-      const timer = setTimeout(() => {
-        playUserRecording(userRecordingUri);
-      }, 500);
-      return () => clearTimeout(timer);
+
+  // Handle written response submission
+  const handleSubmitWrittenResponse = async () => {
+    if (!writtenResponse.trim()) {
+      Alert.alert('Empty Response', 'Please write a response before submitting.');
+      return;
     }
-  }, [currentPhase, userRecordingUri, userPlaybackComplete]);
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Mark that this was a written response (no audio to play back)
+    setResponseWasWritten(true);
+    setUserRecordingUri(null);
+    setUserPlaybackComplete(false);
+    
+    // Use written text as the transcription
+    const userText = writtenResponse.trim();
+    setUserTranscription(userText);
+    setSpeakingCount(prev => prev + 1);
+    
+    // Clear write mode
+    setIsWriteMode(false);
+    setWrittenResponse('');
+    
+    // Analyze the written response with same grammar analysis as voice
+    setIsAnalyzing(true);
+    setCurrentPhase('feedback');
+    
+    try {
+      const analysisResult = await api.analyzeGrammar({
+        userResponse: userText,
+        grammarFocus: episode?.grammar_focus,
+        expectedPatterns: currentScene?.expected_patterns,
+        grammarHint: currentScene?.grammar_hint,
+        contextDialogue: currentScene?.florencia_says,
+      });
+      
+      if (analysisResult.data?.analysis) {
+        const analysis = analysisResult.data.analysis;
+        setGrammarAnalysis(analysis);
+        setFeedbackMessage(analysis.feedbackMessage);
+        
+        // Determine if correction practice is needed
+        if (analysis.overallCorrect) {
+          setGrammarScore(prev => prev + 20);
+          setNeedsCorrection(false);
+        } else if (analysis.hasGrammarErrors && analysis.correctedVersion) {
+          setNeedsCorrection(true);
+        } else {
+          setNeedsCorrection(false);
+        }
+      } else {
+        setFeedbackMessage('Great effort! Keep practicing.');
+      }
+    } catch (error) {
+      console.error('Grammar analysis error:', error);
+      setFeedbackMessage('Could not analyze grammar. Keep practicing!');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+  
+  // Auto-play user's recording when entering feedback phase (only for voice responses)
+  useEffect(() => {
+    if (currentPhase === 'feedback') {
+      if (responseWasWritten) {
+        // Written response - skip playback, mark complete immediately
+        setUserPlaybackComplete(true);
+      } else if (userRecordingUri && !userPlaybackComplete) {
+        // Voice response - play recording as before
+        const timer = setTimeout(() => {
+          playUserRecording(userRecordingUri);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentPhase, userRecordingUri, userPlaybackComplete, responseWasWritten]);
 
   const handleStartCorrectionPractice = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -444,6 +518,11 @@ export default function EpisodePlayer() {
     setFeedbackMessage('');
     setIsAnalyzing(false);
     
+    // Reset write mode state
+    setIsWriteMode(false);
+    setWrittenResponse('');
+    setResponseWasWritten(false);
+    
     // Give partial credit for practicing the correction
     setGrammarScore(prev => prev + 5);
     
@@ -495,6 +574,11 @@ export default function EpisodePlayer() {
     setIsAnalyzing(false);
     setUserTranscription('');
     setFeedbackMessage('');
+    
+    // Reset write mode state
+    setIsWriteMode(false);
+    setWrittenResponse('');
+    setResponseWasWritten(false);
     
     // Find next scene - prioritize scene's next_scene property, then scene_number, then index
     let nextSceneIndex = -1;
@@ -956,24 +1040,86 @@ export default function EpisodePlayer() {
                 ) : (
                   <View style={styles.speakSection}>
                     {currentScene?.grammar_hint && (
-                      <View style={styles.hintBox}>
+                      <Pressable 
+                        onPress={() => setIsWriteMode(!isWriteMode)}
+                        style={[styles.hintBox, isWriteMode && styles.hintBoxExpanded]}
+                      >
                         <View style={styles.hintHeader}>
                           <Ionicons name="bulb-outline" size={16} color={colors.primary.gold} />
                           <Text style={styles.hintText}>{currentScene.grammar_hint}</Text>
                         </View>
+                        
+                        {/* Tap to Write label when collapsed */}
+                        {!isWriteMode && (
+                          <View style={styles.tapToWriteRow}>
+                            <Ionicons name="create-outline" size={14} color={colors.text.secondary} />
+                            <Text style={styles.tapToWriteLabel}>Tap to Write</Text>
+                          </View>
+                        )}
+                        
                         {currentScene?.expected_patterns && currentScene.expected_patterns.length > 0 && (
                           <View style={styles.starterPhrases}>
                             <Text style={styles.starterLabel}>Try starting with:</Text>
                             <View style={styles.phraseChips}>
                               {currentScene.expected_patterns.slice(0, 2).map((phrase, idx) => (
-                                <View key={idx} style={styles.phraseChip}>
+                                <Pressable 
+                                  key={idx} 
+                                  style={[styles.phraseChip, styles.phraseChipTappable]}
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    setWrittenResponse(phrase + ' ');
+                                    setIsWriteMode(true);
+                                  }}
+                                >
                                   <Text style={styles.phraseText}>"{phrase}..."</Text>
-                                </View>
+                                </Pressable>
                               ))}
                             </View>
                           </View>
                         )}
-                      </View>
+                        
+                        {/* Expanded write mode */}
+                        {isWriteMode && (
+                          <View style={styles.writeInputContainer}>
+                            <TextInput
+                              style={styles.writeInput}
+                              placeholder="Escribe tu respuesta en español..."
+                              placeholderTextColor={colors.text.muted}
+                              value={writtenResponse}
+                              onChangeText={setWrittenResponse}
+                              multiline
+                              autoFocus
+                              textAlignVertical="top"
+                            />
+                            <View style={styles.writeButtonsRow}>
+                              <Pressable 
+                                style={styles.cancelWriteButton}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  setIsWriteMode(false);
+                                  setWrittenResponse('');
+                                }}
+                              >
+                                <Text style={styles.cancelWriteButtonText}>Cancel</Text>
+                              </Pressable>
+                              <Pressable 
+                                style={[
+                                  styles.submitWriteButton,
+                                  !writtenResponse.trim() && styles.submitWriteButtonDisabled
+                                ]}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleSubmitWrittenResponse();
+                                }}
+                                disabled={!writtenResponse.trim()}
+                              >
+                                <Ionicons name="send" size={16} color={colors.text.primary} />
+                                <Text style={styles.submitWriteButtonText}>Submit</Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        )}
+                      </Pressable>
                     )}
                     <Pressable onPress={handleStartRecording} style={styles.recordButtonRaised}>
                       <LinearGradient
@@ -981,7 +1127,7 @@ export default function EpisodePlayer() {
                         style={styles.recordButtonGradient}
                       >
                         <Ionicons name="mic" size={28} color={colors.text.primary} />
-                        <Text style={styles.recordButtonText}>Tap to Speak</Text>
+                        <Text style={styles.recordButtonText}>Or Tap to Speak</Text>
                       </LinearGradient>
                     </Pressable>
                   </View>
@@ -1603,6 +1749,73 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.primary.gold,
     fontSize: 14,
+  },
+  phraseChipTappable: {
+    // Additional styling to indicate tappability
+    opacity: 1,
+  },
+  hintBoxExpanded: {
+    // Expanded state styling
+    borderLeftColor: colors.primary.gold,
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '60',
+  },
+  tapToWriteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    paddingTop: spacing[2],
+  },
+  tapToWriteLabel: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  writeInputContainer: {
+    marginTop: spacing[3],
+    gap: spacing[3],
+  },
+  writeInput: {
+    backgroundColor: colors.neutral[900],
+    borderRadius: borderRadius.md,
+    padding: spacing[3],
+    minHeight: 100,
+    color: colors.text.primary,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: colors.neutral[700],
+  },
+  writeButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing[2],
+  },
+  cancelWriteButton: {
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.neutral[800],
+  },
+  cancelWriteButtonText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+  },
+  submitWriteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary.gold,
+  },
+  submitWriteButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitWriteButtonText: {
+    ...textStyles.body,
+    color: colors.neutral[950],
+    fontWeight: '600',
   },
   hintText: {
     ...textStyles.hint,
