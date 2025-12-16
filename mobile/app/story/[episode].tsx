@@ -112,6 +112,11 @@ export default function EpisodePlayer() {
   const [writtenResponse, setWrittenResponse] = useState('');
   const [responseWasWritten, setResponseWasWritten] = useState(false);
   const grammarPanelAnim = useRef(new Animated.Value(0)).current;
+  
+  // Refs for keyboard handling and double-tap
+  const sceneScrollRef = useRef<ScrollView>(null);
+  const lastTapTimeRef = useRef<number>(0);
+  const DOUBLE_TAP_DELAY = 300; // ms
 
   // Audio and recording hooks
   // Main hook for Florencia's dialogue - marks scene audio as played when complete
@@ -947,28 +952,56 @@ export default function EpisodePlayer() {
 
   // Scene Phase
   if (currentPhase === 'scene' || currentPhase === 'response') {
+    // Handle double-tap to collapse write mode
+    const handleTextInputPress = () => {
+      const now = Date.now();
+      if (now - lastTapTimeRef.current < DOUBLE_TAP_DELAY) {
+        // Double tap detected - collapse
+        setIsWriteMode(false);
+        setWrittenResponse('');
+      }
+      lastTapTimeRef.current = now;
+    };
+
+    // Scroll to bottom when keyboard appears
+    const handleTextInputFocus = () => {
+      setTimeout(() => {
+        sceneScrollRef.current?.scrollToEnd({ animated: true });
+      }, 300);
+    };
+
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.sceneContainer}>
-          {/* Progress bar */}
-          <View style={styles.progressHeader}>
-            <Pressable onPress={() => router.back()} style={styles.closeButton}>
-              <Ionicons name="close" size={22} color={colors.text.secondary} />
-            </Pressable>
-            <View style={styles.sceneProgressBar}>
-              <View 
-                style={[
-                  styles.sceneProgressFill, 
-                  { width: `${((currentSceneIndex + 1) / (episode?.scenes?.length || 1)) * 100}%` }
-                ]} 
-              />
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          <View style={styles.sceneContainer}>
+            {/* Progress bar */}
+            <View style={styles.progressHeader}>
+              <Pressable onPress={() => router.back()} style={styles.closeButton}>
+                <Ionicons name="close" size={22} color={colors.text.secondary} />
+              </Pressable>
+              <View style={styles.sceneProgressBar}>
+                <View 
+                  style={[
+                    styles.sceneProgressFill, 
+                    { width: `${((currentSceneIndex + 1) / (episode?.scenes?.length || 1)) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.sceneCounter}>
+                {currentSceneIndex + 1}/{episode?.scenes?.length || 0}
+              </Text>
             </View>
-            <Text style={styles.sceneCounter}>
-              {currentSceneIndex + 1}/{episode?.scenes?.length || 0}
-            </Text>
-          </View>
 
-          <ScrollView style={styles.sceneScroll} contentContainerStyle={styles.sceneScrollContent}>
+            <ScrollView 
+              ref={sceneScrollRef}
+              style={styles.sceneScroll} 
+              contentContainerStyle={styles.sceneScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
             <Animated.View 
               style={[
                 styles.dialogueContainer,
@@ -1081,16 +1114,20 @@ export default function EpisodePlayer() {
                         {/* Expanded write mode */}
                         {isWriteMode && (
                           <View style={styles.writeInputContainer}>
-                            <TextInput
-                              style={styles.writeInput}
-                              placeholder="Escribe tu respuesta en español..."
-                              placeholderTextColor={colors.text.muted}
-                              value={writtenResponse}
-                              onChangeText={setWrittenResponse}
-                              multiline
-                              autoFocus
-                              textAlignVertical="top"
-                            />
+                            <Pressable onPress={handleTextInputPress}>
+                              <TextInput
+                                style={styles.writeInput}
+                                placeholder="Escribe tu respuesta en español..."
+                                placeholderTextColor={colors.text.muted}
+                                value={writtenResponse}
+                                onChangeText={setWrittenResponse}
+                                multiline
+                                autoFocus
+                                textAlignVertical="top"
+                                onFocus={handleTextInputFocus}
+                              />
+                            </Pressable>
+                            <Text style={styles.doubleTapHint}>Double-tap to collapse</Text>
                             <View style={styles.writeButtonsRow}>
                               <Pressable 
                                 style={styles.cancelWriteButton}
@@ -1134,11 +1171,12 @@ export default function EpisodePlayer() {
                 )}
               </Animated.View>
             )}
-          </ScrollView>
-          
-          {/* Grammar Reference Button */}
-          <GrammarReferenceButton />
-        </View>
+            </ScrollView>
+            
+            {/* Grammar Reference Button */}
+            <GrammarReferenceButton />
+          </View>
+        </KeyboardAvoidingView>
         
         {/* Grammar Panel Modal */}
         <GrammarPanel />
@@ -1816,6 +1854,16 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.neutral[950],
     fontWeight: '600',
+  },
+  doubleTapHint: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: spacing[1],
+  },
+  keyboardAvoidingContainer: {
+    flex: 1,
   },
   hintText: {
     ...textStyles.hint,
