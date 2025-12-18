@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -125,11 +125,22 @@ export default function EpisodeRoadmap({
         ? 'in_progress'
         : 'locked',
       onPress: async () => {
-        // Navigate to writing submission (to be created)
         try {
           const articleResult = await api.getEpisodeArticle(episodeId);
           if (articleResult.data?.article) {
-            router.push(`/article/episode/${articleResult.data.article.id}/writing`);
+            const articleId = articleResult.data.article.id;
+            
+            // If already submitted, navigate to feedback page
+            if (progress.writingSubmitted) {
+              const submissionResult = await api.checkEpisodeArticleSubmission(episodeId);
+              if (submissionResult.data?.submission?.id) {
+                router.push(`/article/episode/${articleId}/feedback/${submissionResult.data.submission.id}`);
+                return;
+              }
+            }
+            
+            // Otherwise navigate to writing page
+            router.push(`/article/episode/${articleId}/writing`);
           }
         } catch (error) {
           console.error('Error navigating to writing:', error);
@@ -145,12 +156,24 @@ export default function EpisodeRoadmap({
         : progress.writingSubmitted
         ? 'in_progress'
         : 'locked',
-      onPress: () => {
-        // Navigate to Gym with grammar focus filter
-        router.push({
-          pathname: '/progress',
-          params: { grammarFocus },
-        });
+      onPress: async () => {
+        // Check if writing exercise is completed first
+        if (!progress.writingSubmitted) {
+          Alert.alert(
+            'Writing Required',
+            'You must complete the writing exercise before accessing the Grammar Gym.'
+          );
+          return;
+        }
+        
+        try {
+          const articleResult = await api.getEpisodeArticle(episodeId);
+          if (articleResult.data?.article) {
+            router.push(`/article/episode/${articleResult.data.article.id}/gym`);
+          }
+        } catch (error) {
+          console.error('Error navigating to gym:', error);
+        }
       },
     },
   ];

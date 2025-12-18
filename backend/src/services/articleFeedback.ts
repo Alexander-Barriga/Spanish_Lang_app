@@ -21,6 +21,11 @@ export interface WritingFeedback {
       feedback: string;
     };
   };
+  topicRelevance: {
+    onTopic: boolean;
+    relevanceScore: number; // 0-100
+    feedback: string;
+  };
   vocabularyAnalysis: {
     level: string; // 'basic', 'intermediate', 'advanced'
     richness: number; // 0-100
@@ -79,6 +84,11 @@ Analyze this writing and provide comprehensive feedback in the following JSON st
       "feedback": "Specific feedback on their use of ${grammarFocus}"
     }
   },
+  "topicRelevance": {
+    "onTopic": true/false,
+    "relevanceScore": [0-100 how well they addressed the prompt],
+    "feedback": "Feedback on whether they addressed the writing prompt appropriately"
+  },
   "vocabularyAnalysis": {
     "level": "basic/intermediate/advanced",
     "richness": [0-100],
@@ -106,8 +116,9 @@ Analyze this writing and provide comprehensive feedback in the following JSON st
 3. Focus on helping them improve, not criticizing
 4. Acknowledge what they did well
 5. Connect feedback to the exercise prompt
-6. Write encouragement in Florencia's voice (warm, personal, Argentine Spanish)
-7. Ensure valid JSON output
+6. Evaluate if their writing actually addresses the prompt topic
+7. Write encouragement in Florencia's voice (warm, personal, Argentine Spanish)
+8. Ensure valid JSON output
 
 Return ONLY the JSON object, no additional text.`;
 
@@ -147,6 +158,11 @@ Return ONLY the JSON object, no additional text.`;
           feedback: 'Continue practicing this grammar structure.',
         },
       },
+      topicRelevance: {
+        onTopic: true,
+        relevanceScore: 75,
+        feedback: 'Your response addresses the prompt well.',
+      },
       vocabularyAnalysis: {
         level: 'intermediate',
         richness: 70,
@@ -180,6 +196,9 @@ export function formatFeedbackForMobile(feedback: WritingFeedback) {
       errors: feedback.grammarAnalysis.errors,
       targetGrammarFeedback: feedback.grammarAnalysis.targetGrammarUsage.feedback,
     },
+    
+    // Topic relevance section
+    topicRelevance: feedback.topicRelevance,
     
     // Vocabulary section
     vocabulary: {

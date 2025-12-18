@@ -15,8 +15,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
-import { api, EpisodeArticle } from '../../../src/services/api';
-import { colors, textStyles, spacing, borderRadius } from '../../../src/theme';
+import { api, EpisodeArticle } from '../../../../src/services/api';
+import { colors, textStyles, spacing, borderRadius } from '../../../../src/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -663,3 +663,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

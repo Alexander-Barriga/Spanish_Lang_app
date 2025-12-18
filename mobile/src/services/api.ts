@@ -858,6 +858,55 @@ class ApiClient {
   }
 
   // ============================================
+  // GRAMMAR GYM METHODS
+  // ============================================
+
+  async getGrammarGymQuestions(episodeId: string) {
+    // #region agent log - D
+    const endpoint = `/grammar-gym/episode/${episodeId}`;
+    console.log(`[DEBUG] getGrammarGymQuestions endpoint: ${endpoint}, episodeId: ${episodeId}`);
+    fetch('http://127.0.0.1:7242/ingest/044c796b-c986-4a87-b772-7ec04fa5f18a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:858',message:'getGrammarGymQuestions request',data:{endpoint:endpoint,episodeId:episodeId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    return this.request<{
+      episode: {
+        id: string;
+        title_es: string;
+        title_en: string;
+        grammar_focus: string;
+        grammar_triggers: string[];
+      };
+      questions: GrammarGymQuestion[];
+      totalQuestions: number;
+      defaultCount: number;
+      personalizedCount: number;
+    }>(`/grammar-gym/episode/${episodeId}`);
+  }
+
+  async completeGrammarGym(episodeId: string, data: {
+    correctAnswers: number;
+    totalQuestions: number;
+    results: any[];
+  }) {
+    return this.request<{
+      success: boolean;
+      xpEarned: number;
+      accuracy: number;
+      correctAnswers: number;
+      totalQuestions: number;
+    }>(`/grammar-gym/episode/${episodeId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async checkGrammarGymAccess(episodeId: string) {
+    return this.request<{
+      canAccess: boolean;
+      hasWritingSubmission: boolean;
+    }>(`/grammar-gym/episode/${episodeId}/access`);
+  }
+
+  // ============================================
   // AUDIO CACHE METHODS
   // ============================================
 
@@ -1160,6 +1209,15 @@ export interface EpisodeArticleSubmission {
   grammar_score: number;
   word_count: number;
   completed_at: string;
+}
+
+// Grammar Gym Interfaces
+export interface GrammarGymQuestion {
+  question: string;
+  options: string[];
+  correct: string;
+  explanation: string;
+  isPersonalized?: boolean;
 }
 
 // Export singleton instance
