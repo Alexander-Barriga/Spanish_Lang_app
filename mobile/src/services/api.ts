@@ -776,6 +776,88 @@ class ApiClient {
   }
 
   // ============================================
+  // EPISODE ARTICLES METHODS
+  // ============================================
+
+  async getUnlockedEpisodeArticles() {
+    return this.request<{
+      articles: EpisodeArticle[];
+    }>('/episode-articles/unlocked');
+  }
+
+  async getEpisodeArticle(episodeId: string) {
+    return this.request<{
+      article: EpisodeArticle;
+    }>(`/episode-articles/${episodeId}`);
+  }
+
+  async getEpisodeRoadmap(episodeId: string) {
+    return this.request<{
+      episodeCompleted: boolean;
+      articleRead: boolean;
+      writingSubmitted: boolean;
+      gymCompleted: boolean;
+      nextEpisodeUnlocked: boolean;
+      nextEpisodeId?: string;
+    }>(`/episode-articles/roadmap/${episodeId}`);
+  }
+
+  async trackEpisodeArticleRead(articleId: string, readSeconds: number, completionPercent: number) {
+    return this.request<{
+      success: boolean;
+      completed: boolean;
+    }>(`/episode-articles/${articleId}/read`, {
+      method: 'POST',
+      body: JSON.stringify({
+        read_seconds: readSeconds,
+        completion_percent: completionPercent,
+      }),
+    });
+  }
+
+  async submitEpisodeArticleExercise(
+    articleId: string,
+    submissionText: string,
+    submissionType: 'text' | 'voice',
+    audioUrl?: string
+  ) {
+    return this.request<{
+      success: boolean;
+      submission: EpisodeArticleSubmission;
+    }>(`/episode-articles/${articleId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({
+        submission_text: submissionText,
+        submission_type: submissionType,
+        audio_url: audioUrl,
+      }),
+    });
+  }
+
+  async getEpisodeArticleFeedback(submissionId: string) {
+    return this.request<{
+      submission: EpisodeArticleSubmission;
+      feedback: any;
+    }>(`/episode-articles/submission/${submissionId}/feedback`);
+  }
+
+  async checkEpisodeArticleCompletion(episodeId: string) {
+    return this.request<{
+      hasRead: boolean;
+      hasSubmitted: boolean;
+      isComplete: boolean;
+      articleId: string;
+    }>(`/episode-articles/${episodeId}/completion-status`);
+  }
+
+  async checkEpisodeArticleSubmission(episodeId: string) {
+    return this.request<{
+      hasSubmitted: boolean;
+      submission: EpisodeArticleSubmission | null;
+    }>(`/episode-articles/${episodeId}/submission`);
+  }
+
+  // ============================================
   // AUDIO CACHE METHODS
   // ============================================
 
@@ -818,55 +900,11 @@ class ApiClient {
   }
 
   // ============================================
-  // ARTICLES METHODS
+  // ARTICLES METHODS (Legacy - kept for compatibility)
   // ============================================
-
-  async getArticles(tab: 'popular' | 'favorites' | 'search' = 'popular') {
-    return this.request<{ articles: Article[]; tab: string }>(`/articles?tab=${tab}`);
-  }
-
-  async getArticle(id: string) {
-    return this.request<{ article: Article }>(`/articles/${id}`);
-  }
-
-  async searchArticles(query?: string, grammar?: string) {
-    const params = new URLSearchParams();
-    if (query) params.append('q', query);
-    if (grammar) params.append('grammar', grammar);
-    return this.request<{ articles: Article[] }>(`/articles/search?${params.toString()}`);
-  }
-
-  async getArticleAutocomplete(query: string) {
-    return this.request<{ suggestions: string[] }>(`/articles/autocomplete?q=${query}`);
-  }
 
   async getGrammarTags() {
     return this.request<{ tags: Array<{ grammar_focus: string; title_en: string }> }>('/articles/grammar-tags');
-  }
-
-  async trackArticleRead(articleId: string, readSeconds: number, completionPercent: number) {
-    return this.request<{ success: boolean }>(`/articles/${articleId}/read`, {
-      method: 'POST',
-      body: JSON.stringify({ read_seconds: readSeconds, completion_percent: completionPercent }),
-    });
-  }
-
-  async addArticleToFavorites(articleId: string) {
-    return this.request<{ success: boolean }>(`/articles/${articleId}/favorite`, {
-      method: 'POST',
-    });
-  }
-
-  async removeArticleFromFavorites(articleId: string) {
-    return this.request<{ success: boolean }>(`/articles/${articleId}/favorite`, {
-      method: 'DELETE',
-    });
-  }
-
-  async syncArticles() {
-    return this.request<{ success: boolean; synced: number; skipped: number; errors: string[] }>('/articles/sync', {
-      method: 'POST',
-    });
   }
 }
 
@@ -874,12 +912,12 @@ class ApiClient {
 // TYPE DEFINITIONS
 // ============================================
 
+// Legacy Article interface - kept for backward compatibility
+// Episode articles use EpisodeArticle interface instead
 export interface Article {
   id: string;
-  substack_id: string;
   title: string;
   subtitle: string | null;
-  slug: string;
   image_url: string | null;
   content_html: string | null;
   author: string;
@@ -887,9 +925,7 @@ export interface Article {
   grammar_tags: string[];
   word_count: number;
   estimated_read_minutes: number;
-  substack_url: string;
   is_favorite: boolean;
-  popularity_score?: number;
 }
 
 export interface CurriculumWeek {
@@ -1091,6 +1127,39 @@ export interface JournalStats {
   averageWords: number;
   currentStreak: number;
   longestStreak: number;
+}
+
+// Episode Articles Interfaces
+export interface EpisodeArticle {
+  id: string;
+  episode_id: string;
+  title: string;
+  subtitle: string;
+  content_html: string;
+  content_markdown: string;
+  content_html_es?: string;
+  content_markdown_es?: string;
+  author: string;
+  writing_exercise_prompt: string;
+  grammar_focus: string;
+  word_count: number;
+  estimated_read_minutes: number;
+  created_at: string;
+  episodes?: Episode;
+}
+
+export interface EpisodeArticleSubmission {
+  id: string;
+  user_id: string;
+  episode_article_id: string;
+  episode_id: string;
+  submission_text: string;
+  submission_type: 'text' | 'voice';
+  audio_url?: string;
+  ai_feedback: any;
+  grammar_score: number;
+  word_count: number;
+  completed_at: string;
 }
 
 // Export singleton instance

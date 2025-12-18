@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticateToken as authMiddleware, optionalAuth } from '../middleware/auth';
-import { syncArticlesFromRSS, shouldSync } from '../services/articleSync';
 
 const router = Router();
 
@@ -386,34 +385,6 @@ router.delete('/:id/favorite', authMiddleware, async (req: Request, res: Respons
   }
 });
 
-// ============================================
-// POST /articles/sync - Manually trigger RSS sync
-// ============================================
-router.post('/sync', async (req: Request, res: Response) => {
-  try {
-    const result = await syncArticlesFromRSS();
-    res.json({ 
-      success: true, 
-      ...result 
-    });
-  } catch (error) {
-    console.error('Error in POST /articles/sync:', error);
-    res.status(500).json({ error: 'Sync failed' });
-  }
-});
-
-// ============================================
-// GET /articles/sync-status - Check if sync is needed
-// ============================================
-router.get('/sync-status', async (req: Request, res: Response) => {
-  try {
-    const needsSync = await shouldSync();
-    res.json({ needsSync });
-  } catch (error) {
-    console.error('Error in GET /articles/sync-status:', error);
-    res.status(500).json({ error: 'Failed to check sync status' });
-  }
-});
 
 export default router;
 

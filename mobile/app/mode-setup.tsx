@@ -177,8 +177,8 @@ export default function ModeSetupScreen() {
                       setSelectedLevel(null);
                       setExpandedGrammar(null);
                     } else {
-                      setSelectedLevel(level.value);
-                      setSelectedGrammar(null);
+                    setSelectedLevel(level.value);
+                    setSelectedGrammar(null);
                       setExpandedGrammar(null);
                     }
                   }}
@@ -229,13 +229,13 @@ export default function ModeSetupScreen() {
                   const isExpanded = expandedGrammar === topic.grammar_focus;
                   
                   return (
-                    <Pressable
+                  <Pressable
                       key={topic.id}
-                      style={[
+                    style={[
                         styles.grammarCard,
                         isSelected && styles.grammarCardSelected,
-                      ]}
-                      onPress={() => {
+                    ]}
+                    onPress={() => {
                         if (isExpanded) {
                           // Collapse if already expanded
                           setExpandedGrammar(null);
@@ -245,9 +245,9 @@ export default function ModeSetupScreen() {
                         }
                         // Always select on tap
                         setSelectedGrammar(topic.grammar_focus);
-                        setSelectedLevel(null);
-                      }}
-                    >
+                      setSelectedLevel(null);
+                    }}
+                  >
                       {/* Card Header */}
                       <View style={styles.grammarCardHeader}>
                         <View style={styles.grammarCardTitleRow}>
@@ -269,7 +269,7 @@ export default function ModeSetupScreen() {
                         numberOfLines={isExpanded ? undefined : 2}
                       >
                         {topic.description}
-                      </Text>
+                    </Text>
                       
                       {/* Expanded Content */}
                       {isExpanded && (
@@ -304,11 +304,11 @@ export default function ModeSetupScreen() {
                           <Text style={styles.tapHint}>Tap "Start Conversation" to practice</Text>
                         </View>
                       )}
-                    </Pressable>
+                  </Pressable>
                   );
                 })}
               </View>
-            )}
+              )}
           </View>
         );
 

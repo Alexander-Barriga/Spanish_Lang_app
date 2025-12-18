@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,7 @@ import { useAuth, supabase } from '../../src/contexts/AuthContext';
 import { api } from '../../src/services/api';
 import { authTokenManager } from '../../src/services/authToken';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
+import EpisodeRoadmap from '../../src/components/EpisodeRoadmap';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +23,7 @@ interface StoryProgress {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const params = useLocalSearchParams<{ episodeId?: string }>();
   const displayName = user?.profile?.display_name || 'Learner';
   const streak = user?.progress?.current_streak || 0;
 
@@ -30,12 +32,31 @@ export default function HomeScreen() {
   const [journalStats, setJournalStats] = useState<any>(null);
   const [showEpisodesModal, setShowEpisodesModal] = useState(false);
   const [episodes, setEpisodes] = useState<any[]>([]);
+  const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
   
   // Use a ref to always have the latest storyData in callbacks (avoids closure issues)
   const storyDataRef = useRef<StoryProgress | null>(null);
   useEffect(() => {
     storyDataRef.current = storyData;
   }, [storyData]);
+
+  const loadSelectedEpisode = async (episodeId: string) => {
+    try {
+      const result = await api.getEpisode(episodeId);
+      if (result.data?.episode) {
+        setSelectedEpisode(result.data.episode);
+      }
+    } catch (error) {
+      console.error('Error loading selected episode:', error);
+    }
+  };
+
+  // Load selected episode if episodeId param is provided
+  useEffect(() => {
+    if (params.episodeId && storyData?.arc) {
+      loadSelectedEpisode(params.episodeId);
+    }
+  }, [params.episodeId, storyData?.arc]);
 
   useFocusEffect(
     useCallback(() => {
@@ -261,24 +282,30 @@ export default function HomeScreen() {
           console.error('❌ No firstEpisode in response');
           Alert.alert('Error', 'Could not load first episode');
         }
-      } else if (currentStoryData.currentEpisode) {
-        console.log('▶️ Continuing to episode:', currentStoryData.currentEpisode.id);
-        router.push({
-          pathname: '/story/[episode]',
-          params: { episode: currentStoryData.currentEpisode.id }
-        });
       } else {
-        console.log('⚠️ No valid story state to handle');
-        console.log('hasStarted:', currentStoryData.hasStarted);
-        console.log('arc:', currentStoryData.arc);
-        console.log('currentEpisode:', currentStoryData.currentEpisode);
-        Alert.alert('Error', 'Story not available. Please try again.');
+        // Use selected episode if available, otherwise use current episode
+        const episodeToPlay = selectedEpisode || currentStoryData.currentEpisode;
+        
+        if (episodeToPlay) {
+          console.log('▶️ Continuing to episode:', episodeToPlay.id);
+          router.push({
+            pathname: '/story/[episode]',
+            params: { episode: episodeToPlay.id }
+          });
+        } else {
+          console.log('⚠️ No valid story state to handle');
+          console.log('hasStarted:', currentStoryData.hasStarted);
+          console.log('arc:', currentStoryData.arc);
+          console.log('currentEpisode:', currentStoryData.currentEpisode);
+          console.log('selectedEpisode:', selectedEpisode);
+          Alert.alert('Error', 'Story not available. Please try again.');
+        }
       }
     } catch (error) {
       console.error('❌ Exception in handleStartStory:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     }
-  }, [storyData, user]);
+  }, [storyData, user, selectedEpisode]);
 
   const handleOpenEpisodes = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -299,7 +326,7 @@ export default function HomeScreen() {
     
     setShowEpisodesModal(true);
   };
-  
+
   const handleSelectEpisode = (episode: any, isUnlocked: boolean) => {
     if (!isUnlocked) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -309,18 +336,15 @@ export default function HomeScreen() {
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setShowEpisodesModal(false);
-    router.push(`/story/${episode.id}`);
+    // Set the selected episode to display on Home page
+    setSelectedEpisode(episode);
+    // Scroll to top to show the episode info
+    // The episode info will be displayed using selectedEpisode instead of currentEpisode
   };
 
-  const handleOpenJournal = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/journal');
-  };
 
-  const handleQuickPractice = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/quick-mission');
-  };
+  // Determine which episode to display (selected episode or current episode)
+  const displayEpisode = selectedEpisode || storyData?.currentEpisode;
 
   // Calculate episode progress
   const episodeProgress = storyData?.progress 
@@ -370,7 +394,9 @@ export default function HomeScreen() {
             {/* Story info */}
             <View style={styles.heroContent}>
               <Text style={styles.overlineText}>
-                {storyData?.hasStarted ? 'CONTINUE YOUR STORY' : 'BEGIN YOUR JOURNEY'}
+                {selectedEpisode 
+                  ? `EPISODE ${selectedEpisode.episode_number}` 
+                  : (storyData?.hasStarted ? 'CONTINUE YOUR STORY' : 'BEGIN YOUR JOURNEY')}
               </Text>
               
               <Text style={styles.storyTitle}>
@@ -381,13 +407,13 @@ export default function HomeScreen() {
                 {storyData?.arc?.title_en || 'Encounters in Buenos Aires'}
               </Text>
 
-              {storyData?.currentEpisode && (
+              {displayEpisode && (
                 <View style={styles.episodeInfo}>
                   <Text style={styles.episodeLabel}>
-                    Episode {storyData.currentEpisode.episode_number} of {storyData.arc?.total_episodes || 8}
+                    Episode {displayEpisode.episode_number} of {storyData.arc?.total_episodes || 8}
                   </Text>
                   <Text style={styles.episodeTitle}>
-                    {storyData.currentEpisode.title_es}
+                    {displayEpisode.title_es}
                     </Text>
                 </View>
               )}
@@ -408,16 +434,16 @@ export default function HomeScreen() {
               <View style={styles.ctaRow}>
                 <View style={styles.ctaButton}>
                   <Ionicons 
-                    name={storyData?.hasStarted ? "play" : "sparkles"} 
+                    name={displayEpisode ? "play" : (storyData?.hasStarted ? "play" : "sparkles")} 
                     size={20} 
                     color={colors.neutral[950]} 
                   />
                   <Text style={styles.ctaText}>
-                    {storyData?.hasStarted ? 'Continue' : 'Start Story'}
+                    {displayEpisode ? 'Continue' : (storyData?.hasStarted ? 'Continue' : 'Start Story')}
                   </Text>
                 </View>
                 
-                {storyData?.hasStarted && (
+                {(storyData?.hasStarted || selectedEpisode) && (
                   <Pressable 
                     onPress={(e) => {
                       e.stopPropagation();
@@ -441,15 +467,15 @@ export default function HomeScreen() {
             </Pressable>
 
         {/* Grammar Focus Card - Tappable to open lesson */}
-        {storyData?.currentEpisode && (
+        {displayEpisode && (
           <Pressable 
             style={({ pressed }) => [
               styles.grammarCard,
               pressed && styles.grammarCardPressed
             ]}
             onPress={() => {
-              const grammarFocus = storyData.currentEpisode?.grammar_focus;
-              const episodeId = storyData.currentEpisode?.id;
+              const grammarFocus = displayEpisode?.grammar_focus;
+              const episodeId = displayEpisode?.id;
               if (grammarFocus) {
                 router.push({
                   pathname: '/grammar/[topic]',
@@ -465,11 +491,11 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={18} color={colors.accent.tango} />
             </View>
             <Text style={styles.grammarFocus}>
-              {storyData.currentEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
+              {displayEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
             </Text>
-            {storyData.currentEpisode.grammar_triggers?.length > 0 && (
+            {displayEpisode.grammar_triggers?.length > 0 && (
               <View style={styles.triggersContainer}>
-                {storyData.currentEpisode.grammar_triggers.slice(0, 3).map((trigger: string, index: number) => (
+                {displayEpisode.grammar_triggers.slice(0, 3).map((trigger: string, index: number) => (
                   <View key={index} style={styles.triggerBadge}>
                     <Text style={styles.triggerText}>{trigger}</Text>
                   </View>
@@ -480,62 +506,15 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* Action Cards */}
-        <View style={styles.actionCards}>
-          {/* Journal Card */}
-          <Pressable onPress={handleOpenJournal} style={styles.actionCard}>
-            <LinearGradient
-              colors={['rgba(107,128,104,0.15)', 'rgba(107,128,104,0.05)']}
-              style={styles.actionCardGradient}
-            >
-              <View style={styles.actionCardIcon}>
-                <Ionicons name="journal" size={24} color={colors.accent.sage} />
-              </View>
-              <Text style={styles.actionCardTitle}>Spanish Journal</Text>
-              <Text style={styles.actionCardSubtitle}>
-                {journalStats?.currentStreak || 0} day streak
-              </Text>
-              <Ionicons 
-                name="chevron-forward" 
-                size={20} 
-                color={colors.neutral[500]} 
-                style={styles.actionCardArrow}
-              />
-            </LinearGradient>
-          </Pressable>
-
-          {/* Quick Practice Card */}
-          <Pressable onPress={handleQuickPractice} style={styles.actionCard}>
-            <LinearGradient
-              colors={['rgba(74,107,138,0.15)', 'rgba(74,107,138,0.05)']}
-              style={styles.actionCardGradient}
-            >
-              <View style={styles.actionCardIcon}>
-                <Ionicons name="flash" size={24} color={colors.accent.sky} />
-              </View>
-              <Text style={styles.actionCardTitle}>Quick Practice</Text>
-              <Text style={styles.actionCardSubtitle}>
-                3-5 min conversation
-              </Text>
-              <Ionicons 
-                name="chevron-forward" 
-                size={20} 
-                color={colors.neutral[500]} 
-                style={styles.actionCardArrow}
-              />
-            </LinearGradient>
-          </Pressable>
-        </View>
-
-        {/* Motivational Quote */}
-        <View style={styles.quoteCard}>
-          <Text style={styles.quoteText}>
-            "El que habla dos idiomas vale por dos."
-          </Text>
-          <Text style={styles.quoteTranslation}>
-            One who speaks two languages is worth two people.
-          </Text>
-        </View>
+        {/* Episode Roadmap */}
+        {displayEpisode && storyData?.arc && (
+          <EpisodeRoadmap
+            episodeId={displayEpisode.id}
+            episodeNumber={displayEpisode.episode_number}
+            totalEpisodes={storyData.arc.total_episodes || 8}
+            grammarFocus={displayEpisode.grammar_focus}
+          />
+        )}
       </ScrollView>
       
       {/* Episodes Modal */}
@@ -569,7 +548,7 @@ export default function HomeScreen() {
                   <Pressable
                     key={episode.id}
                     onPress={() => handleSelectEpisode(episode, isUnlocked)}
-                    style={[
+                      style={[
                       styles.episodeItem,
                       !isUnlocked && styles.episodeItemLocked,
                     ]}

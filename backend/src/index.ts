@@ -23,6 +23,7 @@ import storiesRoutes from './routes/stories';
 import journalRoutes from './routes/journal';
 import audioCacheRoutes from './routes/audio-cache';
 import articlesRoutes from './routes/articles';
+import episodeArticlesRoutes from './routes/episodeArticles';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -31,7 +32,7 @@ import { setupWebSocket } from './websocket';
 import { storageService } from './services/storage';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // Middleware
 app.use(helmet());
@@ -68,6 +69,7 @@ app.use('/api/v1/stories', storiesRoutes);
 app.use('/api/v1/journal', journalRoutes);
 app.use('/api/v1/audio', audioCacheRoutes);
 app.use('/api/v1/articles', articlesRoutes);
+app.use('/api/v1/episode-articles', episodeArticlesRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -90,8 +92,8 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 setupWebSocket(wss);
 
-// Start server
-server.listen(PORT, async () => {
+// Start server - listen on 0.0.0.0 to allow network access from mobile devices
+server.listen(PORT, '0.0.0.0', async () => {
   // Initialize storage bucket for audio recordings
   await storageService.initializeBucket();
   
@@ -99,6 +101,7 @@ server.listen(PORT, async () => {
   🐺 LoboLingo API Server
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🚀 Server running on port ${PORT}
+  🌐 Accessible at http://0.0.0.0:${PORT} and http://localhost:${PORT}
   📡 WebSocket available at ws://localhost:${PORT}/ws
   🔧 Environment: ${process.env.NODE_ENV || 'development'}
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

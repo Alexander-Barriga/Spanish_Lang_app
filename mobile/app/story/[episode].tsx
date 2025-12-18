@@ -24,6 +24,7 @@ import { useAudioPlayback } from '../../src/hooks/useAudioPlayback';
 import { useVoiceRecording } from '../../src/hooks/useVoiceRecording';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { getGrammarLesson, GrammarLesson } from '../../src/data/grammarLessons';
+import { VAD_CONFIG } from '../../src/config/constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -155,6 +156,7 @@ export default function EpisodePlayer() {
     startRecording, 
     stopRecording, 
     isRecording, 
+    duration: recordingDuration,
     audioUri 
   } = useVoiceRecording();
 
@@ -322,7 +324,7 @@ export default function EpisodePlayer() {
     // If no recording URI, skip transcription and move to next scene
     if (!uri) {
       console.log('No recording URI, skipping transcription');
-      setFeedbackMessage('Recording not captured. Moving on...');
+      setFeedbackMessage('Recording was too short (minimum 0.5 seconds required). Try again!');
       setUserPlaybackComplete(true); // No recording to play, so mark as complete
       setCurrentPhase('feedback');
       return;
@@ -423,7 +425,7 @@ export default function EpisodePlayer() {
     setCurrentPhase('feedback');
     
     try {
-      const analysisResult = await api.analyzeGrammar({
+      const analysisResult = await api.analyzeGrammarResponse({
         userResponse: userText,
         grammarFocus: episode?.grammar_focus,
         expectedPatterns: currentScene?.expected_patterns,
@@ -648,7 +650,12 @@ export default function EpisodePlayer() {
 
   const handleFinishEpisode = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.back();
+    // Navigate to home page with this episode selected
+    // This shows the roadmap with remaining tasks (Read Article, Writing, Gym)
+    router.replace({
+      pathname: '/(tabs)',
+      params: { episodeId: episodeId }
+    });
   };
 
   const handleWriteJournal = () => {
@@ -1186,6 +1193,9 @@ export default function EpisodePlayer() {
 
   // Recording Phase
   if (currentPhase === 'recording') {
+    const durationSeconds = (recordingDuration / 1000).toFixed(1);
+    const canStopRecording = recordingDuration >= VAD_CONFIG.minRecordingLength;
+    
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.recordingContainer}>
@@ -1195,12 +1205,28 @@ export default function EpisodePlayer() {
             </View>
           </Animated.View>
           <Text style={styles.recordingText}>Recording...</Text>
+          <Text style={styles.recordingDuration}>{durationSeconds}s</Text>
           <Text style={styles.recordingHint}>Speak your response in Spanish</Text>
           
-          <Pressable onPress={handleStopRecording} style={styles.stopButtonSunken}>
+          {!canStopRecording && (
+            <Text style={styles.recordingMinimumHint}>
+              (Minimum 0.5 seconds)
+            </Text>
+          )}
+          
+          <Pressable 
+            onPress={handleStopRecording} 
+            style={[
+              styles.stopButtonSunken,
+              !canStopRecording && styles.stopButtonDisabled
+            ]}
+            disabled={!canStopRecording}
+          >
             <View style={styles.stopButtonInner}>
               <Ionicons name="stop" size={24} color={colors.text.primary} />
-              <Text style={styles.stopButtonText}>Stop Recording</Text>
+              <Text style={styles.stopButtonText}>
+                {canStopRecording ? 'Stop Recording' : 'Keep Speaking...'}
+              </Text>
             </View>
           </Pressable>
           
@@ -1916,9 +1942,21 @@ const styles = StyleSheet.create({
     ...textStyles.h3,
     color: colors.text.primary,
   },
+  recordingDuration: {
+    ...textStyles.h2,
+    color: colors.primary.gold,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
   recordingHint: {
     ...textStyles.body,
     color: colors.text.secondary,
+  },
+  recordingMinimumHint: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+    marginTop: spacing[2],
   },
   stopButtonSunken: {
     // Sunken/pressed effect - darker background, inset shadow look
@@ -1938,6 +1976,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 1,
     elevation: 1,
+  },
+  stopButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: colors.neutral[800],
+    borderTopColor: colors.neutral[800],
+    borderLeftColor: colors.neutral[800],
+    borderBottomColor: colors.neutral[700],
+    borderRightColor: colors.neutral[700],
   },
   stopButtonInner: {
     flexDirection: 'row',

@@ -21,18 +21,24 @@ import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - spacing[5] * 2;
 
-type TabType = 'popular' | 'favorites' | 'search';
+type TabType = 'unlocked' | 'favorites' | 'search';
 
-interface Article {
+interface EpisodeArticle {
   id: string;
   title: string;
   subtitle: string | null;
-  image_url: string | null;
-  grammar_tags: string[];
+  episode_id: string;
+  grammar_focus: string;
   estimated_read_minutes: number;
-  published_at: string;
-  is_favorite: boolean;
-  popularity_score?: number;
+  created_at: string;
+  has_read: boolean;
+  episodes?: {
+    id: string;
+    episode_number: number;
+    title_es: string;
+    title_en: string;
+    grammar_focus: string;
+  };
 }
 
 interface GrammarTag {
@@ -41,8 +47,8 @@ interface GrammarTag {
 }
 
 export default function ArticlesScreen() {
-  const [activeTab, setActiveTab] = useState<TabType>('popular');
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>('unlocked');
+  const [articles, setArticles] = useState<EpisodeArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,7 +59,9 @@ export default function ArticlesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadArticles();
-      loadGrammarTags();
+      if (activeTab === 'search') {
+        loadGrammarTags();
+      }
     }, [activeTab])
   );
 
@@ -61,15 +69,17 @@ export default function ArticlesScreen() {
     try {
       setIsLoading(true);
       
-      let result;
-      if (activeTab === 'search' && (searchQuery || selectedGrammar)) {
-        result = await api.searchArticles(searchQuery, selectedGrammar || undefined);
-      } else {
-        result = await api.getArticles(activeTab);
-      }
-      
-      if (result.data?.articles) {
-        setArticles(result.data.articles);
+      if (activeTab === 'unlocked') {
+        const result = await api.getUnlockedEpisodeArticles();
+        if (result.data?.articles) {
+          setArticles(result.data.articles);
+        }
+      } else if (activeTab === 'favorites') {
+        // TODO: Implement favorites for episode articles
+        setArticles([]);
+      } else if (activeTab === 'search' && (searchQuery || selectedGrammar)) {
+        // TODO: Implement search for episode articles if needed
+        setArticles([]);
       }
     } catch (error) {
       console.error('Error loading articles:', error);
@@ -138,16 +148,16 @@ export default function ArticlesScreen() {
     setTimeout(loadArticles, 100);
   };
 
-  const handleArticleTap = (article: Article) => {
+  const handleArticleTap = (article: EpisodeArticle) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`/article/${article.id}`);
+    router.push(`/article/episode/${article.id}`);
   };
 
   const formatGrammarTag = (tag: string) => {
     return tag.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const renderArticleCard = (article: Article) => (
+  const renderArticleCard = (article: EpisodeArticle) => (
     <Pressable 
       key={article.id}
       style={({ pressed }) => [
@@ -156,46 +166,50 @@ export default function ArticlesScreen() {
       ]}
       onPress={() => handleArticleTap(article)}
     >
-      {article.image_url ? (
-        <Image 
-          source={{ uri: article.image_url }} 
-          style={styles.articleImage}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={styles.articleImagePlaceholder}>
-          <Ionicons name="document-text" size={40} color={colors.neutral[600]} />
+      {/* Placeholder image - will be replaced with actual images later */}
+      <View style={styles.articleImagePlaceholder}>
+        <View style={styles.episodeBadge}>
+          <Text style={styles.episodeBadgeText}>
+            Episode {article.episodes?.episode_number || '?'}
+          </Text>
         </View>
-      )}
+        <Ionicons name="book" size={48} color={colors.primary.gold} />
+      </View>
       <View style={styles.articleContent}>
         <Text style={styles.articleTitle}>
           {article.title}
         </Text>
+        {article.subtitle && (
+          <Text style={styles.articleSubtitle} numberOfLines={2}>
+            {article.subtitle}
+          </Text>
+        )}
         <View style={styles.articleMeta}>
           <Text style={styles.articleReadTime}>
             {article.estimated_read_minutes} min read
           </Text>
-          {article.grammar_tags.length > 0 && (
+          {article.grammar_focus && (
             <>
               <View style={styles.metaDot} />
               <Text style={styles.articleGrammar} numberOfLines={1}>
-                {formatGrammarTag(article.grammar_tags[0])}
+                {formatGrammarTag(article.grammar_focus)}
               </Text>
             </>
           )}
         </View>
+        {article.has_read && (
+          <View style={styles.readIndicator}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+            <Text style={styles.readIndicatorText}>Read</Text>
+          </View>
+        )}
       </View>
-      {article.is_favorite && (
-        <View style={styles.favoriteIndicator}>
-          <Ionicons name="heart" size={16} color={colors.accent.tango} />
-        </View>
-      )}
     </Pressable>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+        {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Articles</Text>
         <Text style={styles.subtitle}>Spanish reading practice</Text>
@@ -203,7 +217,7 @@ export default function ArticlesScreen() {
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>
-        {(['popular', 'favorites', 'search'] as TabType[]).map((tab) => (
+        {(['unlocked', 'favorites', 'search'] as TabType[]).map((tab) => (
           <Pressable
             key={tab}
             style={[
@@ -280,7 +294,7 @@ export default function ArticlesScreen() {
                   selectedGrammar === tag.grammar_focus && styles.grammarPillTextActive
                 ]}>
                   {tag.title_en}
-                </Text>
+          </Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -317,14 +331,14 @@ export default function ArticlesScreen() {
                 ? 'No favorites yet' 
                 : activeTab === 'search'
                   ? 'No articles found'
-                  : 'No articles available'}
+                  : 'No unlocked articles'}
             </Text>
             <Text style={styles.emptyText}>
               {activeTab === 'favorites' 
                 ? 'Articles you love will appear here' 
                 : activeTab === 'search'
                   ? 'Try a different search or filter'
-                  : 'Check back soon for new content'}
+                  : 'Complete episodes to unlock articles'}
             </Text>
           </View>
         ) : (
@@ -478,6 +492,40 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.card,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  episodeBadge: {
+    position: 'absolute',
+    top: spacing[2],
+    left: spacing[2],
+    backgroundColor: colors.primary.gold + '20',
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[2],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary.gold,
+  },
+  episodeBadgeText: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    fontWeight: '600',
+  },
+  articleSubtitle: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+    fontSize: 14,
+  },
+  readIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing[2],
+    gap: spacing[1],
+  },
+  readIndicatorText: {
+    ...textStyles.caption,
+    color: colors.success,
+    fontSize: 12,
   },
   articleContent: {
     padding: spacing[4],
