@@ -71,15 +71,9 @@ export default function GrammarGymScreen() {
       }
 
       const epId = articleResult.data.article.episode_id;
-      // #region agent log - A
-      fetch('http://127.0.0.1:7242/ingest/044c796b-c986-4a87-b772-7ec04fa5f18a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'gym.tsx:19',message:'episodeId from article',data:{episodeId:epId,articleId:articleId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setEpisodeId(epId);
 
       // Fetch grammar gym questions
-      // #region agent log - A, D
-      fetch('http://127.0.0.1:7242/ingest/044c796b-c986-4a87-b772-7ec04fa5f18a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'gym.tsx:26',message:'calling getGrammarGymQuestions',data:{epId:epId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,D'})}).catch(()=>{});
-      // #endregion
       const gymResult = await api.getGrammarGymQuestions(epId);
       
       if (gymResult.error) {
@@ -360,18 +354,32 @@ export default function GrammarGymScreen() {
         <View style={styles.footer}>
           {!showFeedback ? (
             <Pressable
-              style={[styles.checkButton, !selectedAnswer && styles.checkButtonDisabled]}
               onPress={handleCheckAnswer}
               disabled={!selectedAnswer}
+              style={!selectedAnswer && styles.checkButtonDisabled}
             >
-              <Text style={styles.checkButtonText}>Check Answer</Text>
+              <LinearGradient
+                colors={['#B3F5FF', '#00B8DB']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.checkButton}
+              >
+                <Text style={styles.checkButtonText}>Check Answer</Text>
+              </LinearGradient>
             </Pressable>
           ) : (
-            <Pressable style={styles.nextButton} onPress={handleNextQuestion}>
-              <Text style={styles.nextButtonText}>
-                {currentQuestion < questions.length - 1 ? 'Next Question' : 'See Results'}
-              </Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.neutral[900]} />
+            <Pressable onPress={handleNextQuestion}>
+              <LinearGradient
+                colors={['#B3F5FF', '#00B8DB']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.nextButton}
+              >
+                <Text style={styles.nextButtonText}>
+                  {currentQuestion < questions.length - 1 ? 'Next Question' : 'See Results'}
+                </Text>
+                <Ionicons name="arrow-forward" size={20} color={colors.neutral[900]} />
+              </LinearGradient>
             </Pressable>
           )}
         </View>
@@ -426,8 +434,15 @@ export default function GrammarGymScreen() {
             </Text>
           </View>
 
-          <Pressable style={styles.homeButton} onPress={handleGoHome}>
-            <Text style={styles.homeButtonText}>Back to Home</Text>
+          <Pressable onPress={handleGoHome}>
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.homeButton}
+            >
+              <Text style={styles.homeButtonText}>Back to Home</Text>
+            </LinearGradient>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -689,7 +704,6 @@ const styles = StyleSheet.create({
   checkButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[4],
     borderRadius: borderRadius.xl,
   },
@@ -704,7 +718,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[4],
     borderRadius: borderRadius.xl,
     gap: spacing[2],
@@ -789,7 +802,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   homeButton: {
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.xl,

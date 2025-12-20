@@ -25,6 +25,7 @@ import audioCacheRoutes from './routes/audio-cache';
 import articlesRoutes from './routes/articles';
 import episodeArticlesRoutes from './routes/episodeArticles';
 import grammarGymRoutes from './routes/grammarGym';
+import episodeConversationRoutes from './routes/episodeConversation';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -72,16 +73,7 @@ app.use('/api/v1/audio', audioCacheRoutes);
 app.use('/api/v1/articles', articlesRoutes);
 app.use('/api/v1/episode-articles', episodeArticlesRoutes);
 app.use('/api/v1/grammar-gym', grammarGymRoutes);
-
-// #region agent log - B
-console.log('[DEBUG] Routes registered: /api/v1/grammar-gym');
-try {
-  const fs = require('fs');
-  fs.appendFileSync('/Users/alexanderbarriga/Spanish_Lang_app/.cursor/debug.log', JSON.stringify({location:'index.ts:75',message:'grammar-gym route registered',data:{path:'/api/v1/grammar-gym'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'}) + '\n');
-} catch (e) {
-  // Log write failed, continue
-}
-// #endregion
+app.use('/api/v1/episode-conversation', episodeConversationRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

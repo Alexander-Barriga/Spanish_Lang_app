@@ -382,15 +382,7 @@ export default function HomeScreen() {
 
         {/* Story Hero Card */}
         <Pressable onPress={handleStartStory} style={styles.heroCard}>
-              <LinearGradient
-            colors={colors.gradients.tangoSubtle as any}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-              >
-            {/* Decorative accent line */}
-            <View style={styles.accentLine} />
-            
+          <View style={styles.heroCardInner}>
             {/* Story info */}
             <View style={styles.heroContent}>
               <Text style={styles.overlineText}>
@@ -414,7 +406,7 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={styles.episodeTitle}>
                     {displayEpisode.title_es}
-                    </Text>
+                  </Text>
                 </View>
               )}
 
@@ -432,7 +424,12 @@ export default function HomeScreen() {
 
               {/* CTA Buttons Row */}
               <View style={styles.ctaRow}>
-                <View style={styles.ctaButton}>
+                <LinearGradient
+                  colors={['#B3F5FF', '#00B8DB']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.ctaButton}
+                >
                   <Ionicons 
                     name={displayEpisode ? "play" : (storyData?.hasStarted ? "play" : "sparkles")} 
                     size={20} 
@@ -441,7 +438,7 @@ export default function HomeScreen() {
                   <Text style={styles.ctaText}>
                     {displayEpisode ? 'Continue' : (storyData?.hasStarted ? 'Continue' : 'Start Story')}
                   </Text>
-                </View>
+                </LinearGradient>
                 
                 {(storyData?.hasStarted || selectedEpisode) && (
                   <Pressable 
@@ -462,9 +459,9 @@ export default function HomeScreen() {
             <View style={styles.characterBadge}>
               <Text style={styles.characterFlag}>🇦🇷</Text>
               <Text style={styles.characterName}>Florencia</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
+            </View>
+          </View>
+        </Pressable>
 
         {/* Grammar Focus Card - Tappable to open lesson */}
         {displayEpisode && (
@@ -590,7 +587,7 @@ export default function HomeScreen() {
                         </View>
                       ) : (
                         <View style={styles.lockedBadge}>
-                          <Ionicons name="lock-closed" size={20} color={colors.error} />
+                          <Ionicons name="lock-closed" size={20} color="#FF0000" />
                         </View>
                       )}
                     </View>
@@ -664,20 +661,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing[5],
     borderRadius: borderRadius['2xl'],
     overflow: 'hidden',
+    backgroundColor: colors.primary.black,
+    borderWidth: 3,
+    borderColor: '#00D5FF',
     ...shadows.card,
   },
-  heroGradient: {
+  heroCardInner: {
     padding: spacing[6],
     minHeight: 280,
     justifyContent: 'flex-end',
-  },
-  accentLine: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: colors.primary.gold,
   },
   heroContent: {
     gap: spacing[2],
@@ -735,7 +727,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.lg,

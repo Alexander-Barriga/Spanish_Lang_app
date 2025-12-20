@@ -36,21 +36,23 @@ export async function generatePersonalizedQuestions(
   errors: GrammarError[],
   episodeContext: EpisodeContext
 ): Promise<MCQQuestion[]> {
-  // Determine number of questions: 1-3 based on error count
-  const numQuestions = Math.min(Math.max(errors.length, 1), 3);
+  console.log('[Grammar Gym Service] generatePersonalizedQuestions called');
+  console.log('[Grammar Gym Service] errors received:', JSON.stringify(errors, null, 2));
+  console.log('[Grammar Gym Service] errors.length:', errors.length);
+  
+  // If no errors, return empty array - user had perfect writing!
+  if (errors.length === 0) {
+    console.log('[Grammar Gym Service] No errors, returning empty array');
+    return []; // Perfect writing - no additional questions needed
+  }
+  
+  console.log('[Grammar Gym Service] Generating personalized questions for', errors.length, 'errors');
+  
+  // Determine number of questions: 0-3 based on error count (1-to-1 mapping, capped at 3)
+  const numQuestions = Math.min(errors.length, 3);
   
   // Take the first N errors to base questions on
   const errorsToUse = errors.slice(0, numQuestions);
-  
-  // If no errors, create a general question based on the grammar focus
-  if (errorsToUse.length === 0) {
-    errorsToUse.push({
-      type: episodeContext.grammar_focus.replace(/_/g, ' '),
-      original: '',
-      correction: '',
-      explanation: 'General practice for this grammar concept',
-    });
-  }
 
   const prompt = `You are a Spanish language teacher creating multiple choice questions for a B1-B2 student.
 
@@ -66,28 +68,37 @@ ${errorsToUse.map((e, i) => `${i + 1}. Error type: ${e.type}
    Correction: "${e.correction}"
    Issue: ${e.explanation}`).join('\n\n')}
 
-Create ${numQuestions} multiple choice question(s) that:
+Create EXACTLY ${numQuestions} multiple choice question(s) that:
 1. Test the SAME grammatical concept that the student struggled with
 2. Use DIFFERENT sentences than the student's original errors (create analogous situations)
 3. Reference characters or scenes from the episode scenario when possible
-4. Have exactly 4 answer options
+4. Have exactly 4 UNIQUE answer options (no duplicates)
 5. Include a clear explanation of why the correct answer is right
 
-Return a JSON array with this structure:
+You MUST return a JSON array containing EXACTLY ${numQuestions} question object(s). Even if creating just 1 question, wrap it in an array.
+
+Example format (with 2 questions):
 [
   {
-    "question": "Complete the sentence: Es importante que ella _____ (estudiar) todos los días.",
+    "question": "Completa la oración: Es importante que ella _____ (estudiar) todos los días.",
     "options": ["estudia", "estudie", "estudiará", "estudiando"],
     "correct": "estudie",
-    "explanation": "After 'Es importante que', we use the subjunctive mood. 'Estudie' is the present subjunctive form of 'estudiar' for ella/él/usted."
+    "explanation": "After 'Es importante que', we use the subjunctive mood."
+  },
+  {
+    "question": "Completa la oración: Dudo que él _____ (venir) a la fiesta.",
+    "options": ["viene", "venga", "vendrá", "viniendo"],
+    "correct": "venga",
+    "explanation": "After 'Dudo que', we use the subjunctive mood."
   }
 ]
 
-**Important**:
+**Critical Requirements**:
+- Return ONLY a valid JSON array, no additional text or markdown
+- Create EXACTLY ${numQuestions} questions (one for each error listed above)
+- Each question must have exactly 4 UNIQUE options (no repeated options)
 - Make questions contextually relevant to the episode
-- Ensure all 4 options are plausible but only one is grammatically correct
-- The explanation should be educational and encouraging
-- Return ONLY the JSON array, no additional text`;
+- The explanation should be educational and encouraging`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -107,27 +118,84 @@ Return a JSON array with this structure:
     });
 
     const responseText = completion.choices[0].message.content || '[]';
-    const parsed = JSON.parse(responseText);
+    console.log('[Grammar Gym Service] OpenAI raw response:', responseText);
     
-    // Handle both array and object with array property
-    const questions: MCQQuestion[] = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+    const parsed = JSON.parse(responseText);
+    console.log('[Grammar Gym Service] Parsed response type:', typeof parsed, Array.isArray(parsed) ? 'isArray' : 'notArray');
+    console.log('[Grammar Gym Service] Parsed keys:', parsed ? Object.keys(parsed) : 'null');
+    
+    // Check if OpenAI returned an error response
+    if (parsed.error) {
+      console.error('[Grammar Gym Service] OpenAI returned error:', parsed.error);
+      throw new Error(`OpenAI error: ${parsed.error}`);
+    }
+    
+    // Handle multiple response formats from OpenAI:
+    // 1. Array of questions: [{...}, {...}]
+    // 2. Object with questions array: { questions: [{...}, {...}] }
+    // 3. Single question object: { question: "...", options: [...], ... }
+    let questions: MCQQuestion[] = [];
+    
+    if (Array.isArray(parsed)) {
+      // Format 1: Direct array of questions
+      questions = parsed;
+    } else if (parsed.questions && Array.isArray(parsed.questions)) {
+      // Format 2: Object with questions property
+      questions = parsed.questions;
+    } else if (parsed.question && parsed.options && parsed.correct) {
+      // Format 3: Single question object - wrap in array
+      console.log('[Grammar Gym Service] Detected single question object, wrapping in array');
+      questions = [parsed];
+    }
+    
+    // Validate that we got valid questions
+    if (questions.length === 0) {
+      console.error('[Grammar Gym Service] No valid questions extracted from response');
+      throw new Error('No valid questions in OpenAI response');
+    }
+    
+    console.log('[Grammar Gym Service] Extracted questions count:', questions.length);
     
     // Mark all as personalized
-    return questions.map(q => ({
+    const personalizedQuestions = questions.map(q => ({
       ...q,
       isPersonalized: true,
     }));
+    console.log('[Grammar Gym Service] Successfully generated', personalizedQuestions.length, 'personalized questions');
+    return personalizedQuestions;
   } catch (error) {
-    console.error('Error generating personalized questions:', error);
+    console.error('[Grammar Gym Service] Error generating personalized questions:', error);
     
-    // Fallback: return a generic question based on grammar focus
-    return [{
-      question: `Complete: Es importante que nosotros _____ (practicar) el español.`,
-      options: ['practicamos', 'practiquemos', 'practicaremos', 'practicando'],
-      correct: 'practiquemos',
-      explanation: 'After expressions like "Es importante que", we use the subjunctive. "Practiquemos" is the present subjunctive form for nosotros.',
-      isPersonalized: true,
-    }];
+    // Fallback: return generic subjunctive questions based on the number of errors
+    // This ensures users still get personalized practice even if AI generation fails
+    const fallbackQuestions: MCQQuestion[] = [
+      {
+        question: `Completa la oración: Es importante que nosotros _____ (practicar) el español todos los días.`,
+        options: ['practicamos', 'practiquemos', 'practicaremos', 'practicando'],
+        correct: 'practiquemos',
+        explanation: 'Después de expresiones como "Es importante que", usamos el subjuntivo. "Practiquemos" es la forma del presente de subjuntivo para nosotros.',
+        isPersonalized: true,
+      },
+      {
+        question: `Completa la oración: Ojalá que ella _____ (venir) a la fiesta mañana.`,
+        options: ['viene', 'venga', 'vendrá', 'viniendo'],
+        correct: 'venga',
+        explanation: 'Después de "Ojalá que", siempre usamos el subjuntivo. "Venga" es la forma del presente de subjuntivo de "venir" para ella/él/usted.',
+        isPersonalized: true,
+      },
+      {
+        question: `Completa la oración: Dudo que ellos _____ (saber) la respuesta correcta.`,
+        options: ['saben', 'sepan', 'sabrán', 'sabiendo'],
+        correct: 'sepan',
+        explanation: 'Después de expresiones de duda como "Dudo que", usamos el subjuntivo. "Sepan" es la forma irregular del presente de subjuntivo de "saber" para ellos.',
+        isPersonalized: true,
+      },
+    ];
+    
+    // Return the appropriate number of fallback questions based on error count
+    const questionsToReturn = fallbackQuestions.slice(0, numQuestions);
+    console.log('[Grammar Gym Service] Returning', questionsToReturn.length, 'fallback questions');
+    return questionsToReturn;
   }
 }
 

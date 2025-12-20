@@ -420,18 +420,13 @@ router.post('/attempt', authMiddleware, async (req: Request, res: Response) => {
       console.error('Error fetching current progress:', progressFetchError);
     }
 
-    // Update progress
-    const newEpisodesCompleted = Math.max(
-      currentProgress?.episodes_completed || 0,
-      episode.episode_number
-    );
-    const newCurrentEpisode = newEpisodesCompleted + 1;
-
+    // Update progress - but do NOT unlock next episode yet
+    // Next episode is only unlocked when Grammar Gym is completed
+    // We track XP and stars here, but current_episode stays the same
     const { error: updateError } = await supabaseAdmin
       .from('user_story_progress')
       .update({
-        current_episode: newCurrentEpisode,
-        episodes_completed: newEpisodesCompleted,
+        // Note: current_episode is NOT updated here - only updated after Grammar Gym completion
         total_stars: (currentProgress?.total_stars || 0) + (starsEarned || 0),
         total_xp: (currentProgress?.total_xp || 0) + xpEarned,
         last_played_at: new Date().toISOString(),
@@ -456,8 +451,8 @@ router.post('/attempt', authMiddleware, async (req: Request, res: Response) => {
     res.json({ 
       attempt,
       xpEarned,
-      message: 'Episode completed successfully',
-      nextEpisode: newCurrentEpisode
+      message: 'Episode conversation completed. Complete the reading, writing, and grammar gym to unlock the next episode.',
+      nextEpisode: null // Next episode unlocks after Grammar Gym
     });
   } catch (error) {
     console.error('Error in POST /stories/attempt:', error);

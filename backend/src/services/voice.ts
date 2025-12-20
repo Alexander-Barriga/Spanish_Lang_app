@@ -26,6 +26,7 @@ export class VoiceService {
   async transcribe(audioBuffer: Buffer, options?: {
     language?: string;
     prompt?: string;
+    mimeType?: string;
   }): Promise<{
     transcript: string;
   }> {
@@ -33,13 +34,29 @@ export class VoiceService {
       throw new Error('OpenAI API key not configured');
     }
 
-    const { language = 'es', prompt } = options || {};
+    const { language = 'es', prompt, mimeType = 'audio/m4a' } = options || {};
+
+    // Map MIME type to file extension for Whisper
+    const mimeToExt: Record<string, string> = {
+      'audio/m4a': 'm4a',
+      'audio/mp4': 'm4a',
+      'audio/x-m4a': 'm4a',
+      'audio/aac': 'aac',
+      'audio/wav': 'wav',
+      'audio/webm': 'webm',
+      'audio/3gpp': '3gp',
+      'audio/x-caf': 'caf',
+      'audio/mpeg': 'mp3',
+      'audio/ogg': 'ogg',
+    };
+    const fileExt = mimeToExt[mimeType] || 'm4a';
+    const contentType = mimeType || 'audio/m4a';
 
     // Create form data for the API request
     const formData = new FormData();
     formData.append('file', audioBuffer, {
-      filename: 'audio.webm',
-      contentType: 'audio/webm',
+      filename: `audio.${fileExt}`,
+      contentType: contentType,
     });
     formData.append('model', 'whisper-1');
     formData.append('language', language);

@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -254,8 +255,15 @@ export default function WritingExerciseScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={colors.text.secondary} />
           <Text style={styles.errorText}>Exercise not found</Text>
-          <Pressable onPress={handleBack} style={styles.backButtonError}>
-            <Text style={styles.backButtonTextError}>Go Back</Text>
+          <Pressable onPress={handleBack}>
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.backButtonError}
+            >
+              <Text style={styles.backButtonTextError}>Go Back</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -384,21 +392,25 @@ export default function WritingExerciseScreen() {
 
           {/* Submit Button */}
           <Pressable
-            style={[
-              styles.submitButton,
-              (!userText.trim() || isSubmitting || isTranscribing) && styles.submitButtonDisabled,
-            ]}
             onPress={handleSubmit}
             disabled={!userText.trim() || isSubmitting || isTranscribing}
+            style={(!userText.trim() || isSubmitting || isTranscribing) && styles.submitButtonDisabled}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color={colors.neutral[900]} />
-            ) : (
-              <>
-                <Text style={styles.submitButtonText}>Submit for Feedback</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.neutral[900]} />
-              </>
-            )}
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.submitButton}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={colors.neutral[900]} />
+              ) : (
+                <>
+                  <Text style={styles.submitButtonText}>Submit for Feedback</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.neutral[900]} />
+                </>
+              )}
+            </LinearGradient>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -445,9 +457,16 @@ export default function WritingExerciseScreen() {
               >
                 <Text style={styles.modalCancelText}>Maybe Later</Text>
               </Pressable>
-              <Pressable style={styles.modalContinueButton} onPress={handleModalContinue}>
-                <Ionicons name="mic" size={20} color={colors.neutral[900]} />
-                <Text style={styles.modalContinueText}>Start Recording</Text>
+              <Pressable onPress={handleModalContinue} style={{ flex: 1 }}>
+                <LinearGradient
+                  colors={['#B3F5FF', '#00B8DB']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.modalContinueButton}
+                >
+                  <Ionicons name="mic" size={20} color={colors.neutral[900]} />
+                  <Text style={styles.modalContinueText}>Start Recording</Text>
+                </LinearGradient>
               </Pressable>
             </View>
           </View>
@@ -487,7 +506,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   backButtonError: {
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.full,
@@ -707,7 +725,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[4],
     borderRadius: borderRadius.xl,
     gap: spacing[2],
@@ -799,10 +816,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[3],
     borderRadius: borderRadius.lg,
     gap: spacing[2],
+    overflow: 'hidden',
   },
   modalContinueText: {
     ...textStyles.button,

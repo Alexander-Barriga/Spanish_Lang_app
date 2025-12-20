@@ -12,6 +12,7 @@ interface RoadmapProgress {
   episodeCompleted: boolean;
   articleRead: boolean;
   writingSubmitted: boolean;
+  conversationCompleted: boolean;
   gymCompleted: boolean;
   nextEpisodeUnlocked: boolean;
   nextEpisodeId?: string;
@@ -149,9 +150,9 @@ export default function EpisodeRoadmap({
     },
     {
       id: 4,
-      name: 'Complete Gym',
-      shortName: 'Gym',
-      status: progress.gymCompleted
+      name: 'Complete Conversation',
+      shortName: 'Conversation',
+      status: progress.conversationCompleted
         ? 'completed'
         : progress.writingSubmitted
         ? 'in_progress'
@@ -161,7 +162,36 @@ export default function EpisodeRoadmap({
         if (!progress.writingSubmitted) {
           Alert.alert(
             'Writing Required',
-            'You must complete the writing exercise before accessing the Grammar Gym.'
+            'You must complete the writing exercise before starting the conversation.'
+          );
+          return;
+        }
+        
+        try {
+          const articleResult = await api.getEpisodeArticle(episodeId);
+          if (articleResult.data?.article) {
+            router.push(`/article/episode/${articleResult.data.article.id}/conversation`);
+          }
+        } catch (error) {
+          console.error('Error navigating to conversation:', error);
+        }
+      },
+    },
+    {
+      id: 5,
+      name: 'Complete Gym',
+      shortName: 'Gym',
+      status: progress.gymCompleted
+        ? 'completed'
+        : progress.conversationCompleted
+        ? 'in_progress'
+        : 'locked',
+      onPress: async () => {
+        // Check if conversation is completed first
+        if (!progress.conversationCompleted) {
+          Alert.alert(
+            'Conversation Required',
+            'You must complete the conversation with Florencia before accessing the Grammar Gym.'
           );
           return;
         }
@@ -181,7 +211,7 @@ export default function EpisodeRoadmap({
   // Only show "Unlock Next Episode" if not the final episode
   if (episodeNumber < totalEpisodes) {
     steps.push({
-      id: 5,
+      id: 6,
       name: 'Unlock Next',
       shortName: 'Next',
       status: progress.nextEpisodeUnlocked ? 'completed' : 'locked',
@@ -194,11 +224,11 @@ export default function EpisodeRoadmap({
   const getStepIcon = (status: StepStatus) => {
     switch (status) {
       case 'completed':
-        return <Ionicons name="checkmark-circle" size={24} color={colors.primary.gold} />;
+        return <Ionicons name="checkmark-circle" size={24} color="#00FF00" />;
       case 'in_progress':
         return <Ionicons name="time-outline" size={24} color={colors.primary.gold} />;
       case 'locked':
-        return <Ionicons name="lock-closed" size={20} color={colors.neutral[600]} />;
+        return <Ionicons name="lock-closed" size={20} color="#FF0000" />;
     }
   };
 
@@ -320,7 +350,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.elevated,
   },
   stepCardLocked: {
-    borderColor: colors.neutral[700],
+    borderColor: '#FF0000',
     backgroundColor: colors.neutral[900],
     opacity: 0.6,
   },

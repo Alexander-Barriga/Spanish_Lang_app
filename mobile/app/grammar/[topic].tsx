@@ -8,6 +8,7 @@ import {
   SafeAreaView 
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 import { getGrammarLesson, GrammarLesson } from '../../src/data/grammarLessons';
@@ -167,12 +168,18 @@ export default function GrammarLessonScreen() {
           <Pressable 
             onPress={handleStartEpisode} 
             style={({ pressed }) => [
-              styles.startButton,
               pressed && styles.startButtonPressed
             ]}
           >
-            <Text style={styles.startButtonText}>Start Episode</Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.text.primary} />
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.startButton}
+            >
+              <Text style={styles.startButtonText}>Start Episode</Text>
+              <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
+            </LinearGradient>
           </Pressable>
         </View>
 
@@ -320,7 +327,7 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     marginBottom: spacing[3],
     borderWidth: 1,
-    borderColor: colors.accent.tango + '40',
+    borderColor: '#FF0000',
   },
   storyExampleSpanish: {
     ...textStyles.dialogue,
@@ -382,7 +389,6 @@ const styles = StyleSheet.create({
     marginTop: spacing[4],
   },
   startButton: {
-    backgroundColor: colors.primary.gold,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[6],
@@ -397,7 +403,7 @@ const styles = StyleSheet.create({
   },
   startButtonText: {
     ...textStyles.label,
-    color: colors.text.primary,
+    color: colors.text.inverse,
     fontWeight: '700',
   },
   errorContainer: {

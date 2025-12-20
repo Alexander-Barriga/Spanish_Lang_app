@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
 import { api, EpisodeArticle } from '../../../../src/services/api';
@@ -266,9 +267,20 @@ export default function EpisodeArticleReaderScreen() {
     router.back();
   };
 
-  const handleStartWriting = () => {
+  const handleStartWriting = async () => {
     if (!article) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Mark article as 100% read when starting writing exercise
+    // This ensures the article step is completed when proceeding to writing
+    const readSeconds = Math.round((Date.now() - readStartTime) / 1000);
+    try {
+      await api.trackEpisodeArticleRead(articleId!, readSeconds, 100); // 100% completion
+    } catch (error) {
+      console.error('Error marking article as read:', error);
+      // Continue to writing even if tracking fails
+    }
+    
     router.push(`/article/episode/${articleId}/writing`);
   };
 
@@ -306,8 +318,15 @@ export default function EpisodeArticleReaderScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={colors.text.secondary} />
           <Text style={styles.errorText}>Article not found</Text>
-          <Pressable onPress={handleBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+          <Pressable onPress={handleBack}>
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.backButton}
+            >
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -402,12 +421,16 @@ export default function EpisodeArticleReaderScreen() {
             <Text style={styles.writingExercisePrompt}>
               {article.writing_exercise_prompt}
             </Text>
-            <Pressable 
-              onPress={handleStartWriting}
-              style={styles.startWritingButton}
-            >
-              <Text style={styles.startWritingButtonText}>Begin Writing Exercise</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+            <Pressable onPress={handleStartWriting}>
+              <LinearGradient
+                colors={['#B3F5FF', '#00B8DB']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.startWritingButton}
+              >
+                <Text style={styles.startWritingButtonText}>Begin Writing Exercise</Text>
+                <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+              </LinearGradient>
             </Pressable>
           </View>
         )}
@@ -596,7 +619,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.lg,
@@ -651,7 +673,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   backButton: {
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.full,

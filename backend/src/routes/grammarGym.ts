@@ -14,26 +14,19 @@ router.get('/episode/:episodeId', async (req: Request, res: Response) => {
     const userId = req.user?.id;
     const { episodeId } = req.params;
 
-    // #region agent log - B, C
-    console.log(`[DEBUG] Grammar Gym GET /episode/:episodeId hit - episodeId: ${episodeId}, userId: ${userId}`);
-    try {
-      const fs = require('fs');
-      fs.appendFileSync('/Users/alexanderbarriga/Spanish_Lang_app/.cursor/debug.log', JSON.stringify({location:'grammarGym.ts:14',message:'route handler execute',data:{episodeId:episodeId,userId:userId,path:'/episode/:episodeId'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,C'}) + '\n');
-    } catch (e) {
-      // Log write failed, continue
-    }
-    // #endregion
-
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     // 1. Check if user has completed the writing exercise for this episode
+    // Note: If multiple submissions exist for same episode, this gets the first one found
+    // (typically the most recent due to Supabase's default behavior)
     const { data: submission, error: submissionError } = await supabaseAdmin
       .from('episode_article_submissions')
       .select('id, ai_feedback, episode_id')
       .eq('user_id', userId)
       .eq('episode_id', episodeId)
+      .limit(1)
       .single();
 
     if (submissionError && submissionError.code !== 'PGRST116') {
@@ -74,11 +67,49 @@ router.get('/episode/:episodeId', async (req: Request, res: Response) => {
 
     // 4. Extract grammar errors from the user's writing submission
     const aiFeedback = submission.ai_feedback as any;
-    const grammarErrors: GrammarError[] = aiFeedback?.grammar?.errors || 
-                                           aiFeedback?.grammarAnalysis?.errors || 
-                                           [];
+    
+    // Debug: log the entire feedback structure
+    console.log('[Grammar Gym Debug] Full ai_feedback structure:', JSON.stringify(aiFeedback, null, 2));
+    console.log('[Grammar Gym Debug] Keys in aiFeedback:', aiFeedback ? Object.keys(aiFeedback) : 'null');
+    
+    // Try multiple possible paths to find errors
+    let grammarErrors: GrammarError[] = [];
+    
+    // Check all possible paths where errors might be stored
+    const possibleErrorPaths = [
+      aiFeedback?.grammar?.errors,
+      aiFeedback?.grammarAnalysis?.errors,
+      aiFeedback?.errors,
+      aiFeedback?.grammar_analysis?.errors,
+      aiFeedback?.grammarErrors,
+    ];
+    
+    console.log('[Grammar Gym Debug] Checking paths:');
+    console.log('  - grammar.errors:', aiFeedback?.grammar?.errors);
+    console.log('  - grammarAnalysis.errors:', aiFeedback?.grammarAnalysis?.errors);
+    console.log('  - errors:', aiFeedback?.errors);
+    console.log('  - grammar_analysis.errors:', aiFeedback?.grammar_analysis?.errors);
+    console.log('  - grammarErrors:', aiFeedback?.grammarErrors);
+    
+    // Find the first non-empty error array
+    for (const errors of possibleErrorPaths) {
+      if (Array.isArray(errors) && errors.length > 0) {
+        grammarErrors = errors.map(e => ({
+          type: e.type || 'grammar',
+          original: e.original || e.text || e.sentence || '',
+          correction: e.correction || e.corrected || e.fix || '',
+          explanation: e.explanation || e.reason || e.message || '',
+        }));
+        console.log('[Grammar Gym Debug] Found errors at path, count:', grammarErrors.length);
+        break;
+      }
+    }
+    
+    console.log('[Grammar Gym Debug] Final extracted grammarErrors:', JSON.stringify(grammarErrors, null, 2));
+    console.log('[Grammar Gym Debug] Number of errors:', grammarErrors.length);
 
     // 5. Generate personalized questions based on errors
+    console.log('[Grammar Gym Debug] Calling generatePersonalizedQuestions with', grammarErrors.length, 'errors');
     const personalizedQuestions = await generatePersonalizedQuestions(
       grammarErrors,
       {
@@ -89,6 +120,8 @@ router.get('/episode/:episodeId', async (req: Request, res: Response) => {
         grammar_triggers: episode.grammar_triggers || [],
       }
     );
+    console.log('[Grammar Gym Debug] Personalized questions returned:', personalizedQuestions.length);
+    console.log('[Grammar Gym Debug] Default questions count:', defaultQuestions?.length || 0);
 
     // 6. Combine default and personalized questions
     const allQuestions: MCQQuestion[] = [
@@ -136,17 +169,30 @@ router.post('/episode/:episodeId/complete', async (req: Request, res: Response) 
       return res.status(400).json({ error: 'correctAnswers and totalQuestions are required' });
     }
 
+    // Get the episode's grammar_focus to store correctly
+    const { data: episodeData, error: episodeFetchError } = await supabaseAdmin
+      .from('episodes')
+      .select('grammar_focus, story_arc_id, episode_number')
+      .eq('id', episodeId)
+      .single();
+
+    if (episodeFetchError || !episodeData) {
+      console.error('Error fetching episode for gym completion:', episodeFetchError);
+      return res.status(404).json({ error: 'Episode not found' });
+    }
+
     // Calculate XP
     const xpEarned = calculateGymXP(correctAnswers, totalQuestions);
     const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
     // Create a workout session record for the gym
+    // IMPORTANT: Use episode.grammar_focus so it matches the roadmap check
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('workout_sessions')
       .insert({
         user_id: userId,
         session_type: 'daily_workout',
-        grammar_focus: episodeId, // Store episode ID for reference
+        grammar_focus: episodeData.grammar_focus, // Use actual grammar_focus, not episodeId
         duration_seconds: 0, // Will be updated by client if needed
         mcq_correct: correctAnswers,
         mcq_total: totalQuestions,
@@ -215,6 +261,51 @@ router.post('/episode/:episodeId/complete', async (req: Request, res: Response) 
         .eq('user_id', userId);
     }
 
+    // =============================================
+    // UNLOCK NEXT EPISODE - This is the final step in the episode roadmap
+    // =============================================
+    
+    // episodeData already fetched above with story_arc_id and episode_number
+
+    let nextEpisodeUnlocked = false;
+    let nextEpisodeNumber = null;
+
+    // Get current story progress
+    const { data: storyProgress } = await supabaseAdmin
+      .from('user_story_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('story_arc_id', episodeData.story_arc_id)
+      .single();
+
+    if (storyProgress) {
+      // Only unlock if we haven't already unlocked this episode
+      const newEpisodesCompleted = Math.max(
+        storyProgress.episodes_completed || 0,
+        episodeData.episode_number
+      );
+      const newCurrentEpisode = newEpisodesCompleted + 1;
+
+      // Check if this actually unlocks a new episode
+      if (newCurrentEpisode > storyProgress.current_episode) {
+        const { error: updateError } = await supabaseAdmin
+          .from('user_story_progress')
+          .update({
+            current_episode: newCurrentEpisode,
+            episodes_completed: newEpisodesCompleted,
+            last_played_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId)
+          .eq('story_arc_id', episodeData.story_arc_id);
+
+        if (!updateError) {
+          nextEpisodeUnlocked = true;
+          nextEpisodeNumber = newCurrentEpisode;
+          console.log(`[Grammar Gym] Unlocked episode ${newCurrentEpisode} for user ${userId}`);
+        }
+      }
+    }
+
     res.json({
       success: true,
       session: session,
@@ -222,6 +313,8 @@ router.post('/episode/:episodeId/complete', async (req: Request, res: Response) 
       accuracy,
       correctAnswers,
       totalQuestions,
+      nextEpisodeUnlocked,
+      nextEpisodeNumber,
     });
   } catch (error) {
     console.error('Grammar gym complete error:', error);

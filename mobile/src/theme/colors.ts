@@ -5,17 +5,17 @@ export const colors = {
   // Primary colors - Rich, luxurious palette
   primary: {
     black: '#0A0A0B',        // Deep black - main background
-    gold: '#C9A962',          // Muted gold - primary accent (elegant, not flashy)
+    gold: '#00D5FF',          // Cyan - primary accent
     cream: '#F5F2EB',         // Warm cream - text on dark
     charcoal: '#1C1C1E',      // Rich charcoal - elevated surfaces
   },
 
   // Accent colors - Inspired by Buenos Aires and tango
   accent: {
-    tango: '#8B2942',         // Deep burgundy - passion, tango
-    wine: '#722F37',          // Dark wine - sophisticated accent
+    tango: '#FF0000',         // Pure red - passion, tango
+    wine: '#FF0000',          // Pure red - sophisticated accent
     sky: '#4A6B8A',           // Muted slate blue - calm, trustworthy
-    sage: '#6B8068',          // Soft sage - success, growth
+    sage: '#00FF00',          // Pure green - success, growth
     rose: '#B76E79',          // Dusty rose - warmth
   },
 
@@ -36,17 +36,17 @@ export const colors = {
   },
 
   // Semantic colors
-  success: '#6B8068',         // Sage green
+  success: '#00FF00',         // Pure green
   warning: '#D4A84B',         // Warm amber
-  error: '#C14F4F',           // Muted red
+  error: '#FF0000',           // Pure red
   info: '#4A6B8A',            // Slate blue
 
   // Mode-specific colors (for grammar gym legacy support)
   modes: {
     open: '#4A6B8A',
     topic: '#B76E79',
-    vocabulary: '#6B8068',
-    grammar: '#8B2942',
+    vocabulary: '#00FF00',
+    grammar: '#FF0000',       // Pure red
     roleplay: '#9B7BB8',
   },
 
@@ -56,7 +56,7 @@ export const colors = {
     secondary: '#AEAEB2',      // Muted gray
     tertiary: '#636366',       // Even more muted
     inverse: '#0A0A0B',        // Dark text on light
-    accent: '#C9A962',         // Gold accent text
+    accent: '#00D5FF',         // Cyan accent text
     muted: '#8E8E93',          // Subtle text
   },
 
@@ -75,25 +75,25 @@ export const colors = {
     default: '#3A3A3C',        // Standard border
     light: '#48484A',          // Lighter border
     subtle: '#2C2C2E',         // Very subtle
-    focus: '#C9A962',          // Focus state (gold)
-    accent: '#8B2942',         // Accent border (tango)
+    focus: '#00D5FF',          // Focus state (cyan)
+    accent: '#FF0000',         // Accent border (red)
   },
 
   // Gradient presets
   gradients: {
     primary: ['#0A0A0B', '#1C1C1E'],
     hero: ['#121214', '#1C1C1E', '#2C2C2E'],
-    gold: ['#C9A962', '#A68B4B'],
-    goldSubtle: ['rgba(201,169,98,0.15)', 'rgba(201,169,98,0.05)'],
-    tango: ['#8B2942', '#722F37'],
-    tangoSubtle: ['rgba(139,41,66,0.2)', 'rgba(139,41,66,0.1)'],
+    gold: ['#00D5FF', '#00A8CC'],
+    goldSubtle: ['rgba(0,213,255,0.15)', 'rgba(0,213,255,0.05)'],
+    tango: ['#FF0000', '#CC0000'],
+    tangoSubtle: ['rgba(255,0,0,0.2)', 'rgba(255,0,0,0.1)'],
     night: ['#0A0A0B', '#121214'],
     card: ['#1C1C1E', '#232325'],
   },
 
   // Episode/Story specific colors
   story: {
-    progress: '#C9A962',       // Progress bar
+    progress: '#00D5FF',       // Progress bar (cyan)
     star: '#D4A84B',           // Star rating
     starEmpty: '#3A3A3C',      // Empty star
     locked: '#48484A',         // Locked content

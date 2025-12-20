@@ -796,6 +796,7 @@ class ApiClient {
       episodeCompleted: boolean;
       articleRead: boolean;
       writingSubmitted: boolean;
+      conversationCompleted: boolean;
       gymCompleted: boolean;
       nextEpisodeUnlocked: boolean;
       nextEpisodeId?: string;
@@ -862,11 +863,6 @@ class ApiClient {
   // ============================================
 
   async getGrammarGymQuestions(episodeId: string) {
-    // #region agent log - D
-    const endpoint = `/grammar-gym/episode/${episodeId}`;
-    console.log(`[DEBUG] getGrammarGymQuestions endpoint: ${endpoint}, episodeId: ${episodeId}`);
-    fetch('http://127.0.0.1:7242/ingest/044c796b-c986-4a87-b772-7ec04fa5f18a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:858',message:'getGrammarGymQuestions request',data:{endpoint:endpoint,episodeId:episodeId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     return this.request<{
       episode: {
         id: string;
@@ -904,6 +900,97 @@ class ApiClient {
       canAccess: boolean;
       hasWritingSubmission: boolean;
     }>(`/grammar-gym/episode/${episodeId}/access`);
+  }
+
+  // ============================================
+  // EPISODE CONVERSATION METHODS
+  // ============================================
+
+  async getEpisodeConversation(episodeId: string) {
+    return this.request<{
+      conversation: EpisodeConversation | null;
+      messages: EpisodeConversationMessage[];
+      isComplete: boolean;
+      userReplyCount: number;
+      maxReplies: number;
+    }>(`/episode-conversation/${episodeId}`);
+  }
+
+  async startEpisodeConversation(episodeId: string) {
+    return this.request<{
+      conversationId: string;
+      message: EpisodeConversationMessage;
+      userReplyCount: number;
+      maxReplies: number;
+      resumed?: boolean;
+      messages?: EpisodeConversationMessage[];
+    }>(`/episode-conversation/${episodeId}/start`, {
+      method: 'POST',
+    });
+  }
+
+  async sendEpisodeConversationMessage(conversationId: string, audioBlob: Blob) {
+    const formData = new FormData();
+    formData.append('audio', {
+      uri: (audioBlob as any).uri || '',
+      type: (audioBlob as any).mimeType || 'audio/webm',
+      name: 'recording.webm',
+    } as any);
+
+    const token = await this.getAuthToken();
+    const response = await fetch(`${this.baseUrl}/episode-conversation/${conversationId}/message`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return { error: data.error || 'Failed to send message' };
+    }
+
+    return {
+      data: data as {
+        userMessage: EpisodeConversationMessage;
+        florenciaMessage?: EpisodeConversationMessage;
+        conversationComplete: boolean;
+        summary?: ConversationSummary;
+        userReplyCount: number;
+        maxReplies: number;
+      },
+    };
+  }
+
+  async sendEpisodeConversationTextMessage(conversationId: string, message: string) {
+    return this.request<{
+      userMessage: EpisodeConversationMessage;
+      florenciaMessage?: EpisodeConversationMessage;
+      conversationComplete: boolean;
+      summary?: ConversationSummary;
+      userReplyCount: number;
+      maxReplies: number;
+    }>(`/episode-conversation/${conversationId}/message`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  async completeEpisodeConversation(conversationId: string) {
+    return this.request<{
+      success: boolean;
+      message: string;
+    }>(`/episode-conversation/${conversationId}/complete`, {
+      method: 'POST',
+    });
+  }
+
+  async checkEpisodeConversationAccess(episodeId: string) {
+    return this.request<{
+      hasAccess: boolean;
+      writingCompleted: boolean;
+    }>(`/episode-conversation/${episodeId}/access`);
   }
 
   // ============================================
@@ -1218,6 +1305,43 @@ export interface GrammarGymQuestion {
   correct: string;
   explanation: string;
   isPersonalized?: boolean;
+}
+
+// Episode Conversation Interfaces
+export interface HighlightedVerb {
+  verb: string;
+  startIndex: number;
+  endIndex: number;
+  infinitive: string;
+  indicativeForm: string;
+  trigger: string;
+  explanation: string;
+}
+
+export interface EpisodeConversationMessage {
+  id: string;
+  role: 'assistant' | 'user';
+  content: string;
+  highlightedVerbs?: HighlightedVerb[];
+  audioUrl?: string;
+  created_at?: string;
+}
+
+export interface EpisodeConversation {
+  id: string;
+  user_id: string;
+  episode_id: string;
+  writing_submission_id: string;
+  message_count: number;
+  user_reply_count: number;
+  completed_at?: string;
+  created_at: string;
+}
+
+export interface ConversationSummary {
+  summary: string;
+  grammarExamplesUsed: number;
+  userExchanges: number;
 }
 
 // Export singleton instance

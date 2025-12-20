@@ -141,6 +141,16 @@ router.get('/roadmap/:episodeId', authMiddleware, async (req: Request, res: Resp
 
     const writingSubmitted = !!submission;
 
+    // 3.5. Check if conversation is completed
+    const { data: conversation } = await supabaseAdmin
+      .from('episode_conversations')
+      .select('id, completed_at')
+      .eq('user_id', userId)
+      .eq('episode_id', episodeId)
+      .single();
+
+    const conversationCompleted = !!(conversation?.completed_at);
+
     // 4. Check if gym workouts are completed (any workout with matching grammar_focus)
     const { data: workouts } = await supabaseAdmin
       .from('workout_sessions')
@@ -180,6 +190,7 @@ router.get('/roadmap/:episodeId', authMiddleware, async (req: Request, res: Resp
       episodeCompleted,
       articleRead,
       writingSubmitted,
+      conversationCompleted,
       gymCompleted,
       nextEpisodeUnlocked,
       nextEpisodeId,

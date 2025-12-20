@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { api } from '../../../../../src/services/api';
 import { colors, textStyles, spacing, borderRadius } from '../../../../../src/theme';
@@ -177,8 +178,15 @@ export default function FeedbackScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={colors.text.secondary} />
           <Text style={styles.errorText}>Feedback not found</Text>
-          <Pressable onPress={handleBack} style={styles.backButtonError}>
-            <Text style={styles.backButtonTextError}>Go Back</Text>
+          <Pressable onPress={handleBack}>
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.backButtonError}
+            >
+              <Text style={styles.backButtonTextError}>Go Back</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -514,9 +522,16 @@ export default function FeedbackScreen() {
 
         {/* Actions */}
         <View style={styles.actionsContainer}>
-          <Pressable style={styles.homeButton} onPress={handleGoHome}>
-            <Ionicons name="home-outline" size={20} color={colors.neutral[900]} />
-            <Text style={styles.homeButtonText}>Back to Home</Text>
+          <Pressable onPress={handleGoHome}>
+            <LinearGradient
+              colors={['#B3F5FF', '#00B8DB']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.homeButton}
+            >
+              <Ionicons name="home-outline" size={20} color={colors.neutral[900]} />
+              <Text style={styles.homeButtonText}>Back to Home</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </ScrollView>
@@ -551,7 +566,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   backButtonError: {
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.full,
@@ -970,7 +984,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary.gold,
     paddingVertical: spacing[4],
     borderRadius: borderRadius.xl,
     gap: spacing[2],
