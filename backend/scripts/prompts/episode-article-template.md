@@ -274,6 +274,113 @@ This creates continuity with the episode and makes the reader feel like they're 
 - **Florencia reveals**: What this friendship meant, her hopes for both of your futures
 - **Writing prompt focus**: Write a farewell letter using all the grammar learned
 
+## Visual Enhancement Requirements
+
+### Image Placement Markers
+
+Each article MUST include exactly 3 image placement markers that will be replaced with AI-generated images:
+
+1. **Header Image** - At the very beginning, before the opening paragraph
+2. **Inline Image 1** - After the grammar philosophy section
+3. **Inline Image 2** - Before the writing exercise
+
+Use this format for image markers:
+
+```markdown
+[IMAGE: Detailed description for DALL-E 3 generation following the Buenos Aires style guide]
+```
+
+**Image Description Requirements:**
+- Describe the scene, not the concept
+- Include lighting, atmosphere, and sensory details
+- Specify Buenos Aires cultural elements
+- NO text or signs with words
+- Match the emotional tone of the surrounding content
+
+**Example markers:**
+
+```markdown
+[IMAGE: Interior of historic Buenos Aires café, warm afternoon light through tall windows, marble tables with half-empty coffee cups, worn leather chairs, vintage photographs on wood-paneled walls, intimate and nostalgic atmosphere, film grain texture]
+
+[IMAGE: Hands writing in a leather journal at a wooden table, soft natural light, Buenos Aires rooftop visible through window, coffee cup nearby, contemplative and creative mood]
+
+[IMAGE: San Telmo street at golden hour, cobblestones reflecting warm light, antique shop windows with vintage items, local couple walking arm in arm, authentic neighborhood atmosphere]
+```
+
+---
+
+## Cultural Immersion Requirements
+
+### Opening Cultural Context
+
+The article opening MUST place the reader in the physical and emotional space of Buenos Aires:
+
+1. **Sensory grounding** (2-3 sentences) - What does this place look/sound/smell like?
+2. **Cultural significance** - Why does this location matter to Argentines?
+3. **Emotional invitation** - Draw the reader into the experience
+
+**Bad opening (too abstract):**
+> "Grammar is important for expressing emotions."
+
+**Good opening (culturally immersive):**
+> "The marble tables at Café Tortoni have absorbed a century of whispered conversations—poets drafting verses, friends debating philosophy, lovers reconciling. When you walked through those doors yesterday, you stepped into more than a café. You entered a space where language becomes ritual, where every *ojalá* carries the weight of all the hopes ever spoken in these walls."
+
+### Sensory Language Throughout
+
+Weave sensory details naturally throughout the article:
+- Reference sounds of Buenos Aires (tango music, café chatter, street vendors)
+- Include scents (coffee, grilling meat, old books, river air)
+- Describe textures (worn leather, smooth marble, weathered wood)
+- Capture lighting (golden hour, dim milonga, afternoon sun through windows)
+
+---
+
+## Narrative Continuity Requirements
+
+### Callbacks to Previous Episodes
+
+**For Episodes 2-8:** Each article MUST include at least ONE callback to a previous episode:
+
+| Current Episode | Required Callback Element |
+|-----------------|---------------------------|
+| 2 | Reference to Café Tortoni meeting from Ep 1 |
+| 3 | Reference to milonga experience from Ep 2 |
+| 4 | Reference to discernment lesson from Ep 3 |
+| 5 | Reference to family/belonging from Ep 4 |
+| 6 | Reference to loss/memory from Ep 5 |
+| 7 | Reference to resilience from Ep 6 |
+| 8 | Multiple callbacks to entire journey |
+
+**Callback Examples:**
+
+Episode 3 referencing Episode 2:
+> "Remember the milonga? How we talked about the cabeceo—that silent invitation? The subjunctive works the same way. It's a grammatical cabeceo, an invitation into possibility rather than certainty."
+
+Episode 6 referencing Episode 5:
+> "When I told you about my father, about how the imperfect tense holds him suspended in memory, I used grammar to keep him alive. The imperfect subjunctive lets us do something different—it lets us imagine what could have been."
+
+### Character Arc Progression
+
+Florencia's emotional openness should deepen across episodes:
+
+| Episode | Florencia's Disclosure Level |
+|---------|------------------------------|
+| 1-2 | Surface memories, cultural sharing |
+| 3-4 | Family dynamics, small vulnerabilities |
+| 5-6 | Deep loss, financial struggles, fears |
+| 7-8 | Dreams, gratitude, future hopes |
+
+### User Progress Acknowledgment
+
+Each article should subtly acknowledge the user's Spanish improvement:
+
+- Ep 1-2: "You're just beginning, and that's beautiful."
+- Ep 3-4: "Notice how your ear is tuning to these patterns."
+- Ep 5-6: "You can feel the grammar now, can't you?"
+- Ep 7-8: "Look how far you've come. You speak differently now."
+
+---
+
 ## Final Checklist
 
 Before generating the article, ensure:
@@ -289,23 +396,35 @@ Before generating the article, ensure:
 - [ ] Tone is encouraging and philosophical, not academic
 - [ ] Uses pure Markdown formatting (no HTML)
 - [ ] Exercise provides clear structure and inspiration
+- [ ] **NEW:** Contains exactly 3 [IMAGE: ...] markers
+- [ ] **NEW:** Opens with cultural immersion (sensory details)
+- [ ] **NEW:** Includes callback to previous episode (Eps 2-8)
+- [ ] **NEW:** Weaves sensory language throughout
 
 ## Output Format
 
 Generate the article in pure Markdown format:
 
 ```markdown
+[IMAGE: Header image - evocative Buenos Aires scene matching this episode's location and emotional theme]
+
 # [Article Title]
 
-[PERSONAL OPENING - Florencia speaking directly to the reader, referencing their episode encounter]
+[CULTURAL IMMERSION OPENING - 2-3 sentences with sensory details placing reader in Buenos Aires]
+
+[PERSONAL CONNECTION - Florencia speaking directly to the reader, referencing their episode encounter]
 
 [2-3 short paragraphs establishing connection and introducing the grammar theme]
+
+[CALLBACK - For Eps 2-8, reference to previous episode element]
 
 ---
 
 ## [Section heading for grammar philosophy]
 
 [Brief connection - 1-2 paragraphs]
+
+[IMAGE: Inline image 1 - scene that represents the grammar concept emotionally]
 
 ---
 
@@ -340,6 +459,8 @@ Generate the article in pure Markdown format:
 [Brief reflection on the example]
 
 ---
+
+[IMAGE: Inline image 2 - contemplative scene suggesting the writing exercise ahead]
 
 ## Your Writing Exercise
 

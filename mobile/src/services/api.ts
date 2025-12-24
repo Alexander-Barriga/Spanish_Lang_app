@@ -788,6 +788,13 @@ class ApiClient {
   async getEpisodeArticle(episodeId: string) {
     return this.request<{
       article: EpisodeArticle;
+      images?: Array<{
+        id: string;
+        image_type: 'header' | 'inline';
+        position: number;
+        image_url: string;
+        alt_text?: string;
+      }>;
     }>(`/episode-articles/${episodeId}`);
   }
 

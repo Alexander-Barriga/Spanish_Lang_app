@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   Dimensions,
   NativeSyntheticEvent,
-  NativeScrollEvent
+  NativeScrollEvent,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,6 +19,15 @@ import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
 import { api, EpisodeArticle } from '../../../../src/services/api';
 import { colors, textStyles, spacing, borderRadius } from '../../../../src/theme';
+
+// Interface for article images
+interface ArticleImage {
+  id: string;
+  image_type: 'header' | 'inline';
+  position: number;
+  image_url: string;
+  alt_text?: string;
+}
 
 const { width } = Dimensions.get('window');
 
@@ -199,10 +209,12 @@ const markdownStyles = StyleSheet.create({
     marginVertical: 32,
   },
 
-  // Images
+  // Images - enhanced for narrative images
   image: {
     borderRadius: 12,
     marginVertical: 20,
+    width: width - 40,
+    height: (width - 40) * 0.56, // 16:9 aspect ratio
   },
 
   // Text selection
@@ -211,14 +223,118 @@ const markdownStyles = StyleSheet.create({
   },
 });
 
+// Custom render rules for enhanced image support
+const createMarkdownRules = (articleImages: ArticleImage[]) => ({
+  // Custom image rendering with better sizing and loading states
+  image: (node: any, children: any, parent: any, styles: any, allowedImageHandlers?: any, defaultImageHandler?: any) => {
+    const { src, alt } = node.attributes;
+    
+    // Find matching image from article_images if using placeholder
+    let imageUrl = src;
+    let imageAlt = alt || '';
+    
+    // Check if this is an [IMAGE: ...] placeholder that was converted
+    if (src && src.startsWith('placeholder_')) {
+      const position = parseInt(src.replace('placeholder_', ''), 10);
+      const matchingImage = articleImages.find(img => img.position === position);
+      if (matchingImage) {
+        imageUrl = matchingImage.image_url;
+        imageAlt = matchingImage.alt_text || imageAlt;
+      }
+    }
+    
+    if (!imageUrl) return null;
+    
+    return (
+      <View key={node.key} style={imageStyles.imageWrapper}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={imageStyles.image}
+          resizeMode="cover"
+        />
+        {imageAlt && (
+          <Text style={imageStyles.imageCaption}>{imageAlt}</Text>
+        )}
+      </View>
+    );
+  },
+});
+
+// Image-specific styles
+const imageStyles = StyleSheet.create({
+  imageWrapper: {
+    marginVertical: 24,
+    alignItems: 'center',
+  },
+  image: {
+    width: width - 40,
+    height: (width - 40) * 0.56, // 16:9 aspect ratio
+    borderRadius: 12,
+    backgroundColor: colors.neutral[800],
+  },
+  imageCaption: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    marginTop: 8,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 16,
+  },
+});
+
+/**
+ * Process markdown content to replace [IMAGE: ...] markers with actual images
+ * This will convert markers to standard markdown image syntax
+ */
+const processContentWithImages = (
+  content: string, 
+  images: ArticleImage[]
+): string => {
+  if (!content) return '';
+  if (!images || images.length === 0) return content;
+  
+  let processedContent = content;
+  
+  // Sort images by position
+  const sortedImages = [...images].sort((a, b) => a.position - b.position);
+  
+  // Replace [IMAGE: ...] markers with actual markdown image syntax
+  // Format: [IMAGE: description]
+  const imageMarkerRegex = /\[IMAGE:\s*([^\]]+)\]/gi;
+  let markerIndex = 0;
+  
+  processedContent = processedContent.replace(imageMarkerRegex, (match, description) => {
+    const image = sortedImages[markerIndex];
+    markerIndex++;
+    
+    if (image && image.image_url) {
+      // Use standard markdown image syntax
+      const altText = image.alt_text || description.trim();
+      return `![${altText}](${image.image_url})`;
+    }
+    
+    // If no image available, remove the marker
+    return '';
+  });
+  
+  return processedContent;
+};
+
 export default function EpisodeArticleReaderScreen() {
   const { articleId } = useLocalSearchParams<{ articleId: string }>();
   const [article, setArticle] = useState<EpisodeArticle | null>(null);
+  const [articleImages, setArticleImages] = useState<ArticleImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [readStartTime] = useState(Date.now());
   const [maxScrollPercent, setMaxScrollPercent] = useState(0);
   const [isSpanish, setIsSpanish] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Create markdown rules with current images
+  const markdownRules = useMemo(
+    () => createMarkdownRules(articleImages), 
+    [articleImages]
+  );
 
   useEffect(() => {
     loadArticle();
@@ -235,6 +351,11 @@ export default function EpisodeArticleReaderScreen() {
       const result = await api.getEpisodeArticle(articleId);
       if (result.data?.article) {
         setArticle(result.data.article);
+        
+        // Extract images if they exist in the response
+        if (result.data.images && Array.isArray(result.data.images)) {
+          setArticleImages(result.data.images);
+        }
       }
     } catch (error) {
       console.error('Error loading article:', error);
@@ -296,10 +417,16 @@ export default function EpisodeArticleReaderScreen() {
     setIsSpanish(!isSpanish);
   };
 
-  // Get the current content based on language selection
-  const currentContentMarkdown = isSpanish && article?.content_markdown_es 
+  // Get the current content based on language selection and process images
+  const rawContentMarkdown = isSpanish && article?.content_markdown_es 
     ? article.content_markdown_es 
     : article?.content_markdown || '';
+  
+  // Process content to replace [IMAGE: ...] markers with actual images
+  const currentContentMarkdown = useMemo(
+    () => processContentWithImages(rawContentMarkdown, articleImages),
+    [rawContentMarkdown, articleImages]
+  );
 
   if (isLoading) {
     return (
@@ -402,10 +529,13 @@ export default function EpisodeArticleReaderScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Markdown Content */}
+        {/* Markdown Content with Image Support */}
         {currentContentMarkdown && (
           <View style={styles.markdownContainer}>
-            <Markdown style={markdownStyles}>
+            <Markdown 
+              style={markdownStyles}
+              rules={markdownRules}
+            >
               {currentContentMarkdown}
             </Markdown>
           </View>

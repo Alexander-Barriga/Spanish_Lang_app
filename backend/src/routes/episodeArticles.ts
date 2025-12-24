@@ -301,7 +301,24 @@ router.get('/:episodeId', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Article not found for this episode' });
     }
 
-    res.json({ article });
+    // Fetch article images if they exist
+    let images: any[] = [];
+    try {
+      const { data: imageData } = await supabaseAdmin
+        .from('article_images')
+        .select('id, image_type, position, image_url, alt_text')
+        .eq('article_id', article.id)
+        .order('position', { ascending: true });
+      
+      if (imageData) {
+        images = imageData;
+      }
+    } catch (imgError) {
+      // Log but don't fail - images are optional
+      console.warn('Error fetching article images:', imgError);
+    }
+
+    res.json({ article, images });
   } catch (error) {
     console.error('Error in GET /episode-articles/:episodeId:', error);
     res.status(500).json({ error: 'Internal server error' });

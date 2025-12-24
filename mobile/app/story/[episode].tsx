@@ -12,7 +12,8 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -25,6 +26,7 @@ import { useVoiceRecording } from '../../src/hooks/useVoiceRecording';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { getGrammarLesson, GrammarLesson } from '../../src/data/grammarLessons';
 import { VAD_CONFIG } from '../../src/config/constants';
+import { CulturalContext } from '../../src/components/CulturalContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,6 +46,13 @@ interface Scene {
   }>;
   grammar_hint?: string;
   expected_patterns?: string[];
+  // New narrative enhancement fields
+  cultural_context?: string;
+  scene_image_url?: string;
+  scene_image_storage_path?: string;
+  emotional_beat?: string;
+  callback_to?: string;
+  florencia_reveals?: string;
 }
 
 type PhaseType = 'intro' | 'scene' | 'response' | 'recording' | 'feedback' | 'correction_practice' | 'summary';
@@ -1009,6 +1018,36 @@ export default function EpisodePlayer() {
               contentContainerStyle={styles.sceneScrollContent}
               keyboardShouldPersistTaps="handled"
             >
+            {/* Scene Image - if available */}
+            {currentScene?.scene_image_url && (
+              <Animated.View 
+                style={[
+                  styles.sceneImageContainer,
+                  { opacity: fadeAnim }
+                ]}
+              >
+                <Image
+                  source={{ uri: currentScene.scene_image_url }}
+                  style={styles.sceneImage}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={['transparent', colors.background.primary]}
+                  style={styles.sceneImageGradient}
+                />
+              </Animated.View>
+            )}
+
+            {/* Cultural Context - collapsible card */}
+            {currentScene?.cultural_context && (
+              <CulturalContext
+                contextId={`ep${episode?.episode_number}_${currentScene.scene_id}`}
+                title={episode?.title_es || 'Buenos Aires'}
+                content={currentScene.cultural_context}
+                icon="location"
+              />
+            )}
+
             <Animated.View 
               style={[
                 styles.dialogueContainer,
@@ -1680,6 +1719,25 @@ const styles = StyleSheet.create({
   sceneScrollContent: {
     padding: spacing[5],
     paddingBottom: spacing[10],
+  },
+  // Scene image styles
+  sceneImageContainer: {
+    marginHorizontal: -spacing[5],
+    marginTop: -spacing[5],
+    marginBottom: spacing[4],
+    height: height * 0.35,
+    position: 'relative',
+  },
+  sceneImage: {
+    width: '100%',
+    height: '100%',
+  },
+  sceneImageGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
   },
   dialogueContainer: {
     marginBottom: spacing[6],
