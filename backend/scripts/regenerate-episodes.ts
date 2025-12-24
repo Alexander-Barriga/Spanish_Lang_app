@@ -104,7 +104,7 @@ const EPISODE_CONFIGS = [
     culturalContext: `Asado is not just Argentine barbecue—it's a Sunday religion. Families gather for hours around the parrilla (grill), with the asador (grill master) commanding respect. The meal includes chorizo, morcilla (blood sausage), ribs, and the sacred entraña. Chimichurri is made from family recipes passed down generations. To be invited to a family asado is to be accepted into the inner circle.`,
     emotionalArc: ['nervous_sharing', 'warmth', 'inclusion', 'nostalgia'],
     florenciaReveals: [
-      'Her father used to be the asador—now her uncle does it, but it's not the same',
+      "Her father used to be the asador—now her uncle does it, but it's not the same",
       'Family chimichurri recipe from her grandfather',
       "This is the first time she's brought someone outside family to asado since her father passed",
     ],
@@ -158,9 +158,9 @@ const EPISODE_CONFIGS = [
     culturalContext: `La Bombonera ("The Chocolate Box") is the legendary home of Club Atlético Boca Juniors, possibly the most passionate football club in the world. The stadium literally shakes when fans jump. For porteños, Boca vs. River (the Superclásico) is more than sport—it's identity, tribal belonging, and collective ecstasy. The surrounding neighborhood thrums with team colors and murals.`,
     emotionalArc: ['energy', 'dreams', 'mutual_sharing', 'commitment'],
     florenciaReveals: [
-      'She once had an offer to perform in Spain—she didn't take it',
+      "She once had an offer to perform in Spain—she didn't take it",
       'She thought her mother needed her more than she needed her dreams',
-      'She's going to apply for international opportunities again',
+      "She's going to apply for international opportunities again",
     ],
     callbackTo: ['economic_reality', 'rosa_wisdom'],
     callbackSeeds: ['missed_opportunity'],
