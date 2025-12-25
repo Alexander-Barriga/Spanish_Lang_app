@@ -218,6 +218,15 @@ export default function EpisodeConversationScreen() {
 
   const playAudio = async (audioUrl: string, messageId: string, onFinish?: () => void) => {
     try {
+      // If this message is already playing, stop it (toggle behavior)
+      if (playingMessageId === messageId && currentSound) {
+        await currentSound.stopAsync();
+        await currentSound.unloadAsync();
+        setCurrentSound(null);
+        setPlayingMessageId(null);
+        return;
+      }
+
       // Stop any currently playing audio
       if (currentSound) {
         await currentSound.unloadAsync();
@@ -734,7 +743,7 @@ export default function EpisodeConversationScreen() {
                       {/* Speed options popup */}
                       {speedMenuVisible === message.id && (
                         <View style={styles.speedMenu}>
-                          {[0.25, 0.50, 0.75, 0.90, 1.00].map((speed) => (
+                          {[0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00].map((speed) => (
                             <Pressable
                               key={speed}
                               style={[
