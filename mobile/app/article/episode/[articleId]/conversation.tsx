@@ -604,49 +604,6 @@ export default function EpisodeConversationScreen() {
     );
   }
 
-  // Completion summary screen
-  if (isComplete && summary) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryCard}>
-            <Ionicons name="checkmark-circle" size={64} color={colors.primary.gold} />
-            <Text style={styles.summaryTitle}>¡Conversación Completada!</Text>
-            <Text style={styles.summarySubtitle}>Conversation Complete</Text>
-            
-            <View style={styles.summaryStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{summary.userExchanges}</Text>
-                <Text style={styles.statLabel}>Exchanges</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{summary.grammarExamplesUsed}</Text>
-                <Text style={styles.statLabel}>Grammar Examples</Text>
-              </View>
-            </View>
-
-            <Text style={styles.summaryMessage}>
-              Great job practicing your conversation skills with Florencia! 
-              Ready to reinforce what you learned?
-            </Text>
-
-            <Pressable onPress={handleContinueToGym}>
-              <LinearGradient
-                colors={['#B3F5FF', '#00B8DB']}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.continueButton}
-              >
-                <Text style={styles.continueButtonText}>Continue to Grammar Gym</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -657,8 +614,8 @@ export default function EpisodeConversationScreen() {
         
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Conversation with Florencia</Text>
-          <Text style={styles.headerSubtitle}>
-            {userReplyCount}/{maxReplies} exchanges
+          <Text style={[styles.headerSubtitle, isComplete && styles.headerSubtitleComplete]}>
+            {isComplete ? '✓ Completed!' : `${userReplyCount}/${maxReplies} exchanges`}
           </Text>
         </View>
 
@@ -784,41 +741,62 @@ export default function EpisodeConversationScreen() {
         )}
       </ScrollView>
 
-      {/* Recording controls */}
+      {/* Recording controls or Continue button */}
       <View style={styles.controlsContainer}>
-        <Text style={styles.recordingHint}>
-          Take a moment to think before recording your response
-        </Text>
-        
-        <View style={styles.buttonsRow}>
-          {/* Pause button placeholder - for future use */}
-          <View style={styles.pauseButton}>
-            <Ionicons name="pause" size={24} color={colors.text.muted} />
-          </View>
+        {isComplete ? (
+          <>
+            <Text style={styles.completionHint}>
+              ¡Conversación completada! Scroll up to replay any messages.
+            </Text>
+            <Pressable onPress={handleContinueToGym}>
+              <LinearGradient
+                colors={['#B3F5FF', '#00B8DB']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.continueButton}
+              >
+                <Text style={styles.continueButtonText}>Continue to Grammar Gym</Text>
+                <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+              </LinearGradient>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.recordingHint}>
+              Take a moment to think before recording your response
+            </Text>
+            
+            <View style={styles.buttonsRow}>
+              {/* Pause button placeholder - for future use */}
+              <View style={styles.pauseButton}>
+                <Ionicons name="pause" size={24} color={colors.text.muted} />
+              </View>
 
-          {/* Record button */}
-          <Pressable
-            onPress={isRecording ? stopRecording : startRecording}
-            disabled={isSending || isComplete}
-            style={isSending ? styles.recordButtonDisabled : undefined}
-          >
-            <LinearGradient
-              colors={isRecording ? ['#FF9999', '#CC0000'] : ['#99FF99', '#00CC00']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.recordButton}
-            >
-              <Ionicons
-                name={isRecording ? 'stop' : 'mic'}
-                size={32}
-                color={colors.neutral[950]}
-              />
-              <Text style={styles.recordButtonText}>
-                {isRecording ? 'Stop Recording' : 'Start Recording'}
-              </Text>
-            </LinearGradient>
-          </Pressable>
-        </View>
+              {/* Record button */}
+              <Pressable
+                onPress={isRecording ? stopRecording : startRecording}
+                disabled={isSending}
+                style={isSending ? styles.recordButtonDisabled : undefined}
+              >
+                <LinearGradient
+                  colors={isRecording ? ['#FF9999', '#CC0000'] : ['#99FF99', '#00CC00']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.recordButton}
+                >
+                  <Ionicons
+                    name={isRecording ? 'stop' : 'mic'}
+                    size={32}
+                    color={colors.neutral[950]}
+                  />
+                  <Text style={styles.recordButtonText}>
+                    {isRecording ? 'Stop Recording' : 'Start Recording'}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Verb Explanation Modal */}
@@ -918,6 +896,10 @@ const styles = StyleSheet.create({
     ...textStyles.caption,
     color: colors.primary.gold,
     marginTop: 2,
+  },
+  headerSubtitleComplete: {
+    color: '#00FF00',
+    fontWeight: '600',
   },
 
   // Progress bar
@@ -1078,6 +1060,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing[3],
     fontStyle: 'italic',
+  },
+  completionHint: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    textAlign: 'center',
+    marginBottom: spacing[4],
+    fontWeight: '500',
   },
   buttonsRow: {
     flexDirection: 'row',
