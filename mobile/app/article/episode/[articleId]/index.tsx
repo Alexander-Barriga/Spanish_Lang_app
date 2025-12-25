@@ -50,12 +50,13 @@ const markdownStyles = StyleSheet.create({
     lineHeight: 36,
   },
   heading2: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.text.primary,
     marginTop: 28,
     marginBottom: 14,
-    lineHeight: 30,
+    lineHeight: 28,
+    flexWrap: 'wrap',
   },
   heading3: {
     fontSize: 18,

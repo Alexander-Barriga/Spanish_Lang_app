@@ -270,6 +270,56 @@ export default function WritingExerciseScreen() {
     );
   }
 
+  // Format writing prompt with spacing between numbered points
+  const renderFormattedPrompt = (prompt: string) => {
+    // Split on numbered patterns like "1." or "1)" or "1:"
+    const parts = prompt.split(/(\d+[\.\)\:])/);
+    
+    const renderedParts: React.ReactNode[] = [];
+    let currentPoint = '';
+    let pointNumber = '';
+    
+    parts.forEach((part, index) => {
+      // Check if this is a number marker like "1." or "2)" or "3:"
+      if (/^\d+[\.\)\:]$/.test(part)) {
+        // Save previous point if exists
+        if (currentPoint && pointNumber) {
+          renderedParts.push(
+            <View key={`point-${pointNumber}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+              <Text style={styles.promptText}>
+                <Text style={styles.promptPointNumber}>{pointNumber}</Text>
+                {currentPoint}
+              </Text>
+            </View>
+          );
+        }
+        pointNumber = part;
+        currentPoint = '';
+      } else {
+        currentPoint += part;
+      }
+    });
+    
+    // Add the last point
+    if (currentPoint && pointNumber) {
+      renderedParts.push(
+        <View key={`point-${pointNumber}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+          <Text style={styles.promptText}>
+            <Text style={styles.promptPointNumber}>{pointNumber}</Text>
+            {currentPoint}
+          </Text>
+        </View>
+      );
+    }
+    
+    // If no numbered points found, render as plain text
+    if (renderedParts.length === 0) {
+      return <Text style={styles.promptText}>{prompt}</Text>;
+    }
+    
+    return <>{renderedParts}</>;
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
@@ -313,7 +363,7 @@ export default function WritingExerciseScreen() {
               <Ionicons name="create-outline" size={24} color={colors.primary.gold} />
               <Text style={styles.promptTitle}>Your Writing Prompt</Text>
             </View>
-            <Text style={styles.promptText}>{article.writing_exercise_prompt}</Text>
+            {renderFormattedPrompt(article.writing_exercise_prompt || '')}
           </View>
 
           {/* Already Submitted Notice */}
@@ -357,7 +407,7 @@ export default function WritingExerciseScreen() {
               <View style={styles.journalTip}>
                 <Ionicons name="bulb-outline" size={16} color={colors.accent.sky} />
                 <Text style={styles.journalTipText}>
-                  Tip: Write your response on paper first, then record yourself reading it for best results.
+                  Write your response in your Spanish journal first, then type or voice record. Recording will be transcribed into text you can edit.
                 </Text>
               </View>
             )}
@@ -602,6 +652,13 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.text.primary,
     lineHeight: 26,
+  },
+  promptPointSpacing: {
+    marginTop: spacing[3],
+  },
+  promptPointNumber: {
+    fontWeight: '700',
+    color: colors.primary.gold,
   },
 
   // Submitted Notice
