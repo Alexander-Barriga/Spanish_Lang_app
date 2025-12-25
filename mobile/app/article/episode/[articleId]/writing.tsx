@@ -275,9 +275,28 @@ export default function WritingExerciseScreen() {
     // Replace "10-14" or "10–14" with "3-10" for sentence count
     let processedPrompt = prompt.replace(/10[-–]14/g, '3-10');
     
+    // Swap order: Move "Write X-Y sentences" before "Close with:" 
+    // Original order in prompt: "... Close with: 'Ojalá que...' — ... Write X-Y sentences. ..."
+    // Desired order: "... Write X-Y sentences. Close with: 'Ojalá que...' — ..."
+    const writeMatch = processedPrompt.match(/Write \d+[-–]\d+ sentences\.?/i);
+    const closeMatch = processedPrompt.match(/Close with:/i);
+    if (writeMatch && closeMatch) {
+      const writeIndex = processedPrompt.indexOf(writeMatch[0]);
+      const closeIndex = processedPrompt.indexOf(closeMatch[0]);
+      // If "Close with:" comes before "Write X-Y sentences", swap them
+      if (closeIndex < writeIndex) {
+        // Extract the "Write X-Y sentences." part
+        const writeSentence = writeMatch[0];
+        // Remove it from its current position
+        processedPrompt = processedPrompt.replace(writeSentence, '');
+        // Insert it before "Close with:"
+        processedPrompt = processedPrompt.replace(/Close with:/i, `${writeSentence} Close with:`);
+      }
+    }
+    
     // Split on numbered patterns like "1." or "1)" or "1:"
     // Also split on "Close with" and "Write X-Y sentences"
-    const splitPattern = /(\d+[\.\)\:])|(\s*Close with:)|(\s*Write \d+[-–]\d+ sentences\.?)/gi;
+    const splitPattern = /(\d+[\.\)\:])|(\s*Write \d+[-–]\d+ sentences\.?)|(\s*Close with:)/gi;
     const parts = processedPrompt.split(splitPattern).filter(Boolean);
     
     const renderedParts: React.ReactNode[] = [];
