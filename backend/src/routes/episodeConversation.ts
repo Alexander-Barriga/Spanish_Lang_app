@@ -65,9 +65,19 @@ router.get('/:episodeId', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to fetch messages' });
     }
 
+    // Transform messages to camelCase for frontend
+    const formattedMessages = (messages || []).map((m: any) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      highlightedVerbs: m.content_with_highlights,
+      audioUrl: m.audio_url,
+      created_at: m.created_at,
+    }));
+
     res.json({
       conversation,
-      messages: messages || [],
+      messages: formattedMessages,
       isComplete: !!conversation.completed_at,
       userReplyCount: conversation.user_reply_count,
       maxReplies: MAX_USER_EXCHANGES,
@@ -114,10 +124,25 @@ router.post('/:episodeId/start', async (req: Request, res: Response) => {
         .eq('conversation_id', existingConv.id)
         .order('created_at', { ascending: true });
 
+      // Transform messages to camelCase for frontend
+      const formattedMessages = (messages || []).map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        highlightedVerbs: m.content_with_highlights,
+        audioUrl: m.audio_url,
+        created_at: m.created_at,
+      }));
+
+      // Count user replies for resumed conversation
+      const userReplyCount = formattedMessages.filter((m: any) => m.role === 'user').length;
+
       return res.json({
         conversationId: existingConv.id,
-        messages: messages || [],
+        messages: formattedMessages,
         resumed: true,
+        userReplyCount,
+        maxReplies: MAX_USER_EXCHANGES,
       });
     }
 

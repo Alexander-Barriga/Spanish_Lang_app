@@ -137,10 +137,11 @@ export default function EpisodeConversationScreen() {
         setMaxReplies(existingResult.data.maxReplies);
         setIsComplete(existingResult.data.isComplete);
         
-        // Convert messages to expected format
+        // Messages already formatted by backend with camelCase
         const formattedMessages: Message[] = existingResult.data.messages.map(m => ({
           ...m,
-          highlightedVerbs: m.content_with_highlights as HighlightedVerb[] | undefined,
+          // Backend now returns highlightedVerbs directly
+          highlightedVerbs: m.highlightedVerbs || (m as any).content_with_highlights as HighlightedVerb[] | undefined,
         }));
         setMessages(formattedMessages);
         
@@ -175,15 +176,27 @@ export default function EpisodeConversationScreen() {
 
         if (startResult.data) {
           setConversationId(startResult.data.conversationId);
-          setUserReplyCount(startResult.data.userReplyCount);
-          setMaxReplies(startResult.data.maxReplies);
+          setUserReplyCount(startResult.data.userReplyCount || 0);
+          setMaxReplies(startResult.data.maxReplies || 3);
           
           if (startResult.data.resumed && startResult.data.messages) {
+            // Messages already formatted by backend with camelCase
             const formattedMessages: Message[] = startResult.data.messages.map(m => ({
               ...m,
-              highlightedVerbs: (m as any).content_with_highlights as HighlightedVerb[] | undefined,
+              // Backend now returns highlightedVerbs directly
+              highlightedVerbs: m.highlightedVerbs || (m as any).content_with_highlights as HighlightedVerb[] | undefined,
             }));
             setMessages(formattedMessages);
+            
+            // Play the most recent assistant message's audio when resuming
+            const lastAssistantMessage = formattedMessages
+              .filter(m => m.role === 'assistant')
+              .pop();
+            if (lastAssistantMessage?.audioUrl) {
+              setTimeout(() => {
+                playAudio(lastAssistantMessage.audioUrl!, lastAssistantMessage.id);
+              }, 500);
+            }
           } else if (startResult.data.message) {
             setMessages([startResult.data.message]);
             
