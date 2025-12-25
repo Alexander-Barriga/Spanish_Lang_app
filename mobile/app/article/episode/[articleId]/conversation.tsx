@@ -1159,6 +1159,7 @@ const styles = StyleSheet.create({
   continueButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: borderRadius.lg,

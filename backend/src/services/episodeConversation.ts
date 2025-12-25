@@ -397,3 +397,107 @@ Respond with ONLY the farewell message in Spanish. No JSON, no formatting, just 
   }
 }
 
+// ============================================
+// Extract Subjunctive Verbs from Text
+// ============================================
+// Parses any Spanish text and extracts subjunctive verbs with their highlights
+export async function extractSubjunctiveVerbs(
+  text: string,
+  episodeContext: EpisodeContext
+): Promise<HighlightedVerb[]> {
+  const systemPrompt = `You are a Spanish grammar expert. Analyze the following Spanish text and identify ANY subjunctive verb conjugations present.
+
+For each subjunctive verb found, provide:
+- The exact verb as it appears in the text
+- Its infinitive form
+- What the indicative form would be
+- The trigger word/phrase that required the subjunctive
+- A brief explanation for advanced learners
+
+IMPORTANT: Only identify ACTUAL subjunctive verbs. Common subjunctive triggers include:
+- Verbs of desire: querer que, esperar que, desear que, preferir que
+- Verbs of emotion: alegrarse de que, temer que, sentir que
+- Expressions of doubt: dudar que, no creer que, no es seguro que
+- Impersonal expressions: es importante que, es necesario que, es posible que
+- Certain conjunctions: para que, antes de que, cuando (future), aunque (uncertain)
+
+RESPONSE FORMAT (JSON):
+{
+  "verbs": [
+    {
+      "verb": "the exact subjunctive verb as it appears",
+      "infinitive": "infinitive form",
+      "indicativeForm": "what indicative would be",
+      "trigger": "the trigger phrase",
+      "explanation": "1) Why subjunctive is used. 2) The syntactic structure."
+    }
+  ]
+}
+
+If no subjunctive verbs are found, return: { "verbs": [] }`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Analyze this text: "${text}"` },
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+      response_format: { type: 'json_object' },
+    });
+
+    const responseText = completion.choices[0].message.content || '{"verbs": []}';
+    const parsed = JSON.parse(responseText);
+
+    if (!parsed.verbs || !Array.isArray(parsed.verbs)) {
+      return [];
+    }
+
+    // Map verbs to HighlightedVerb format with correct indices
+    const highlightedVerbs: HighlightedVerb[] = [];
+    const usedIndices: Set<number> = new Set();
+
+    for (const verb of parsed.verbs) {
+      if (!verb.verb) continue;
+
+      // Find the verb in the text (case-insensitive search)
+      const lowerText = text.toLowerCase();
+      const lowerVerb = verb.verb.toLowerCase();
+      let searchStart = 0;
+      let foundIndex = -1;
+
+      // Find an occurrence that hasn't been used yet
+      while (searchStart < text.length) {
+        const idx = lowerText.indexOf(lowerVerb, searchStart);
+        if (idx === -1) break;
+        if (!usedIndices.has(idx)) {
+          foundIndex = idx;
+          usedIndices.add(idx);
+          break;
+        }
+        searchStart = idx + 1;
+      }
+
+      if (foundIndex >= 0) {
+        highlightedVerbs.push({
+          verb: text.substring(foundIndex, foundIndex + verb.verb.length),
+          startIndex: foundIndex,
+          endIndex: foundIndex + verb.verb.length,
+          infinitive: verb.infinitive || verb.verb,
+          indicativeForm: verb.indicativeForm || verb.verb,
+          trigger: verb.trigger || '',
+          explanation: verb.explanation || 'Subjunctive is used here.',
+        });
+      }
+    }
+
+    console.log(`[Conversation Service] Extracted ${highlightedVerbs.length} subjunctive verbs from text`);
+    return highlightedVerbs;
+  } catch (error) {
+    console.error('[Conversation Service] Error extracting subjunctive verbs:', error);
+    return [];
+  }
+}
+

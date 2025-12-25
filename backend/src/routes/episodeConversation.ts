@@ -9,6 +9,7 @@ import {
   shouldEndConversation,
   generateConversationSummary,
   generateFarewellMessage,
+  extractSubjunctiveVerbs,
   MAX_USER_EXCHANGES,
   HighlightedVerb,
 } from '../services/episodeConversation';
@@ -402,6 +403,10 @@ router.post('/:conversationId/message', upload.single('audio'), async (req: Requ
       
       const farewellText = await generateFarewellMessage(episodeContext, conversationHistory);
 
+      // Extract any subjunctive verbs that naturally appeared in the farewell
+      const farewellHighlightedVerbs = await extractSubjunctiveVerbs(farewellText, episodeContext);
+      console.log(`[Conversation] Farewell has ${farewellHighlightedVerbs.length} subjunctive verbs`);
+
       // Generate TTS audio for farewell
       let farewellAudioUrl: string | null = null;
       try {
@@ -432,7 +437,7 @@ router.post('/:conversationId/message', upload.single('audio'), async (req: Requ
           conversation_id: conversationId,
           role: 'assistant',
           content: farewellText,
-          content_with_highlights: [], // No grammar highlights for farewell
+          content_with_highlights: farewellHighlightedVerbs, // Include any natural subjunctive verbs
           audio_url: farewellAudioUrl,
         })
         .select()
@@ -464,7 +469,7 @@ router.post('/:conversationId/message', upload.single('audio'), async (req: Requ
           id: farewellMsg?.id,
           role: 'assistant',
           content: farewellText,
-          highlightedVerbs: [], // No grammar highlights for farewell
+          highlightedVerbs: farewellHighlightedVerbs, // Include any natural subjunctive verbs
           audioUrl: farewellAudioUrl,
         },
         conversationComplete: true,
