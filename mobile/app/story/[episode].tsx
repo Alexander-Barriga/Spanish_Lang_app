@@ -243,15 +243,38 @@ export default function EpisodePlayer() {
     // Stop any currently playing audio first to prevent overlapping
     await stopAudio();
     
-    // Try to play pre-generated audio
+    // Try to play pre-generated audio first
     try {
       const audioResult = await api.getPreGeneratedAudio(scene.audio_key);
       if (audioResult.data?.audioUrl) {
         await playAudio(audioResult.data.audioUrl);
+        return;
       }
     } catch (error) {
-      console.log('Pre-generated audio not available, using TTS');
-      // Fallback to TTS would go here
+      console.log('Pre-generated audio not available, falling back to TTS');
+    }
+    
+    // Fallback to live TTS synthesis using ElevenLabs
+    try {
+      if (scene.florencia_says) {
+        console.log('🎤 Generating TTS for scene:', scene.scene_id);
+        const ttsResult = await api.synthesizeSpeech(
+          scene.florencia_says,
+          'florencia', // Character ID for Florencia's voice
+          scene.emotion ? { type: scene.emotion as any, intensity: 0.7 } : undefined
+        );
+        if (ttsResult.audioUrl) {
+          await playAudio(ttsResult.audioUrl);
+        } else {
+          // Even if TTS fails, mark audio as "played" so UI progresses
+          console.warn('TTS returned no audio URL, continuing without audio');
+          setSceneAudioPlayed(true);
+        }
+      }
+    } catch (ttsError) {
+      console.warn('TTS fallback also failed:', ttsError);
+      // Allow scene to progress even without audio
+      setSceneAudioPlayed(true);
     }
   };
 
@@ -275,15 +298,35 @@ export default function EpisodePlayer() {
       setGrammarScore(prev => prev + 10);
     }
 
+    // Check if we're on the last scene - if so, complete the episode
+    const totalScenes = episode?.scenes?.length || 0;
+    const isLastScene = currentSceneIndex >= totalScenes - 1;
+    
+    if (isLastScene) {
+      // We're on the last scene, complete the episode regardless of next_scene value
+      handleEpisodeComplete();
+      return;
+    }
+
     // Find next scene by scene_id AND get its actual index
     const nextSceneIndex = episode?.scenes.findIndex((s: Scene) => s.scene_id === option.next_scene);
-    if (nextSceneIndex !== undefined && nextSceneIndex >= 0) {
+    
+    // Prevent looping back to earlier scenes - only allow forward progression
+    if (nextSceneIndex !== undefined && nextSceneIndex >= 0 && nextSceneIndex > currentSceneIndex) {
       const nextScene = episode.scenes[nextSceneIndex];
       setCurrentSceneIndex(nextSceneIndex);
       setCurrentScene(nextScene);
       setCurrentPhase('scene');
       setSceneAudioPlayed(false); // Reset so response section waits for audio
       // Pass nextScene directly to avoid stale closure issues
+      setTimeout(() => playSceneAudio(nextScene), 300);
+    } else if (currentSceneIndex + 1 < totalScenes) {
+      // Fallback: move to next scene by index
+      const nextScene = episode!.scenes[currentSceneIndex + 1];
+      setCurrentSceneIndex(currentSceneIndex + 1);
+      setCurrentScene(nextScene);
+      setCurrentPhase('scene');
+      setSceneAudioPlayed(false);
       setTimeout(() => playSceneAudio(nextScene), 300);
     } else {
       // End of episode
@@ -542,23 +585,17 @@ export default function EpisodePlayer() {
     // Give partial credit for practicing the correction
     setGrammarScore(prev => prev + 5);
     
-    // Find next scene - prioritize scene's next_scene property, then scene_number, then index
-    let nextSceneIndex = -1;
+    // Check if we're on the last scene - if so, complete the episode
+    const totalScenes = episode?.scenes?.length || 0;
+    const isLastScene = currentSceneIndex >= totalScenes - 1;
     
-    if (currentScene?.next_scene && episode?.scenes) {
-      // If current scene has explicit next_scene, use that
-      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_id === currentScene.next_scene);
+    if (isLastScene) {
+      handleEpisodeComplete();
+      return;
     }
     
-    if (nextSceneIndex < 0 && currentScene && episode?.scenes) {
-      // Fallback: find scene with next scene_number
-      const currentSceneNumber = currentScene.scene_number;
-      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_number === currentSceneNumber + 1);
-    }
-    
-    if (nextSceneIndex < 0 && episode?.scenes) {
-      // Final fallback: use array index + 1
-      nextSceneIndex = currentSceneIndex + 1;
+    // Find next scene - prioritize forward progression
+    let nextSceneIndex = currentSceneIndex + 1;
     }
     
     if (episode?.scenes && nextSceneIndex >= 0 && nextSceneIndex < episode.scenes.length) {
@@ -596,26 +633,19 @@ export default function EpisodePlayer() {
     setWrittenResponse('');
     setResponseWasWritten(false);
     
-    // Find next scene - prioritize scene's next_scene property, then scene_number, then index
-    let nextSceneIndex = -1;
+    // Check if we're on the last scene - if so, complete the episode
+    const totalScenes = episode?.scenes?.length || 0;
+    const isLastScene = currentSceneIndex >= totalScenes - 1;
     
-    if (currentScene?.next_scene && episode?.scenes) {
-      // If current scene has explicit next_scene, use that
-      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_id === currentScene.next_scene);
+    if (isLastScene) {
+      handleEpisodeComplete();
+      return;
     }
     
-    if (nextSceneIndex < 0 && currentScene && episode?.scenes) {
-      // Fallback: find scene with next scene_number
-      const currentSceneNumber = currentScene.scene_number;
-      nextSceneIndex = episode.scenes.findIndex((s: Scene) => s.scene_number === currentSceneNumber + 1);
-    }
+    // Move to next scene by index (simple forward progression)
+    const nextSceneIndex = currentSceneIndex + 1;
     
-    if (nextSceneIndex < 0 && episode?.scenes) {
-      // Final fallback: use array index + 1
-      nextSceneIndex = currentSceneIndex + 1;
-    }
-    
-    if (episode?.scenes && nextSceneIndex >= 0 && nextSceneIndex < episode.scenes.length) {
+    if (episode?.scenes && nextSceneIndex < episode.scenes.length) {
       const nextScene = episode.scenes[nextSceneIndex];
       setCurrentSceneIndex(nextSceneIndex);
       setCurrentScene(nextScene);
