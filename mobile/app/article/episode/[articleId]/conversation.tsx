@@ -52,6 +52,8 @@ export default function EpisodeConversationScreen() {
   // Audio playback
   const [currentSound, setCurrentSound] = useState<Audio.Sound | null>(null);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [speedMenuVisible, setSpeedMenuVisible] = useState<string | null>(null); // messageId or null
   
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -214,9 +216,15 @@ export default function EpisodeConversationScreen() {
       setPlayingMessageId(messageId);
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
-        { shouldPlay: true }
+        { shouldPlay: false } // Don't autoplay, set rate first
       );
       setCurrentSound(sound);
+
+      // Apply the current playback speed
+      await sound.setRateAsync(playbackSpeed, true);
+      
+      // Now start playing
+      await sound.playAsync();
 
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
@@ -402,6 +410,104 @@ export default function EpisodeConversationScreen() {
     }
   };
 
+  // Render explanation text with spacing between numbered points and white formula highlighting
+  const renderExplanationText = (explanation: string) => {
+    // Split explanation on numbered patterns like "1)" and "2)"
+    const parts = explanation.split(/(\d+\))/);
+    
+    const renderedParts: React.ReactNode[] = [];
+    let currentPoint = '';
+    let pointNumber = '';
+    
+    parts.forEach((part, index) => {
+      // Check if this is a number marker like "1)" or "2)"
+      if (/^\d+\)$/.test(part)) {
+        // Save previous point if exists
+        if (currentPoint && pointNumber) {
+          renderedParts.push(
+            <View key={`point-${pointNumber}`} style={renderedParts.length > 0 ? { marginTop: 12 } : undefined}>
+              <Text style={styles.verbModalExplanation}>
+                {renderFormulaHighlighting(pointNumber + currentPoint)}
+              </Text>
+            </View>
+          );
+        }
+        pointNumber = part;
+        currentPoint = '';
+      } else {
+        currentPoint += part;
+      }
+    });
+    
+    // Add the last point
+    if (currentPoint && pointNumber) {
+      renderedParts.push(
+        <View key={`point-${pointNumber}`} style={renderedParts.length > 0 ? { marginTop: 12 } : undefined}>
+          <Text style={styles.verbModalExplanation}>
+            {renderFormulaHighlighting(pointNumber + currentPoint)}
+          </Text>
+        </View>
+      );
+    }
+    
+    // If no numbered points found, render with formula highlighting only
+    if (renderedParts.length === 0) {
+      return (
+        <Text style={styles.verbModalExplanation}>
+          {renderFormulaHighlighting(explanation)}
+        </Text>
+      );
+    }
+    
+    return <>{renderedParts}</>;
+  };
+
+  // Highlight syntactical formulas (text in single quotes) in white
+  const renderFormulaHighlighting = (text: string): React.ReactNode[] => {
+    // Match text within single quotes
+    const formulaRegex = /'([^']+)'/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    let keyIndex = 0;
+    
+    while ((match = formulaRegex.exec(text)) !== null) {
+      // Add text before the formula
+      if (match.index > lastIndex) {
+        parts.push(
+          <Text key={`text-${keyIndex++}`}>
+            {text.substring(lastIndex, match.index)}
+          </Text>
+        );
+      }
+      
+      // Add the formula in white (including the quotes)
+      parts.push(
+        <Text key={`formula-${keyIndex++}`} style={styles.formulaHighlight}>
+          '{match[1]}'
+        </Text>
+      );
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(
+        <Text key={`text-${keyIndex++}`}>
+          {text.substring(lastIndex)}
+        </Text>
+      );
+    }
+    
+    // If no formulas found, return original text
+    if (parts.length === 0) {
+      return [<Text key="original">{text}</Text>];
+    }
+    
+    return parts;
+  };
+
   // Render message content with highlighted verbs
   const renderMessageContent = useCallback((message: Message) => {
     if (message.role !== 'assistant' || !message.highlightedVerbs?.length) {
@@ -581,22 +687,66 @@ export default function EpisodeConversationScreen() {
               
               {/* Audio playback button */}
               {message.audioUrl && (
-                <Pressable
-                  style={styles.audioButton}
-                  onPress={() => playAudio(message.audioUrl!, message.id)}
-                >
-                  <Ionicons
-                    name={playingMessageId === message.id ? 'pause' : 'play'}
-                    size={16}
-                    color={message.role === 'assistant' ? colors.primary.gold : colors.text.primary}
-                  />
-                  <Text style={[
-                    styles.audioButtonText,
-                    message.role === 'user' && styles.audioButtonTextUser,
-                  ]}>
-                    {playingMessageId === message.id ? 'Playing...' : 'Play audio'}
-                  </Text>
-                </Pressable>
+                <View style={styles.audioControlsRow}>
+                  <Pressable
+                    style={styles.audioButton}
+                    onPress={() => playAudio(message.audioUrl!, message.id)}
+                  >
+                    <Ionicons
+                      name={playingMessageId === message.id ? 'pause' : 'play'}
+                      size={16}
+                      color={message.role === 'assistant' ? colors.primary.gold : colors.text.primary}
+                    />
+                    <Text style={[
+                      styles.audioButtonText,
+                      message.role === 'user' && styles.audioButtonTextUser,
+                    ]}>
+                      {playingMessageId === message.id ? 'Playing...' : 'Play audio'}
+                    </Text>
+                  </Pressable>
+                  
+                  {/* Speed control - only for assistant messages */}
+                  {message.role === 'assistant' && (
+                    <View style={styles.speedControlContainer}>
+                      <Pressable
+                        style={styles.speedButton}
+                        onPress={() => setSpeedMenuVisible(
+                          speedMenuVisible === message.id ? null : message.id
+                        )}
+                      >
+                        <Ionicons name="speedometer-outline" size={14} color={colors.primary.gold} />
+                        <Text style={styles.speedButtonText}>{playbackSpeed.toFixed(2)}x</Text>
+                      </Pressable>
+                      
+                      {/* Speed options popup */}
+                      {speedMenuVisible === message.id && (
+                        <View style={styles.speedMenu}>
+                          {[0.25, 0.50, 0.75, 0.90, 1.00].map((speed) => (
+                            <Pressable
+                              key={speed}
+                              style={[
+                                styles.speedOption,
+                                playbackSpeed === speed && styles.speedOptionActive,
+                              ]}
+                              onPress={() => {
+                                setPlaybackSpeed(speed);
+                                setSpeedMenuVisible(null);
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              }}
+                            >
+                              <Text style={[
+                                styles.speedOptionText,
+                                playbackSpeed === speed && styles.speedOptionTextActive,
+                              ]}>
+                                {speed.toFixed(2)}x
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
               )}
             </View>
           </View>
@@ -682,9 +832,7 @@ export default function EpisodeConversationScreen() {
 
                 <View style={styles.verbModalSection}>
                   <Text style={styles.verbModalLabel}>Why Subjunctive?</Text>
-                  <Text style={styles.verbModalExplanation}>
-                    {selectedVerb.explanation}
-                  </Text>
+                  {renderExplanationText(selectedVerb.explanation)}
                 </View>
 
                 <Pressable
@@ -823,7 +971,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
-    marginTop: spacing[2],
     paddingVertical: spacing[1],
   },
   audioButtonText: {
@@ -832,6 +979,63 @@ const styles = StyleSheet.create({
   },
   audioButtonTextUser: {
     color: colors.text.secondary,
+  },
+  audioControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    marginTop: spacing[2],
+  },
+  speedControlContainer: {
+    position: 'relative',
+  },
+  speedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[2],
+    backgroundColor: colors.neutral[800],
+    borderRadius: borderRadius.sm,
+  },
+  speedButtonText: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    fontWeight: '600',
+  },
+  speedMenu: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    marginBottom: spacing[1],
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    overflow: 'hidden',
+    zIndex: 100,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  speedOption: {
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    minWidth: 70,
+  },
+  speedOptionActive: {
+    backgroundColor: colors.primary.gold + '30',
+  },
+  speedOptionText: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  speedOptionTextActive: {
+    color: colors.primary.gold,
+    fontWeight: '600',
   },
   sendingText: {
     ...textStyles.caption,
@@ -1006,6 +1210,10 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.text.secondary,
     lineHeight: 22,
+  },
+  formulaHighlight: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   verbModalClose: {
     backgroundColor: colors.primary.gold,
