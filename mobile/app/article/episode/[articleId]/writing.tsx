@@ -270,51 +270,113 @@ export default function WritingExerciseScreen() {
     );
   }
 
-  // Format writing prompt with spacing between numbered points
+  // Format writing prompt with spacing between numbered points and special sections
   const renderFormattedPrompt = (prompt: string) => {
+    // Replace "10-14" or "10–14" with "3-10" for sentence count
+    let processedPrompt = prompt.replace(/10[-–]14/g, '3-10');
+    
     // Split on numbered patterns like "1." or "1)" or "1:"
-    const parts = prompt.split(/(\d+[\.\)\:])/);
+    // Also split on "Close with" and "Write X-Y sentences"
+    const splitPattern = /(\d+[\.\)\:])|(\s*Close with:)|(\s*Write \d+[-–]\d+ sentences\.?)/gi;
+    const parts = processedPrompt.split(splitPattern).filter(Boolean);
     
     const renderedParts: React.ReactNode[] = [];
     let currentPoint = '';
     let pointNumber = '';
+    let keyIndex = 0;
     
-    parts.forEach((part, index) => {
+    parts.forEach((part) => {
+      if (!part) return;
+      
       // Check if this is a number marker like "1." or "2)" or "3:"
       if (/^\d+[\.\)\:]$/.test(part)) {
         // Save previous point if exists
         if (currentPoint && pointNumber) {
           renderedParts.push(
-            <View key={`point-${pointNumber}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+            <View key={`point-${keyIndex++}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
               <Text style={styles.promptText}>
                 <Text style={styles.promptPointNumber}>{pointNumber}</Text>
-                {currentPoint}
+                {currentPoint.trim()}
               </Text>
             </View>
           );
         }
         pointNumber = part;
         currentPoint = '';
-      } else {
+      } 
+      // Check if this is "Close with:" - needs spacing before it
+      else if (/^\s*Close with:/i.test(part)) {
+        // Save previous point first
+        if (currentPoint && pointNumber) {
+          renderedParts.push(
+            <View key={`point-${keyIndex++}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+              <Text style={styles.promptText}>
+                <Text style={styles.promptPointNumber}>{pointNumber}</Text>
+                {currentPoint.trim()}
+              </Text>
+            </View>
+          );
+          pointNumber = '';
+          currentPoint = '';
+        }
+        // Add "Close with:" as a new section with spacing
+        renderedParts.push(
+          <View key={`close-${keyIndex++}`} style={styles.promptPointSpacing}>
+            <Text style={styles.promptText}>{part.trim()}</Text>
+          </View>
+        );
+      }
+      // Check if this is "Write X-Y sentences" - needs spacing before it
+      else if (/^\s*Write \d+[-–]\d+ sentences\.?/i.test(part)) {
+        // Save previous point first
+        if (currentPoint && pointNumber) {
+          renderedParts.push(
+            <View key={`point-${keyIndex++}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+              <Text style={styles.promptText}>
+                <Text style={styles.promptPointNumber}>{pointNumber}</Text>
+                {currentPoint.trim()}
+              </Text>
+            </View>
+          );
+          pointNumber = '';
+          currentPoint = '';
+        }
+        // Add sentence count as a new section with spacing
+        renderedParts.push(
+          <View key={`sentences-${keyIndex++}`} style={styles.promptPointSpacing}>
+            <Text style={styles.promptText}>{part.trim()}</Text>
+          </View>
+        );
+      }
+      else {
         currentPoint += part;
       }
     });
     
-    // Add the last point
-    if (currentPoint && pointNumber) {
-      renderedParts.push(
-        <View key={`point-${pointNumber}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
-          <Text style={styles.promptText}>
-            <Text style={styles.promptPointNumber}>{pointNumber}</Text>
-            {currentPoint}
-          </Text>
-        </View>
-      );
+    // Add the last point if any remaining
+    if (currentPoint.trim()) {
+      if (pointNumber) {
+        renderedParts.push(
+          <View key={`point-${keyIndex++}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+            <Text style={styles.promptText}>
+              <Text style={styles.promptPointNumber}>{pointNumber}</Text>
+              {currentPoint.trim()}
+            </Text>
+          </View>
+        );
+      } else {
+        // Remaining text without a number prefix
+        renderedParts.push(
+          <View key={`text-${keyIndex++}`} style={renderedParts.length > 0 ? styles.promptPointSpacing : undefined}>
+            <Text style={styles.promptText}>{currentPoint.trim()}</Text>
+          </View>
+        );
+      }
     }
     
-    // If no numbered points found, render as plain text
+    // If no parts found, render as plain text
     if (renderedParts.length === 0) {
-      return <Text style={styles.promptText}>{prompt}</Text>;
+      return <Text style={styles.promptText}>{processedPrompt}</Text>;
     }
     
     return <>{renderedParts}</>;
