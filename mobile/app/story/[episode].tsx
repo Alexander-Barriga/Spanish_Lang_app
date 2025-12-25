@@ -595,8 +595,7 @@ export default function EpisodePlayer() {
     }
     
     // Find next scene - prioritize forward progression
-    let nextSceneIndex = currentSceneIndex + 1;
-    }
+    const nextSceneIndex = currentSceneIndex + 1;
     
     if (episode?.scenes && nextSceneIndex >= 0 && nextSceneIndex < episode.scenes.length) {
       const nextScene = episode.scenes[nextSceneIndex];
