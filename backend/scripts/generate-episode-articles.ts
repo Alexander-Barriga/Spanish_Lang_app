@@ -1,6 +1,14 @@
 /**
  * Script to generate educational articles for each episode using OpenAI GPT-4o
  * Run with: npm run generate-articles (or npx ts-node scripts/generate-episode-articles.ts)
+ * 
+ * Updated to match new storyline with motifs:
+ * - "Soñemos" by Carlos Di Sarli
+ * - Grandmother Valentina Reyes
+ * - Mate cup (secret gift)
+ * - Reality vs. Illusion theme
+ * 
+ * CRITICAL: Respects plot revelation boundaries to prevent spoilers
  */
 
 import dotenv from 'dotenv';
@@ -22,55 +30,176 @@ const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
 
-// Episode-specific details for article generation
+// Episode-specific details aligned with new storyline dialogue
+// CRITICAL: Includes plot boundary rules to prevent spoilers
 const EPISODE_DETAILS = {
   1: {
-    article_title: 'Wishing and Wanting: The Grammar of Connection',
-    additional_detail: 'Her first time at Café Tortoni as a teenager, when she decided to become a dancer',
-    emotional_theme: 'Hope, new beginnings, possibility',
-    writing_focus: 'Express hopes and desires for language learning journey',
+    article_title: 'The Grammar of Desire',
+    emotional_theme: 'Hope, new beginnings, connection',
+    grammar_unique_focus: 'Present Subjunctive for expressing desires and requests',
+    key_dialogue_quote: 'Me gustaría que me traiga un café con leche, por favor',
+    motif_to_use: '"Soñemos" playing in the café, grandmother mentioned vaguely',
+    // PLOT BOUNDARIES
+    allowed_grandmother_info: 'She brought Florencia to Café Tortoni as a child. She exists. That is ALL.',
+    allowed_mate_info: 'Nothing about mate cup yet.',
+    forbidden_reveals: 'DO NOT mention: grandmother\'s name (Valentina Reyes), her death, Teatro Colón, any career choices, any sacrifices. Grandmother is IMPLIED TO BE ALIVE.',
+    florencia_reveals_safe: 'Her grandmother used to bring her to Café Tortoni as a child — fond memories, nothing more.',
+    // WRITING PROMPT
+    writing_prompt: `1. What do you hope to achieve by learning Spanish? (espero que..., quiero que...)
+
+2. If you could travel anywhere in the Spanish-speaking world, where would you want to go and why? (me gustaría que..., deseo que...)
+
+3. What kind of experiences do you wish to have while immersing yourself in a new culture? (ojalá que..., espero que...)
+
+
+Close with: "Espero que..." — expressing your deepest hope for this journey.`,
   },
   2: {
-    article_title: 'The Language of Feeling: Why Tango Needs the Subjunctive',
-    additional_detail: "Her grandmother Rosa's teaching philosophy, a specific tango memory",
-    emotional_theme: 'Joy, nostalgia, connection through dance',
-    writing_focus: 'Describe emotions using "me alegra que", "me sorprende que"',
+    article_title: 'Dancing with Emotion',
+    emotional_theme: 'Joy, intimacy, tango, connection through dance',
+    grammar_unique_focus: 'Present Subjunctive for expressing emotional reactions',
+    key_dialogue_quote: 'Es emocionante que pueda bailar tango en Buenos Aires',
+    motif_to_use: 'Dancing to "Soñemos", grandmother as tango teacher',
+    // PLOT BOUNDARIES
+    allowed_grandmother_info: 'She taught Florencia to dance tango. She danced professionally during the Golden Age. She is ALIVE and "maybe I\'ll introduce you someday".',
+    allowed_mate_info: 'Nothing about mate cup yet.',
+    forbidden_reveals: 'DO NOT mention: grandmother\'s name, her death, Teatro Colón, any career choices or sacrifices. Grandmother is ALIVE in reader\'s mind.',
+    florencia_reveals_safe: 'Her grandmother danced professionally during the Golden Age of tango and taught Florencia to dance.',
+    // WRITING PROMPT
+    writing_prompt: `1. How does music or dance make you feel? Describe a time when art moved you emotionally. (me emociona que..., es increíble que...)
+
+2. Is there someone in your life who taught you something meaningful, like Florencia's grandmother taught her tango? (me alegra que..., es maravilloso que...)
+
+3. What emotions do you experience when trying something new and challenging? (me sorprende que..., es emocionante que...)
+
+
+Close with: "Me alegra que..." — expressing gratitude for an emotional experience in your life.`,
   },
   3: {
-    article_title: 'Questioning Reality: The Art of Argentine Skepticism',
-    additional_detail: 'Growing up surrounded by antique dealers, learning to question everything',
-    emotional_theme: 'Authenticity, skepticism, discernment',
-    writing_focus: "Explore doubt about one's own language journey or life path",
+    article_title: 'The Art of Doubt',
+    emotional_theme: 'Authenticity, skepticism, secrets, coincidence vs. fate',
+    grammar_unique_focus: 'Perfect Subjunctive for expressing doubt about past events',
+    key_dialogue_quote: 'Dudo que haya sido un accidente que encontraras ese disco',
+    motif_to_use: 'User finds "Soñemos" record, Florencia bought something secret',
+    // PLOT BOUNDARIES
+    allowed_grandmother_info: 'Same as Episode 2 — alive, taught tango, danced professionally.',
+    allowed_mate_info: 'Florencia bought a SECRET something at San Telmo. DO NOT reveal it is a mate cup.',
+    forbidden_reveals: 'DO NOT mention: grandmother\'s name, death, Teatro Colón, sacrifices. DO NOT reveal the secret purchase is a mate cup.',
+    florencia_reveals_safe: 'She bought something mysterious at San Telmo — teasing the reader, keeping the secret.',
+    // WRITING PROMPT
+    writing_prompt: `1. Have you ever found something by chance that felt like fate? Do you think it was coincidence or destiny? (dudo que haya sido..., no creo que haya sido...)
+
+2. Is there something in your past that you question — a decision, a meeting, an opportunity? (es posible que haya..., puede que haya...)
+
+3. Do you believe everything happens for a reason, or are some things just random? (no estoy seguro/a de que haya..., dudo que...)
+
+
+Close with: "Dudo que haya sido..." — expressing healthy skepticism about a past event.`,
   },
   4: {
-    article_title: 'The Grammar of Longing: What We Want vs. What We Have',
-    additional_detail: "Her father's unfulfilled dreams, family Sunday rituals, chimichurri secrets",
-    emotional_theme: 'Family, tradition, yearning',
-    writing_focus: 'Express desires for family, culture, learning using "quiero que", "me gustaría que"',
+    article_title: 'The Grammar of Belonging',
+    emotional_theme: 'Family, tradition, friendship rituals',
+    grammar_unique_focus: 'Perfect Subjunctive for expressing wishes about completed actions',
+    key_dialogue_quote: 'Ahora somos amigos',
+    motif_to_use: 'Sharing mate together, the ritual of belonging',
+    // PLOT BOUNDARIES
+    allowed_grandmother_info: 'Same as Episode 2, plus "she couldn\'t make it to the asado" — implying she is alive but busy.',
+    allowed_mate_info: 'Can discuss mate RITUAL and what sharing mate means. Secret purchase still NOT revealed.',
+    forbidden_reveals: 'DO NOT mention: grandmother\'s name (Valentina Reyes), that she is DEAD, Teatro Colón offer, her sacrifice, Florencia\'s missed tango company opportunity. Grandmother is still ALIVE to the reader.',
+    florencia_reveals_safe: 'Why sharing mate means "you belong" in Argentine culture. Grandmother couldn\'t make it to the asado (implying alive).',
+    // WRITING PROMPT
+    writing_prompt: `1. What family traditions or rituals make you feel like you belong? (espero que hayas experimentado..., me alegra que hayas...)
+
+2. Is there a friendship that started unexpectedly and became meaningful? How did it form? (ojalá hayas tenido..., espero que hayas sentido...)
+
+3. What does "belonging" mean to you? When have you felt truly welcomed somewhere? (me alegra que hayas podido..., espero que hayas encontrado...)
+
+
+Close with: "Ojalá hayas..." — expressing a wish that something meaningful has happened in your life.`,
   },
   5: {
-    article_title: 'Telling Your Story: The Past That Shaped You',
-    additional_detail: 'The day her father died, how imperfect vs preterite shapes how she remembers',
-    emotional_theme: 'Memory, loss, narrative',
-    writing_focus: 'Write a memory using both tenses to show what was ongoing vs what happened',
+    article_title: 'What If: The Grammar of Regret',
+    emotional_theme: 'Memory, loss, choices, grandmother\'s sacrifice',
+    grammar_unique_focus: 'Pluperfect Subjunctive for hypotheticals about the past',
+    key_dialogue_quote: 'Si hubiera sabido, no habría preguntado tanto',
+    motif_to_use: 'Grandmother\'s grave, her choice of family over fame, Florencia\'s regret',
+    // PLOT BOUNDARIES — FIRST EPISODE WHERE FULL REVEAL IS ALLOWED
+    allowed_grandmother_info: 'FULL REVEAL ALLOWED: Her name is Valentina Reyes. She is deceased, buried at Chacarita. She was offered a role at Teatro Colón but chose family (was pregnant). This is the BIG REVEAL episode.',
+    allowed_mate_info: 'Secret purchase can still be teased but NOT revealed.',
+    forbidden_reveals: 'None for grandmother — this is the reveal episode. Still do NOT reveal the mate cup is the secret purchase.',
+    florencia_reveals_safe: 'Grandmother Valentina Reyes was offered Teatro Colón but chose family. Florencia was also offered a tango company spot but didn\'t take it.',
+    // WRITING PROMPT
+    writing_prompt: `1. Is there a decision in your past that you wonder about? What would have happened if you had chosen differently? (si hubiera..., habría...)
+
+2. Have you ever missed an opportunity that still lingers in your mind? What did you learn from it? (ojalá hubiera..., si hubiera tenido el valor...)
+
+3. Is there something you wish you had said or done for someone you've lost or drifted from? (hubiera querido..., si hubiera sabido...)
+
+
+Close with: "Si hubiera..." — imagining a different past, but accepting the present.`,
   },
   6: {
-    article_title: 'If I Were: The Grammar of Alternative Realities',
-    additional_detail: 'Times she almost left Argentina, her financial struggles, why art matters',
-    emotional_theme: 'Frustration, possibility, choosing to stay',
-    writing_focus: 'Explore "what if" scenarios and hypothetical choices',
+    article_title: 'The Grammar of Dreams',
+    emotional_theme: 'Art, illusion, sacrifice, beauty as a tool',
+    grammar_unique_focus: 'Imperfect Subjunctive for present/future wishes and hypotheticals',
+    key_dialogue_quote: 'Los artistas usan ilusiones para atraer al público a una realidad alternativa',
+    motif_to_use: 'Teatro Colón where grandmother almost performed, reality vs. illusion',
+    // PLOT BOUNDARIES
+    allowed_grandmother_info: 'Full backstory known — Valentina Reyes, Teatro Colón, chose family, deceased.',
+    allowed_mate_info: 'Secret purchase teased but NOT revealed.',
+    forbidden_reveals: 'Do NOT reveal the mate cup yet.',
+    florencia_reveals_safe: 'The cost of being an artist — what performers sacrifice for their audience. Can reference grandmother\'s full story.',
+    // WRITING PROMPT
+    writing_prompt: `1. If you could pursue any dream without limitations, what would it be? (quisiera que..., si pudiera...)
+
+2. Have you ever sacrificed something important to pursue a passion or help someone you love? (como si fuera..., aunque fuera difícil...)
+
+3. Do you believe art and beauty can transform reality? How has creativity touched your life? (desearía que..., si tuviera la oportunidad...)
+
+
+Close with: "Quisiera que..." — expressing a deep wish for the future.`,
   },
   7: {
-    article_title: 'Imagining Otherwise: The Language of Possibility',
-    additional_detail: "Her dream to perform internationally, visiting her father's favorite stadium",
-    emotional_theme: 'Dreams, possibilities, imagination',
-    writing_focus: 'Express what you would do if circumstances were different',
+    article_title: 'Beauty Born from Hardship',
+    emotional_theme: 'Immigrant struggle, authentic beauty, choosing to believe',
+    grammar_unique_focus: 'Imperfect Subjunctive for conditionals and comparisons (como si, aunque)',
+    key_dialogue_quote: 'A veces las ilusiones pueden ser tan reales como la realidad',
+    motif_to_use: 'La Boca\'s beauty from poverty, illusion becoming reality, the kiss',
+    // PLOT BOUNDARIES
+    allowed_grandmother_info: 'Full backstory known.',
+    allowed_mate_info: 'Secret purchase teased but NOT revealed.',
+    forbidden_reveals: 'Do NOT reveal the mate cup yet.',
+    florencia_reveals_safe: 'Sometimes illusions can be as real as reality — choosing to believe makes it true.',
+    // WRITING PROMPT
+    writing_prompt: `1. Have you ever found beauty in a difficult situation? Describe a time when hardship created something meaningful. (como si fuera..., aunque pareciera...)
+
+2. Is there something you choose to believe in, even if others might doubt it? (como si existiera..., aunque no fuera obvio...)
+
+3. When has an "illusion" — a hope, a dream, a belief — become real in your life? (para que fuera posible..., como si ya fuera real...)
+
+
+Close with: "Como si..." — describing something as though it were already true.`,
   },
   8: {
-    article_title: 'Saying Goodbye in All the Tenses',
-    additional_detail: 'What this friendship meant, her hopes for both of your futures',
-    emotional_theme: 'Gratitude, bittersweet endings, hope for future',
-    writing_focus: 'Write a farewell letter using all the grammar learned',
+    article_title: 'Farewell in All the Tenses',
+    emotional_theme: 'Gratitude, bittersweet endings, hope for the future',
+    grammar_unique_focus: 'Comprehensive review of all subjunctive forms',
+    key_dialogue_quote: 'Los sueños que compartimos... esos no tienen que terminar nunca',
+    motif_to_use: '"Soñemos" playing full circle, mate cup revealed as farewell gift, dreams never ending',
+    // PLOT BOUNDARIES — MATE CUP REVEAL
+    allowed_grandmother_info: 'Full backstory known.',
+    allowed_mate_info: 'REVEAL: The secret purchase from Episode 3 was a mate cup — Florencia bought it for the user as a farewell gift.',
+    forbidden_reveals: 'None — all reveals complete.',
+    florencia_reveals_safe: 'The mate cup was for the user all along. What this friendship meant. Hope for the future.',
+    // WRITING PROMPT
+    writing_prompt: `1. Reflect on your Spanish learning journey so far. What are you most proud of? What do you hope to continue? (espero que..., me alegra que haya..., quisiera que...)
+
+2. Is there someone who has guided you in life, like Florencia guided you through Buenos Aires? What would you say to thank them? (ojalá que..., si pudiera..., hubiera querido...)
+
+3. What dreams do you have for your future? What do you wish for yourself and those you love? (quiero que..., espero que..., ojalá...)
+
+
+Close with: "Los sueños que compartimos..." — honoring a connection and looking toward the future.`,
   },
 };
 
@@ -85,9 +214,15 @@ interface Episode {
   scenes: any[];
 }
 
-interface FlorenciaDialogue {
-  text_content: string;
+interface SceneDialogue {
+  florencia_says: string;
+  florencia_says_en?: string;
+  user_says?: string;
+  user_says_en?: string;
+  waiter_says?: string;
+  waiter_says_en?: string;
   emotion: string;
+  response_type: string;
 }
 
 interface GeneratedArticle {
@@ -134,24 +269,6 @@ async function fetchEpisodes(): Promise<Episode[]> {
 }
 
 /**
- * Fetch Florencia's dialogue from pre-generated audio for voice consistency
- */
-async function fetchFlorenciaDialogue(episodeNumber: number): Promise<FlorenciaDialogue[]> {
-  const { data: audioData, error } = await supabaseAdmin
-    .from('pre_generated_audio')
-    .select('text_content, emotion')
-    .eq('character_id', 'florencia')
-    .like('content_key', `ep${episodeNumber}_%`);
-
-  if (error) {
-    console.warn(`⚠️  Could not fetch dialogue for episode ${episodeNumber}: ${error.message}`);
-    return [];
-  }
-
-  return audioData || [];
-}
-
-/**
  * Load and read the prompt template
  */
 function loadPromptTemplate(): string {
@@ -160,14 +277,18 @@ function loadPromptTemplate(): string {
 }
 
 /**
- * Extract key scenes from episode with Florencia's dialogue
+ * Extract all scenes from episode with full dialogue
  */
-function extractKeyScenes(episode: Episode): any[] {
-  // Extract first 3-4 meaningful scenes with dialogue
-  return episode.scenes.slice(0, 4).map((scene: any) => ({
+function extractAllScenes(episode: Episode): SceneDialogue[] {
+  return (episode.scenes || []).map((scene: any) => ({
     florencia_says: scene.florencia_says || '',
+    florencia_says_en: scene.florencia_says_en || '',
+    user_says: scene.user_says || '',
+    user_says_en: scene.user_says_en || '',
+    waiter_says: scene.waiter_says || '',
+    waiter_says_en: scene.waiter_says_en || '',
     emotion: scene.emotion || '',
-    context: scene.response_type === 'guided' ? 'Multiple choice response' : 'Free speak response',
+    response_type: scene.response_type || '',
   }));
 }
 
@@ -182,9 +303,9 @@ IMPORTANT INSTRUCTIONS:
 1. Keep all Spanish examples, words, and phrases exactly as they are (do not translate Spanish to Spanish)
 2. Translate all explanatory text from English to Spanish
 3. Maintain the same markdown structure and formatting
-4. Preserve all code blocks, bullet points, and numbered lists
+4. Preserve all bullet points and numbered lists
 5. Keep the same tone and style (Florencia's voice)
-6. Do NOT include any variable markers like "WRITING_EXERCISE_PROMPT:" or "SUBTITLE:" in the output
+6. Do NOT include any variable markers like "SUBTITLE:" in the output
 
 Article to translate:
 
@@ -203,13 +324,12 @@ ${englishMarkdown}`;
         },
       ],
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: 3000,
     });
 
     return completion.choices[0].message.content || englishMarkdown;
   } catch (error) {
     console.error('❌ Error generating Spanish translation:', error);
-    // Return English version as fallback
     return englishMarkdown;
   }
 }
@@ -219,15 +339,23 @@ ${englishMarkdown}`;
  */
 async function generateArticle(
   episode: Episode,
-  dialogueSamples: FlorenciaDialogue[],
   templatePrompt: string
 ): Promise<GeneratedArticle> {
   console.log(`\n🎨 Generating article for Episode ${episode.episode_number}: ${episode.title_es}...`);
 
   const episodeDetail = EPISODE_DETAILS[episode.episode_number as keyof typeof EPISODE_DETAILS];
-  const keyScenes = extractKeyScenes(episode);
+  const allScenes = extractAllScenes(episode);
+  
+  // Format scenes for the prompt
+  const scenesForPrompt = allScenes.slice(0, 6).map((scene, i) => {
+    let sceneText = `Scene ${i + 1} (${scene.emotion}):`;
+    if (scene.florencia_says) sceneText += `\n  Florencia: "${scene.florencia_says}"`;
+    if (scene.user_says) sceneText += `\n  User: "${scene.user_says}"`;
+    if (scene.waiter_says) sceneText += `\n  Waiter: "${scene.waiter_says}"`;
+    return sceneText;
+  }).join('\n\n');
 
-  // Construct the generation prompt
+  // Construct the generation prompt with PLOT BOUNDARIES
   const generationPrompt = `${templatePrompt}
 
 ---
@@ -240,43 +368,66 @@ async function generateArticle(
 
 **Grammar Focus**: ${episode.grammar_focus}
 
-**Grammar Triggers**: ${episode.grammar_triggers.join(', ')}
+**Grammar Triggers**: ${(episode.grammar_triggers || []).join(', ')}
 
 **Article Title**: "${episodeDetail.article_title}"
 
 **Emotional Theme**: ${episodeDetail.emotional_theme}
 
+**Grammar Unique Focus**: ${episodeDetail.grammar_unique_focus}
+
+**Key Dialogue Quote to Reference**: *"${episodeDetail.key_dialogue_quote}"*
+
+**Motif to Use**: ${episodeDetail.motif_to_use}
+
+---
+
+## CRITICAL: PLOT BOUNDARIES FOR THIS EPISODE
+
+**What You CAN Say About Grandmother**: ${episodeDetail.allowed_grandmother_info}
+
+**What You CAN Say About Mate Cup**: ${episodeDetail.allowed_mate_info}
+
+**FORBIDDEN — DO NOT MENTION**: ${episodeDetail.forbidden_reveals}
+
+**What Florencia Safely Reveals**: ${episodeDetail.florencia_reveals_safe}
+
+---
+
 **Key Scenes from Episode**:
-${keyScenes.map((scene, i) => `
-Scene ${i + 1}:
-- Florencia says: "${scene.florencia_says}"
-- Emotion: ${scene.emotion}
-- Context: ${scene.context}
-`).join('\n')}
-
-**Florencia's Voice Samples** (from audio transcripts):
-${dialogueSamples.slice(0, 5).map(d => `- "${d.text_content}" (${d.emotion})`).join('\n')}
-
-**What to Reveal About Florencia**: ${episodeDetail.additional_detail}
-
-**Writing Exercise Focus**: ${episodeDetail.writing_focus}
+${scenesForPrompt}
 
 ---
 
 ## YOUR TASK
 
-Generate a complete article matching the Substack aesthetic reference. The article should:
+Generate a complete article following the template structure. The article should:
 
-1. Be 800-1200 words (3-5 minute read) - concise and impactful
-2. **All explanatory text must be in English** - Only Spanish examples, words, phrases in Spanish (italicized)
-3. Use Florencia's authentic voice (vos, Argentine Spanish) in quoted dialogue only
-4. **Match the Substack article aesthetic exactly** - short paragraphs, generous whitespace, philosophical tone
-5. Reference specific dialogue from the episode
-6. Reveal the specified personal detail about Florencia
-7. End with a transformative writing exercise
+1. Be approximately **600 words** (3-minute read) — concise and impactful
+2. **WRITE THE ENTIRE ARTICLE IN ENGLISH** — Only Spanish examples, vocabulary, and quoted dialogue in Spanish (italicized)
+3. **Florencia is clearly the author** from the very first paragraph
+4. Reference specific dialogue from the episode (use the key dialogue quote)
+5. Weave in the specified motif (respecting plot boundaries!)
+6. Include ONLY the safe personal revelation about Florencia
+7. **NO writing exercise section** — end with grammar summary + Florencia sign-off
+8. **CRITICAL: NO PLOT LEAKS** — Only reference what the reader knows by this episode
 
-**FORMATTING REQUIREMENTS (CRITICAL):**
-- Use PURE MARKDOWN only - NO HTML of any kind
+**LANGUAGE EXAMPLES:**
+- CORRECT opening: "I've been thinking about you since we left the café..."
+- WRONG opening: "Querido amigo, desde que nos vimos..."
+- CORRECT: "When I said *'Ahora somos amigos'*, I meant it."
+- WRONG: "Cuando dije 'Ahora somos amigos', lo decía en serio."
+
+**CONJUGATION REQUIREMENT:**
+When showing verb conjugations, ALWAYS show all 5 pronoun forms:
+- *yo [verb]*
+- *tú [verb]*
+- *él/ella/usted [verb]*
+- *nosotros [verb]*
+- *ustedes/ellos [verb]*
+
+**FORMATTING REQUIREMENTS:**
+- Use PURE MARKDOWN only — NO HTML
 - Use short paragraphs (1-3 sentences)
 - Use --- for horizontal rules between sections
 - Use > for blockquotes (Spanish example passages)
@@ -285,26 +436,10 @@ Generate a complete article matching the Substack aesthetic reference. The artic
 - Use ### for section headings
 - Use emoji numbers (1️⃣, 2️⃣) for grammar rule sections
 - Use bullet points (-) for lists
-- For verb conjugations, use simple markdown lists, NOT tables
 
-**EXAMPLE CONJUGATION FORMAT:**
-### 2️⃣ How do we form it?
+**CRITICAL: Do NOT wrap your output in code blocks.** Output the raw markdown directly.
 
-Take the *ellos* preterite → drop **-ron** → add:
-
-- **-ra, -ras, -ra, -ramos, -ran**
-
-Examples:
-- *hablaron → hablara*
-- *tuvieron → tuviera*
-- *fueron → fuera*
-
-**DO NOT USE HTML TABLES.** Keep it clean and simple like the Substack reference.
-
-**CRITICAL: Do NOT wrap your output in code blocks.** Output the raw markdown directly without \`\`\`markdown or \`\`\` wrappers. The content should start directly with the article title.
-
-At the very end, provide (on separate lines):
-- WRITING_EXERCISE_PROMPT: [Just the exercise portion, suitable for database storage]
+At the very end, provide on a separate line:
 - SUBTITLE: [A one-sentence subtitle for the article, max 120 characters]
 `;
 
@@ -314,7 +449,18 @@ At the very end, provide (on separate lines):
       messages: [
         {
           role: 'system',
-          content: 'You are a creative writing assistant helping generate educational content for Spanish language learners. You write in the voice of Florencia, a 35-year-old tango dancer from Buenos Aires.',
+          content: `You are Florencia, a 25-year-old tango dancer from Buenos Aires, Argentina. You are writing educational grammar articles for English-speaking Spanish learners.
+
+CRITICAL LANGUAGE REQUIREMENT:
+- Write the ENTIRE article in ENGLISH
+- The only Spanish text allowed is: example phrases, quoted dialogue, and vocabulary words (always in italics)
+- DO NOT write greetings, explanations, or body text in Spanish
+- Opening should be English like "I've been thinking about you since..." NOT "Querido amigo,"
+- This is for English speakers learning Spanish, so explanations must be in English
+
+Your voice is warm, artistic, and personal — like a letter from a friend writing in English about her Argentine culture.
+
+CRITICAL: Respect plot boundaries and do NOT reveal information the reader doesn't know yet.`,
         },
         {
           role: 'user',
@@ -322,32 +468,16 @@ At the very end, provide (on separate lines):
         },
       ],
       temperature: 0.8,
-      max_tokens: 4000,
+      max_tokens: 3000,
     });
 
     const generatedText = completion.choices[0].message.content || '';
     
-    // Parse out the special markers at the end (more robust pattern matching)
+    // Parse out the subtitle marker
     let contentMarkdown = generatedText;
-    let writingExercisePrompt = 'Complete the writing exercise described in the article.';
     let subtitle = '';
     
-    // Try to extract WRITING_EXERCISE_PROMPT (with or without leading dash)
-    const exercisePatterns = [
-      /\n-\s*WRITING_EXERCISE_PROMPT:\s*(.+?)(?=\n-\s*SUBTITLE:|\n*SUBTITLE:|\n*$)/s,
-      /\nWRITING_EXERCISE_PROMPT:\s*(.+?)(?=\nSUBTITLE:|\n*$)/s,
-      /WRITING_EXERCISE_PROMPT:\s*(.+?)(?=SUBTITLE:|$)/s,
-    ];
-    
-    for (const pattern of exercisePatterns) {
-      const match = generatedText.match(pattern);
-      if (match) {
-        writingExercisePrompt = match[1].trim();
-        break;
-      }
-    }
-    
-    // Try to extract SUBTITLE (with or without leading dash)
+    // Try to extract SUBTITLE
     const subtitlePatterns = [
       /\n-\s*SUBTITLE:\s*(.+?)$/m,
       /\nSUBTITLE:\s*(.+?)$/m,
@@ -362,20 +492,17 @@ At the very end, provide (on separate lines):
       }
     }
     
-    // Remove all markers from the main content (multiple patterns to catch all variations)
+    // Remove subtitle marker from content
     contentMarkdown = generatedText
-      .replace(/\n-\s*WRITING_EXERCISE_PROMPT:.+$/s, '')
-      .replace(/\nWRITING_EXERCISE_PROMPT:.+$/s, '')
-      .replace(/WRITING_EXERCISE_PROMPT:.+$/s, '')
       .replace(/\n-\s*SUBTITLE:.+$/m, '')
       .replace(/\nSUBTITLE:.+$/m, '')
       .replace(/SUBTITLE:.+$/m, '')
       .trim();
     
-    // Strip markdown code block wrappers if present (```markdown ... ```)
+    // Strip markdown code block wrappers if present
     contentMarkdown = contentMarkdown
-      .replace(/^```(?:markdown|md)?\s*\n/i, '')  // Remove opening ```markdown
-      .replace(/\n```\s*$/i, '')                   // Remove closing ```
+      .replace(/^```(?:markdown|md)?\s*\n/i, '')
+      .replace(/\n```\s*$/i, '')
       .trim();
 
     // Calculate metrics
@@ -402,7 +529,7 @@ At the very end, provide (on separate lines):
       subtitle,
       content_markdown: contentMarkdown,
       content_markdown_es: spanishTranslation,
-      writing_exercise_prompt: writingExercisePrompt,
+      writing_exercise_prompt: episodeDetail.writing_prompt,
       grammar_focus: episode.grammar_focus,
       word_count: wordCount,
       estimated_read_minutes: estimatedReadMinutes,
@@ -455,8 +582,8 @@ async function insertArticle(article: GeneratedArticle): Promise<void> {
         subtitle: article.subtitle,
         content_markdown: article.content_markdown,
         content_markdown_es: article.content_markdown_es,
-        author: 'Florencia',
         writing_exercise_prompt: article.writing_exercise_prompt,
+        author: 'Florencia',
         grammar_focus: article.grammar_focus,
         word_count: article.word_count,
         estimated_read_minutes: article.estimated_read_minutes,
@@ -491,12 +618,6 @@ estimated_read_minutes: ${article.estimated_read_minutes}
 ---
 
 ${article.content_markdown}
-
----
-
-## Writing Exercise Prompt (Database Version)
-
-${article.writing_exercise_prompt}
 `;
 
   fs.writeFileSync(filepath, fileContent, 'utf-8');
@@ -504,10 +625,56 @@ ${article.writing_exercise_prompt}
 }
 
 /**
+ * Update only writing prompts in the database (no article regeneration)
+ */
+async function updateWritingPromptsOnly() {
+  console.log('🚀 Updating writing prompts only (no article regeneration)...\n');
+
+  try {
+    // Fetch all episodes to get their IDs
+    const episodes = await fetchEpisodes();
+    const episodesToUpdate = episodes.filter(e => e.episode_number >= 1 && e.episode_number <= 8);
+    
+    console.log(`📝 Updating writing prompts for ${episodesToUpdate.length} episodes...\n`);
+    
+    for (const episode of episodesToUpdate) {
+      const episodeDetail = EPISODE_DETAILS[episode.episode_number as keyof typeof EPISODE_DETAILS];
+      
+      if (!episodeDetail) {
+        console.log(`⚠️ No details found for episode ${episode.episode_number}, skipping...`);
+        continue;
+      }
+
+      // Update only the writing_exercise_prompt field
+      const { error } = await supabaseAdmin
+        .from('episode_articles')
+        .update({
+          writing_exercise_prompt: episodeDetail.writing_prompt,
+        })
+        .eq('episode_id', episode.id);
+
+      if (error) {
+        console.error(`❌ Failed to update episode ${episode.episode_number}: ${error.message}`);
+      } else {
+        console.log(`✅ Episode ${episode.episode_number}: Writing prompt updated`);
+      }
+    }
+
+    console.log('\n🎉 Writing prompts update complete!\n');
+    
+  } catch (error) {
+    console.error('❌ Fatal error:', error);
+    process.exit(1);
+  }
+}
+
+/**
  * Main execution function
  */
 async function main() {
   console.log('🚀 Starting episode article generation...\n');
+  console.log('📝 New storyline with motifs: Soñemos, Valentina Reyes, mate cup, reality/illusion');
+  console.log('🔒 Plot boundaries enabled to prevent spoilers\n');
 
   try {
     // Load prompt template
@@ -517,16 +684,15 @@ async function main() {
     // Fetch all episodes
     const episodes = await fetchEpisodes();
 
-    // Generate articles for episodes 4-8
-    const episodesToGenerate = episodes.filter(e => e.episode_number >= 4 && e.episode_number <= 8);
+    // Generate articles for ALL episodes (1-8)
+    const episodesToGenerate = episodes.filter(e => e.episode_number >= 1 && e.episode_number <= 8);
+    
+    console.log(`📚 Generating articles for ${episodesToGenerate.length} episodes...\n`);
     
     for (const episode of episodesToGenerate) {
       try {
-        // Fetch Florencia's dialogue samples
-        const dialogueSamples = await fetchFlorenciaDialogue(episode.episode_number);
-        
         // Generate article
-        const article = await generateArticle(episode, dialogueSamples, templatePrompt);
+        const article = await generateArticle(episode, templatePrompt);
         
         // Save to file for review
         saveArticleToFile(episode.episode_number, article);
@@ -537,9 +703,9 @@ async function main() {
         console.log(`\n✅ Episode ${episode.episode_number} complete!\n`);
         
         // Add delay to avoid rate limiting
-        if (episode.episode_number < episodes.length) {
-          console.log('⏳ Waiting 2 seconds before next generation...\n');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        if (episode.episode_number < episodesToGenerate.length) {
+          console.log('⏳ Waiting 3 seconds before next generation...\n');
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       } catch (error) {
         console.error(`\n❌ Failed to generate article for episode ${episode.episode_number}:`, error);
@@ -557,6 +723,10 @@ async function main() {
   }
 }
 
-// Run the script
+// Run the script with optional --prompts-only flag
+const args = process.argv.slice(2);
+if (args.includes('--prompts-only')) {
+  updateWritingPromptsOnly();
+} else {
 main();
-
+}

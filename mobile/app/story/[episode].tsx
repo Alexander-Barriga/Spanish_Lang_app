@@ -27,6 +27,8 @@ import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/th
 import { getGrammarLesson, GrammarLesson } from '../../src/data/grammarLessons';
 import { VAD_CONFIG } from '../../src/config/constants';
 import { CulturalContext } from '../../src/components/CulturalContext';
+import VideoPlayer from '../../src/components/VideoPlayer';
+import { getEpisodeVideo } from '../../src/data/episodeVideos';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,9 +36,10 @@ interface Scene {
   scene_id: string;
   scene_number: number;
   florencia_says: string;
+  florencia_says_en?: string;  // English translation
   audio_key: string;
   emotion: string;
-  response_type: 'guided' | 'free_speak';
+  response_type: 'guided' | 'free_speak' | 'scripted' | 'listen_only';
   next_scene?: string; // For free_speak scenes, specifies the next scene
   options?: Array<{
     text: string;
@@ -44,6 +47,11 @@ interface Scene {
     grammar_correct?: boolean;
     uses_subjunctive?: boolean;
   }>;
+  // New scripted dialogue fields
+  user_says?: string;           // User's scripted Spanish line
+  user_says_en?: string;        // English translation
+  waiter_says?: string;         // Waiter's Spanish line (Episodes 1 & 8)
+  waiter_says_en?: string;      // English translation
   grammar_hint?: string;
   expected_patterns?: string[];
   // New narrative enhancement fields
@@ -92,6 +100,53 @@ const errorCategoryLabels: Record<string, string> = {
   word_order: 'Word Order',
 };
 
+// Fuzzy text similarity for comparing transcription to expected line
+// Uses word overlap scoring with normalization (ignores punctuation, case, accents)
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[¿¡.,!?;:'"()—–-]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const textSimilarity = (transcription: string, expected: string): number => {
+  const normalizedTranscription = normalizeText(transcription);
+  const normalizedExpected = normalizeText(expected);
+  
+  // Split into words
+  const transcribedWords = normalizedTranscription.split(' ').filter(w => w.length > 0);
+  const expectedWords = normalizedExpected.split(' ').filter(w => w.length > 0);
+  
+  if (expectedWords.length === 0) return 1; // No expected text = always match
+  if (transcribedWords.length === 0) return 0; // No transcription = no match
+  
+  // Count matching words
+  let matchCount = 0;
+  const expectedWordsCopy = [...expectedWords];
+  
+  for (const word of transcribedWords) {
+    const idx = expectedWordsCopy.indexOf(word);
+    if (idx !== -1) {
+      matchCount++;
+      expectedWordsCopy.splice(idx, 1); // Remove matched word to prevent double counting
+    }
+  }
+  
+  // Calculate similarity as percentage of expected words matched
+  return matchCount / expectedWords.length;
+};
+
+// Florencia's retry prompts in Spanish
+const RETRY_PROMPTS = [
+  "Perdón, no entendí. ¿Podrías repetirlo?",
+  "No escuché bien. ¿Podrías decirlo otra vez?",
+];
+const GIVE_UP_PROMPT = "No te preocupes, sigamos adelante.";
+const SIMILARITY_THRESHOLD = 0.7; // 70% word match required
+
 export default function EpisodePlayer() {
   const { episode: episodeId } = useLocalSearchParams<{ episode: string }>();
   
@@ -123,6 +178,11 @@ export default function EpisodePlayer() {
   const [responseWasWritten, setResponseWasWritten] = useState(false);
   const grammarPanelAnim = useRef(new Animated.Value(0)).current;
   
+  // Inline recording state for scripted mode (no feedback page)
+  const [scriptedRetryCount, setScriptedRetryCount] = useState(0);
+  const [isPlayingRetryPrompt, setIsPlayingRetryPrompt] = useState(false);
+  const [isInlineRecording, setIsInlineRecording] = useState(false); // Recording inline on scene page
+  
   // Refs for keyboard handling and double-tap
   const sceneScrollRef = useRef<ScrollView>(null);
   const lastTapTimeRef = useRef<number>(0);
@@ -138,6 +198,8 @@ export default function EpisodePlayer() {
   
   // Separate playback hook for user's recorded voice (to avoid conflicts with scene audio)
   // Volume boost of 1.0 (max) helps amplify user recordings to match Florencia's volume
+  // Track if we're auto-advancing after scripted playback
+  const scriptedPlaybackCompleteRef = useRef(false);
   const { 
     playAudio: playUserRecording, 
     stopAudio: stopUserRecording,
@@ -145,6 +207,14 @@ export default function EpisodePlayer() {
   } = useAudioPlayback({
     onPlaybackComplete: () => {
       setUserPlaybackComplete(true);
+      // Check if this was a scripted mode playback - if so, auto-advance
+      if (scriptedPlaybackCompleteRef.current) {
+        scriptedPlaybackCompleteRef.current = false;
+        // Small delay to let audio finish cleanly, then advance
+        setTimeout(() => {
+          advanceToNextScene();
+        }, 300);
+      }
     },
     volumeBoost: 1.0, // Max volume for user recordings
   });
@@ -369,27 +439,31 @@ export default function EpisodePlayer() {
       console.error('Error stopping recording:', error);
     }
     
-    // Reset playback state for feedback phase
+    // For inline recording (scripted mode), stay on scene page
+    if (isInlineRecording) {
+      setIsInlineRecording(false);
+      await handleScriptedRecordingComplete(uri);
+      return;
+    }
+    
+    // Legacy flow for free_speak mode - goes to feedback phase
     setUserPlaybackComplete(false);
     setUserRecordingUri(uri);
     
-    // If no recording URI, skip transcription and move to next scene
     if (!uri) {
       console.log('No recording URI, skipping transcription');
       setFeedbackMessage('Recording was too short (minimum 0.5 seconds required). Try again!');
-      setUserPlaybackComplete(true); // No recording to play, so mark as complete
+      setUserPlaybackComplete(true);
       setCurrentPhase('feedback');
       return;
     }
 
     // Transcribe the recording with timeout
     try {
-      // Create a timeout promise
       const timeoutPromise = new Promise<{ error: string }>((_, reject) => 
         setTimeout(() => reject({ error: 'Transcription timed out' }), 30000)
       );
       
-      // Race between transcription and timeout
       const result = await Promise.race([
         api.transcribeAudio(uri),
         timeoutPromise
@@ -399,7 +473,6 @@ export default function EpisodePlayer() {
         setUserTranscription(result.data.transcript);
         setSpeakingCount(prev => prev + 1);
         
-        // AI-powered grammar analysis
         setIsAnalyzing(true);
         try {
           const analysisResult = await api.analyzeGrammarResponse({
@@ -415,7 +488,6 @@ export default function EpisodePlayer() {
             setGrammarAnalysis(analysis);
             setFeedbackMessage(analysis.feedbackMessage);
             
-            // Determine if correction practice is needed
             if (analysis.overallCorrect) {
               setGrammarScore(prev => prev + 15);
               setNeedsCorrection(false);
@@ -423,7 +495,6 @@ export default function EpisodePlayer() {
               setNeedsCorrection(true);
             }
           } else {
-            // Fallback if analysis fails
             setFeedbackMessage('Good effort! Keep practicing.');
             setNeedsCorrection(false);
           }
@@ -437,7 +508,6 @@ export default function EpisodePlayer() {
         
         setCurrentPhase('feedback');
       } else {
-        // Any other case (error or unexpected response)
         console.error('Transcription issue:', result.error || 'Unknown error');
         setFeedbackMessage('Could not transcribe. Try speaking more clearly.');
         setCurrentPhase('feedback');
@@ -446,6 +516,155 @@ export default function EpisodePlayer() {
       console.error('Transcription error:', error);
       setFeedbackMessage('Transcription failed. Moving on...');
       setCurrentPhase('feedback');
+    }
+  };
+
+  // Handle scripted mode recording completion (inline, no feedback page)
+  const handleScriptedRecordingComplete = async (uri: string | null) => {
+    if (!uri) {
+      // Recording too short - prompt retry
+      await playRetryPrompt();
+      return;
+    }
+
+    // Transcribe the recording
+    try {
+      const timeoutPromise = new Promise<{ error: string }>((_, reject) => 
+        setTimeout(() => reject({ error: 'Transcription timed out' }), 15000)
+      );
+      
+      const result = await Promise.race([
+        api.transcribeAudio(uri),
+        timeoutPromise
+      ]);
+      
+      if (result.data?.transcript) {
+        const transcript = result.data.transcript;
+        const expectedLine = currentScene?.user_says || '';
+        const similarity = textSimilarity(transcript, expectedLine);
+        
+        console.log(`📝 Transcription: "${transcript}"`);
+        console.log(`🎯 Expected: "${expectedLine}"`);
+        console.log(`📊 Similarity: ${(similarity * 100).toFixed(0)}%`);
+        
+        if (similarity >= SIMILARITY_THRESHOLD) {
+          // Success! Play back recording then auto-continue
+          setSpeakingCount(prev => prev + 1);
+          setUserRecordingUri(uri);
+          
+          // Mark that we should auto-advance after playback
+          scriptedPlaybackCompleteRef.current = true;
+          
+          // Play user's recording once - onPlaybackComplete will trigger advanceToNextScene
+          await playUserRecording(uri);
+        } else {
+          // Not close enough - check retry count
+          if (scriptedRetryCount < 2) {
+            await playRetryPrompt();
+          } else {
+            // Max retries reached - give up gracefully
+            await playGiveUpPrompt();
+          }
+        }
+      } else {
+        // Transcription failed - treat as retry
+        if (scriptedRetryCount < 2) {
+          await playRetryPrompt();
+        } else {
+          await playGiveUpPrompt();
+        }
+      }
+    } catch (error) {
+      console.error('Scripted transcription error:', error);
+      if (scriptedRetryCount < 2) {
+        await playRetryPrompt();
+      } else {
+        await playGiveUpPrompt();
+      }
+    }
+  };
+
+  // Play Florencia's retry prompt
+  const playRetryPrompt = async () => {
+    setScriptedRetryCount(prev => prev + 1);
+    setIsPlayingRetryPrompt(true);
+    
+    const promptIndex = scriptedRetryCount % RETRY_PROMPTS.length;
+    const promptText = RETRY_PROMPTS[promptIndex];
+    
+    try {
+      const ttsResult = await api.synthesizeSpeech(promptText, 'florencia', { type: 'encouraging', intensity: 0.6 });
+      if (ttsResult.audioUrl) {
+        await playAudio(ttsResult.audioUrl);
+      }
+    } catch (error) {
+      console.error('Failed to play retry prompt:', error);
+    } finally {
+      setIsPlayingRetryPrompt(false);
+    }
+  };
+
+  // Play encouragement and move on after max retries
+  const playGiveUpPrompt = async () => {
+    setIsPlayingRetryPrompt(true);
+    
+    try {
+      const ttsResult = await api.synthesizeSpeech(GIVE_UP_PROMPT, 'florencia', { type: 'warm', intensity: 0.7 });
+      if (ttsResult.audioUrl) {
+        await playAudio(ttsResult.audioUrl);
+      }
+    } catch (error) {
+      console.error('Failed to play give up prompt:', error);
+    } finally {
+      setIsPlayingRetryPrompt(false);
+      // Reset and advance to next scene
+      setScriptedRetryCount(0);
+      advanceToNextScene();
+    }
+  };
+
+  // Start inline recording for scripted mode
+  const handleStartInlineRecording = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsInlineRecording(true);
+    
+    try {
+      await startRecording();
+    } catch (error) {
+      console.error('Failed to start inline recording:', error);
+      setIsInlineRecording(false);
+    }
+  };
+
+  // Advance to next scene (used after successful scripted recording or give up)
+  const advanceToNextScene = async () => {
+    await stopAudio();
+    await stopUserRecording();
+    
+    // Reset all state
+    setUserRecordingUri(null);
+    setUserPlaybackComplete(false);
+    setScriptedRetryCount(0);
+    
+    // Check if we're on the last scene
+    const totalScenes = episode?.scenes?.length || 0;
+    const isLastScene = currentSceneIndex >= totalScenes - 1;
+    
+    if (isLastScene) {
+      handleEpisodeComplete();
+      return;
+    }
+    
+    // Move to next scene
+    const nextSceneIndex = currentSceneIndex + 1;
+    if (episode?.scenes && nextSceneIndex < episode.scenes.length) {
+      const nextScene = episode.scenes[nextSceneIndex];
+      setCurrentSceneIndex(nextSceneIndex);
+      setCurrentScene(nextScene);
+      setSceneAudioPlayed(false);
+      setTimeout(() => playSceneAudio(nextScene), 300);
+    } else {
+      handleEpisodeComplete();
     }
   };
 
@@ -930,6 +1149,48 @@ export default function EpisodePlayer() {
     );
   }
 
+  // VIDEO MODE: Use local bundled video if available, otherwise check for remote URL
+  const localVideo = episode ? getEpisodeVideo(episode.episode_number) : null;
+  const videoSource = localVideo || episode?.video_url;
+  
+  if (videoSource) {
+    const handleVideoStart = async () => {
+      // Track that user started watching this episode
+      try {
+        await api.trackEpisodeView(episode!.id);
+        console.log('📹 Episode view tracked');
+      } catch (error) {
+        console.error('Failed to track episode view:', error);
+      }
+    };
+
+    const handleVideoEnd = () => {
+      // Navigate to Home tab after video completes
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Record the episode attempt
+      const durationSec = Math.round((Date.now() - startTime) / 1000);
+      api.recordEpisodeAttempt({
+        episodeId: episode!.id,
+        starsEarned: 3, // Full stars for watching video
+        durationSeconds: durationSec,
+      }).catch(console.error);
+      
+      // Navigate to Home tab
+      router.replace('/(tabs)/');
+    };
+
+    return (
+      <VideoPlayer
+        videoSource={videoSource}
+        episodeNumber={episode!.episode_number}
+        episodeTitle={episode!.title_es}
+        onVideoStart={handleVideoStart}
+        onVideoEnd={handleVideoEnd}
+        onBack={() => router.back()}
+      />
+    );
+  }
+
   // Intro Phase
   if (currentPhase === 'intro') {
     return (
@@ -1099,11 +1360,32 @@ export default function EpisodePlayer() {
                 </View>
               </View>
 
-              {/* Dialogue bubble */}
+              {/* Waiter dialogue - Episodes 1 & 8 */}
+              {currentScene?.waiter_says && (
+                <View style={styles.waiterDialogueContainer}>
+                  <View style={styles.waiterHeader}>
+                    <View style={styles.waiterAvatar}>
+                      <Text style={styles.waiterEmoji}>👨‍🍳</Text>
+                    </View>
+                    <Text style={styles.waiterNameLabel}>Mozo</Text>
+                  </View>
+                  <View style={styles.waiterBubble}>
+                    <Text style={styles.dialogueText}>{currentScene.waiter_says}</Text>
+                    {currentScene.waiter_says_en && (
+                      <Text style={styles.dialogueTranslation}>{currentScene.waiter_says_en}</Text>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Florencia dialogue bubble */}
               <View style={styles.dialogueBubble}>
                 <Text style={styles.dialogueText}>
                   {currentScene?.florencia_says}
                 </Text>
+                {currentScene?.florencia_says_en && (
+                  <Text style={styles.dialogueTranslation}>{currentScene.florencia_says_en}</Text>
+                )}
               </View>
 
               {/* Replay button - disabled while audio is playing */}
@@ -1131,7 +1413,79 @@ export default function EpisodePlayer() {
                   { opacity: fadeAnim }
                 ]}
               >
-                {currentScene?.response_type === 'guided' && currentScene.options ? (
+                {/* Listen Only - just continue to next scene */}
+                {currentScene?.response_type === 'listen_only' ? (
+                  <Pressable onPress={handleContinueAfterFeedback} style={styles.continueSceneButton}>
+                    <Text style={styles.continueSceneButtonText}>Continue</Text>
+                    <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+                  </Pressable>
+                ) : currentScene?.response_type === 'scripted' && currentScene.user_says ? (
+                  /* Scripted - show user's line to read aloud with inline recording */
+                  <View style={styles.scriptedSection}>
+                    <View style={styles.scriptedPrompt}>
+                      <Ionicons name="chatbubble-outline" size={18} color={colors.primary.gold} />
+                      <Text style={styles.scriptedLabel}>Your line:</Text>
+                    </View>
+                    <View style={styles.scriptedDialogueBox}>
+                      <Text style={styles.scriptedDialogueText}>"{currentScene.user_says}"</Text>
+                      {currentScene.user_says_en && (
+                        <Text style={styles.scriptedTranslation}>{currentScene.user_says_en}</Text>
+                      )}
+                    </View>
+                    
+                    {/* Retry indicator */}
+                    {scriptedRetryCount > 0 && !isInlineRecording && !isPlayingRetryPrompt && (
+                      <View style={styles.retryIndicator}>
+                        <Ionicons name="refresh" size={16} color={colors.primary.gold} />
+                        <Text style={styles.retryText}>
+                          Try again ({2 - scriptedRetryCount} {2 - scriptedRetryCount === 1 ? 'attempt' : 'attempts'} left)
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {/* Playing retry prompt indicator */}
+                    {isPlayingRetryPrompt && (
+                      <View style={styles.retryPromptIndicator}>
+                        <ActivityIndicator size="small" color={colors.primary.gold} />
+                        <Text style={styles.retryPromptText}>Florencia is speaking...</Text>
+                      </View>
+                    )}
+                    
+                    {/* Playing user's successful recording */}
+                    {isPlayingUserRecording && userRecordingUri && (
+                      <View style={styles.playbackIndicator}>
+                        <Ionicons name="volume-high" size={20} color={colors.primary.gold} />
+                        <Text style={styles.playbackText}>Playing your recording...</Text>
+                      </View>
+                    )}
+                    
+                    {/* Record button - transforms to stop button when recording */}
+                    {!isPlayingRetryPrompt && !isPlayingUserRecording && (
+                      <Pressable 
+                        onPress={isInlineRecording ? handleStopRecording : handleStartInlineRecording} 
+                        style={[styles.recordButtonRaised, isInlineRecording && styles.recordingActive]}
+                      >
+                        <LinearGradient
+                          colors={isInlineRecording ? ['#DC2626', '#EF4444'] : colors.gradients.tango as any}
+                          style={styles.recordButtonGradient}
+                        >
+                          {isInlineRecording ? (
+                            <>
+                              <View style={styles.pulseDot} />
+                              <Ionicons name="stop" size={28} color={colors.text.primary} />
+                              <Text style={styles.recordButtonText}>Stop Recording</Text>
+                            </>
+                          ) : (
+                            <>
+                              <Ionicons name="mic" size={28} color={colors.text.primary} />
+                              <Text style={styles.recordButtonText}>Tap to Read Aloud</Text>
+                            </>
+                          )}
+                        </LinearGradient>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : currentScene?.response_type === 'guided' && currentScene.options ? (
                   <View style={styles.optionsContainer}>
                     <Text style={styles.optionsLabel}>Choose your response:</Text>
                     {currentScene.options.map((option, index) => (
@@ -1812,6 +2166,47 @@ const styles = StyleSheet.create({
     ...textStyles.sceneText,
     color: colors.text.primary,
   },
+  dialogueTranslation: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    marginTop: spacing[3],
+    paddingTop: spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+  },
+  // Waiter dialogue styles
+  waiterDialogueContainer: {
+    marginBottom: spacing[4],
+  },
+  waiterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    marginBottom: spacing[3],
+  },
+  waiterAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.background.elevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  waiterEmoji: {
+    fontSize: 18,
+  },
+  waiterNameLabel: {
+    ...textStyles.label,
+    color: colors.text.secondary,
+  },
+  waiterBubble: {
+    backgroundColor: colors.neutral[800],
+    borderRadius: borderRadius.xl,
+    borderTopLeftRadius: borderRadius.sm,
+    padding: spacing[4],
+    marginLeft: spacing[6],
+  },
   replayButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1857,6 +2252,103 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     flex: 1,
     marginRight: spacing[2],
+  },
+  // Scripted response section styles
+  scriptedSection: {
+    gap: spacing[4],
+  },
+  scriptedPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  scriptedLabel: {
+    ...textStyles.label,
+    color: colors.primary.gold,
+  },
+  scriptedDialogueBox: {
+    backgroundColor: colors.background.elevated,
+    padding: spacing[5],
+    borderRadius: borderRadius.xl,
+    borderWidth: 2,
+    borderColor: colors.primary.gold + '40',
+    gap: spacing[2],
+  },
+  scriptedDialogueText: {
+    ...textStyles.dialogue,
+    color: colors.text.primary,
+    textAlign: 'center',
+    lineHeight: 28,
+  },
+  scriptedTranslation: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: spacing[2],
+  },
+  // Inline recording styles
+  retryIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[2],
+    backgroundColor: colors.primary.gold + '20',
+    borderRadius: borderRadius.lg,
+    marginTop: spacing[2],
+  },
+  retryText: {
+    ...textStyles.small,
+    color: colors.primary.gold,
+  },
+  retryPromptIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+    paddingVertical: spacing[4],
+  },
+  retryPromptText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  playbackIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[3],
+    backgroundColor: colors.primary.gold + '20',
+    borderRadius: borderRadius.lg,
+  },
+  playbackText: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+  },
+  recordingActive: {
+    transform: [{ scale: 1.02 }],
+  },
+  pulseDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    marginRight: spacing[2],
+  },
+  continueSceneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary.gold,
+    paddingVertical: spacing[4],
+    borderRadius: borderRadius.xl,
+    gap: spacing[2],
+  },
+  continueSceneButtonText: {
+    ...textStyles.button,
+    color: colors.neutral[950],
   },
   speakSection: {
     gap: spacing[4],

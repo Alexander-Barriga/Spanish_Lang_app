@@ -58,10 +58,10 @@ Do you smell that coffee aroma? The walls hold more than one hundred sixty years
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Mirá esas fotos en la pared. Son de Carlos Gardel, el rey del tango. Y esos espejos... vieron pasar a Borges, a poetas, a soñadores.
+Mirá la estatua allá, apoyada contra la pared. El que está de pie es Carlos Gardel, el rey del tango. El que está sentado, Jorge Luis Borges: escritor, poeta, soñador.
 
 FLORENCIA (English):
-Look at those photos on the wall. They're of Carlos Gardel, the king of tango. And those mirrors... they've seen Borges pass by, poets, dreamers.
+Look at the statue over there, leaning against the wall. The one standing is Carlos Gardel, the king of tango. The one seated is Jorge Luis Borges: writer, poet, dreamer.
 
 --- Scene 4 ---
 [Emotion: warm introduction]
@@ -1148,10 +1148,12 @@ Look. Here is Carlos Gardel, the one you saw in the photos at Café Tortoni. And
 [GRAMMAR: Pluperfect subjunctive - "si hubieras conocido a Di Sarli" - hypothetical about past]
 
 FLORENCIA (Spanish):
-Si hubieras conocido a Di Sarli en persona, habrías entendido por qué 'Soñemos' es mágica. Mi abuela sí lo conoció.
+Si hubieras conocido a Di Sarli en persona, habrías entendido por qué “Soñemos” es mágico. Mi abuela sí lo conoció.
+Cuando yo era chico, me cantaba: “soñemos, que los dos estamos libres… soñemos, en la gloria de este amor.”
 
 FLORENCIA (English):
-If you had known Di Sarli in person, you would have understood why 'Soñemos' is magical. My grandmother did know him.
+If you had known Di Sarli in person, you would have understood why 'Soñemos' is magical. My grandmother did know him. 
+She would sing to me when I was a child 'soñemos, que los dos estamos libres...Soñemos, en la gloria de este amor.'
 
 --- Scene 7 ---
 [Emotion: grandmother revelation]
@@ -1169,10 +1171,10 @@ My grandmother was named Valentina Reyes. She was a singer and dancer during the
 [GRAMMAR: Pluperfect subjunctive - "le habían ofrecido" - hypothetical about past]
 
 FLORENCIA (Spanish):
-Le habían ofrecido un papel principal en el Teatro Colón. Era su sueño. Iba a ser una estrella.
+Le habían ofrecido un papel protagónico en el Teatro Colón. Era su sueño. Iba a ser una estrella enorme.
 
 FLORENCIA (English):
-They had offered her a leading role at Teatro Colón. It was her dream. She was going to be a star.
+They had offered her a leading role at Teatro Colón. It was her dream. She was going to be a big star.
 
 [PAUSE - User could respond]
 
@@ -1230,7 +1232,7 @@ FLORENCIA (Spanish):
 Hace unos años, me ofrecieron un lugar en una compañía de tango. Si hubiera aceptado... pero tuve miedo.
 
 FLORENCIA (English):
-A few years ago, they offered me a spot in a tango company. If I had accepted... but I was afraid.
+Hace unos años, me ofrecieron un lugar en una compañía internacional de tango de gira. Si hubiera aceptado… pero tenía miedo de dejar a mi familia. 
 
 --- Scene 14 ---
 [Emotion: sad reflection]
@@ -1429,7 +1431,7 @@ FLORENCIA (Spanish):
 Sí. Como mi abuela antes que yo. El tango es mi lenguaje, mi forma de hablar con el mundo.
 
 FLORENCIA (English):
-Yes. Like my grandmother before me. Tango is my language, my way of speaking with the world.
+Yes. Like my grandmother before me. Tango is my language, my way of speaking with the world. 
 
 --- Scene 10 ---
 [Emotion: profound]
@@ -1449,10 +1451,10 @@ We artists create illusions. We use beauty to transport the audience to another 
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-En el escenario mostramos pasión, seducción, amor tormentoso. Permitimos que el público olvide que es una ilusión.
+En el escenario mostramos pasión, seducción, amor atormentado. Le permitimos al público creer en la ilusión.
 
 FLORENCIA (English):
-On stage we show passion, seduction, tormented love. We allow the audience to forget it's an illusion.
+On stage we show passion, seduction, tormented love. We allow the audience to believe in the illusion.
 
 --- Scene 12 ---
 [Emotion: philosophical question]
@@ -1471,10 +1473,10 @@ And what if I told you that sometimes the line between reality and illusion beco
 [GRAMMAR: Imperfect subjunctive - "como si esto fuera" - wishes/hypotheticals]
 
 FLORENCIA (Spanish):
-¿Qué sentís vos? ¿Esto es real? ¿O es como si esto fuera otro de mis escenarios?
+¿Qué sentís? ¿Esto es real? ¿O es como si fuera otra de mis bellas ilusiones?
 
 FLORENCIA (English):
-What do you feel? Is this real? Or is it as if this were another one of my stages?
+What do you feel? Is this real? Or is it as if this were another one of my beautiful illusions?
 
 [PAUSE - User could respond]
 
@@ -1726,10 +1728,10 @@ Come, let's keep walking. Look at that Quinquela Martín mural. He painted La Bo
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-La próxima vez que nos veamos... va a ser nuestra última vez juntos. Volvemos al Café Tortoni.
+La próxima vez que nos veamos... va a ser nuestra última vez juntos.
 
 FLORENCIA (English):
-The next time we see each other... it will be our last time together. We're going back to Café Tortoni.
+The next time we see each other... it will be our last time together. 
 
 [PAUSE - User could respond]
 
@@ -1764,15 +1766,6 @@ Vas a entender por qué esperé tanto. Vas a entender todo.
 FLORENCIA (English):
 You're going to understand why I waited so long. You're going to understand everything.
 
---- Scene 19 ---
-[Emotion: warm farewell]
-[Response Type: listen_only]
-
-FLORENCIA (Spanish):
-Nos vemos en el Café Tortoni, donde todo empezó. Donde todo va a terminar... o quizás, a empezar de nuevo.
-
-FLORENCIA (English):
-See you at Café Tortoni, where everything began. Where everything will end... or maybe, begin again.
 
 
 ================================================================================
@@ -1818,10 +1811,10 @@ WAITER (English):
 Good afternoon. What can I bring you?
 
 FLORENCIA (Spanish):
-Hola, che. Quiero que nos traiga dos cafés con leche y unas medialunas.
+Hola. ¿Nos traés dos cafés con leche y unas medialunas?
 
 FLORENCIA (English):
-Hi there. I'd like you to bring us two cafés con leche and some croissants.
+Hi there. Could you bring us two cafés con leche and some croissants?
 
 --- Scene 4 ---
 [Emotion: playful]
@@ -1840,10 +1833,10 @@ See? I don't even have to ask what you want anymore.
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Mmm... "soñemos, que los dos estamos libres...."
+Mmm... "soñemos, que los dos estamos libres...Soñemos, en la gloria de este amor."
 
 FLORENCIA (English):
-Mmm... "let's dream, that we both are free..."
+Mmm... "let's dream, that we both are free...Let’s dream of the splendor of our love."
 
 --- Scene 6 ---
 [Emotion: catching herself]
@@ -1968,33 +1961,32 @@ Mmm. I doubt you've had better coffee than this in eight weeks, right?
 [GRAMMAR: Imperfect subjunctive - "si te dijera" - conditional]
 
 FLORENCIA (Spanish):
-Che, si te dijera que esta fue mi parte favorita de las ocho semanas... ¿me creerías?
+Che, si te dijera que el tiempo que pasamos juntos creando recuerdos fue lo que más me gustó de estas últimas ocho semanas… ¿me creerías?
 
 FLORENCIA (English):
-Hey, if I told you this was my favorite part of the eight weeks... would you believe me?
+Hey, if I told you the time we spent together creating memoerires was my favorite part of the past eight weeks... would you believe me?
 
 --- Scene 18 ---
 [Emotion: ambiguous smile]
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-¿Cuál parte? Eso te lo dejo a vos para que lo adivines.
+Mmm… sí tengo un recuerdo favorito, pero… te lo dejo para que lo adivines.
 
 FLORENCIA (English):
-Which part? I'll leave that for you to guess.
+Hmm...I do have a favorite memory but...I'll leave that for you to guess.
 
 [PAUSE - User could respond]
 
 --- Scene 19 ---
 [Emotion: philosophical, light]
 [Response Type: listen_only]
-[GRAMMAR: Imperfect subjunctive - "como si todo estuviera" - comparison]
 
 FLORENCIA (Spanish):
-¿Sabés qué es lo mejor de los sueños? Que podés elegir seguir soñando. Es como si todo estuviera en tus manos.
+¿Sabés qué es lo mejor de los sueños? Que podés elegir seguir soñando o transformarlos en realidad.
 
 FLORENCIA (English):
-You know what's the best thing about dreams? You can choose to keep dreaming. It's as if everything were in your hands.
+You know what's the best thing about dreams? You can choose to keep dreaming or to transform them into a reality. 
 
 --- Scene 20 ---
 [Emotion: finishing coffee]
@@ -2066,10 +2058,10 @@ If I were you... I wouldn't stop dreaming.
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Hasta pronto.
+Chau.
 
 FLORENCIA (English):
-See you soon.
+Bye.
 
 --- Scene 27 ---
 [Emotion: ambient - Florencia gone, Soñemos plays softly]
@@ -2170,7 +2162,7 @@ EPISODE 8 - Comprehensive Review: Mixed forms (10 usages)
 - Present: quiero que nos traiga (Scene 3), no creo que la hayas visto (Scene 11), ojalá puedas (Scene 20), espero que disfrutes (Scene 22)
 - Perfect: me alegra que hayas venido (Scene 7), dudo que haya probado (Scene 16)
 - Pluperfect: si no lo hubiera comprado (Scene 9)
-- Imperfect: como si fuera (Scene 13), si te dijera (Scene 17), como si todo estuviera (Scene 19), si fuera vos (Scene 25)
+- Imperfect: como si fuera (Scene 13), si te dijera (Scene 17), si fuera vos (Scene 25)
 
 
 ================================================================================

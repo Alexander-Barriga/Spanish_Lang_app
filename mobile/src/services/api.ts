@@ -719,6 +719,40 @@ class ApiClient {
   }
 
   // ============================================
+  // EPISODE VIDEO VIEWS
+  // ============================================
+
+  /**
+   * Track that a user has started watching an episode video.
+   * Call this when video playback begins.
+   */
+  async trackEpisodeView(episodeId: string) {
+    return this.request<{
+      viewed: boolean;
+      firstView: boolean;
+      viewCount: number;
+    }>(`/stories/episodes/${episodeId}/view`, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Get all episode view statuses for the current user.
+   * Used to determine which episodes are unlocked for rewatching.
+   */
+  async getEpisodeViews() {
+    return this.request<{
+      views: Array<{
+        episodeId: string;
+        episodeNumber: number;
+        firstViewedAt: string;
+        viewCount: number;
+        lastViewedAt: string;
+      }>;
+    }>('/stories/episodes/views');
+  }
+
+  // ============================================
   // JOURNAL METHODS
   // ============================================
 
@@ -1231,6 +1265,7 @@ export interface Episode {
   grammar_focus: string;
   grammar_triggers: string[];
   scenes: any[];
+  video_url?: string;
   journal_prompt_es?: string;
   journal_prompt_en?: string;
   estimated_duration: number;

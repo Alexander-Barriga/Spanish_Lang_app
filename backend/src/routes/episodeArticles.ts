@@ -33,7 +33,7 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
       return res.json({ articles: [] });
     }
 
-    // Get articles for completed episodes
+    // Get articles for completed episodes (include scenes for thumbnail image)
     const { data: articles, error: articlesError } = await supabaseAdmin
       .from('episode_articles')
       .select(`
@@ -43,7 +43,8 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
           episode_number,
           title_es,
           title_en,
-          grammar_focus
+          grammar_focus,
+          scenes
         )
       `)
       .in('episode_id', episodeIds)
@@ -54,7 +55,7 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to fetch articles' });
     }
 
-    // Add read status for each article
+    // Add read status and extract first scene image URL for each article
     const articlesWithStatus = await Promise.all(
       (articles || []).map(async (article) => {
         const { data: readRecord } = await supabaseAdmin
@@ -64,8 +65,19 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
           .eq('episode_article_id', article.id)
           .single();
 
+        // Extract first scene image URL from episodes.scenes array
+        const scenes = (article.episodes as any)?.scenes;
+        const firstSceneImageUrl = Array.isArray(scenes) && scenes.length > 0 
+          ? scenes[0]?.scene_image_url 
+          : null;
+
+        // Remove the full scenes array from response to keep payload small
+        const { scenes: _, ...episodesWithoutScenes } = (article.episodes || {}) as any;
+
         return {
           ...article,
+          episodes: episodesWithoutScenes,
+          first_scene_image_url: firstSceneImageUrl,
           has_read: readRecord?.completed || false,
         };
       })

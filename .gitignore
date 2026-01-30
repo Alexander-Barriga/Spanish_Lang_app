@@ -50,3 +50,7 @@ coverage/
 # Misc
 *.tgz
 .cache/
+
+# Large video files
+App_Final_Videos/
+mobile/assets/videos/

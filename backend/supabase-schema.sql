@@ -890,13 +890,13 @@ SELECT 'florencia', 1,
     'B1'
 WHERE NOT EXISTS (SELECT 1 FROM public.story_arcs WHERE character_id = 'florencia' AND arc_number = 1);
 
--- Insert Episode 1: El Café de la Esquina
+-- Insert Episode 1: Café Tortoni - First Encounter
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     1,
-    'El Café de la Esquina',
-    'The Corner Café',
+    'Café Tortoni - First Encounter',
+    '',
     'Tu primer encuentro con Florencia en el histórico Café Tortoni de Buenos Aires',
     'present_subjunctive_formation',
     ARRAY['Quiero que', 'Es importante que', 'Espero que', 'Es necesario que'],
@@ -983,13 +983,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 1);
 
--- Insert Episode 2: La Milonga
+-- Insert Episode 2: Milonga en Salón Marabú - First Tango
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     2,
-    'La Milonga',
-    'The Tango Hall',
+    'Milonga en Salón Marabú - First Tango',
+    '',
     'Tu primera experiencia en una milonga tradicional de San Telmo con Florencia',
     'subjunctive_emotions',
     ARRAY['Me alegra que', 'Es triste que', 'Me sorprende que', 'Me encanta que'],
@@ -1066,13 +1066,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 2);
 
--- Insert Episode 3: Feria de San Telmo
+-- Insert Episode 3: San Telmo Market - Colors and Secrets
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     3,
-    'La Feria de San Telmo',
-    'The San Telmo Market',
+    'San Telmo Market - Colors and Secrets',
+    '',
     'Explorás el famoso mercado de antigüedades de San Telmo con Florencia',
     'subjunctive_doubt',
     ARRAY['No creo que', 'Dudo que', 'Es posible que', 'No es seguro que'],
@@ -1147,13 +1147,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 3);
 
--- Insert Episode 4: Asado en Familia
+-- Insert Episode 4: Family Asado - Entering the Circle
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     4,
-    'Asado en Familia',
-    'Family Barbecue',
+    'Family Asado - Entering the Circle',
+    '',
     'Florencia te invita a un asado dominical con su madre Elena',
     'subjunctive_desires',
     ARRAY['Quiero que', 'Prefiero que', 'Necesito que', 'Me gustaría que'],
@@ -1228,13 +1228,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 4);
 
--- Insert Episode 5: La Recoleta
+-- Insert Episode 5: Cementerio de la Chacarita - The Truth About Valentina
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     5,
-    'La Recoleta',
-    'The Recoleta Cemetery',
+    'Cementerio de la Chacarita - The Truth About Valentina',
+    '',
     'Un paseo por el cementerio más famoso de Buenos Aires con reflexiones sobre la historia argentina',
     'preterite_vs_imperfect',
     ARRAY['Cuando era', 'Mientras', 'De repente', 'Todos los días'],
@@ -1299,13 +1299,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 5);
 
--- Insert Episode 6: Crisis Porteña
+-- Insert Episode 6: Teatro Colón - The Artist Revealed
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     6,
-    'Crisis Porteña',
-    'Buenos Aires Crisis',
+    'Teatro Colón - The Artist Revealed',
+    '',
     'Una conversación profunda sobre los desafíos de la vida en Argentina',
     'imperfect_subjunctive',
     ARRAY['Si tuviera', 'Si pudiera', 'Quisiera que', 'Como si fuera'],
@@ -1370,13 +1370,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 6);
 
--- Insert Episode 7: La Boca Colorida
+-- Insert Episode 7: La Boca - Beauty Born from Necessity
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     7,
-    'La Boca Colorida',
-    'Colorful La Boca',
+    'La Boca - Beauty Born from Necessity',
+    '',
     'Explorando el barrio más colorido de Buenos Aires y el estadio de Boca Juniors',
     'conditional_tense',
     ARRAY['Me gustaría', 'Podría', 'Sería', 'Tendría que'],
@@ -1451,13 +1451,13 @@ FROM public.story_arcs sa
 WHERE sa.character_id = 'florencia' AND sa.arc_number = 1
 AND NOT EXISTS (SELECT 1 FROM public.episodes e WHERE e.story_arc_id = sa.id AND e.episode_number = 7);
 
--- Insert Episode 8: Despedida
+-- Insert Episode 8: Cafe Tortoni - Soñemos
 INSERT INTO public.episodes (story_arc_id, episode_number, title_es, title_en, scenario, grammar_focus, grammar_triggers, scenes, journal_prompt_es, journal_prompt_en, estimated_duration)
 SELECT 
     sa.id,
     8,
-    'Despedida',
-    'Farewell',
+    'Cafe Tortoni - Soñemos',
+    '',
     'Tu último encuentro con Florencia en la terraza de su edificio con vista a Buenos Aires',
     'comprehensive_review',
     ARRAY['Espero que', 'Me alegra que', 'Si pudiera', 'Me gustaría que'],
@@ -1843,3 +1843,67 @@ CREATE TRIGGER update_users_updated_at
 --   (storage.foldername(name))[1] = auth.uid()::text
 -- );
 
+-- ============================================
+-- EPISODE VIDEO SUPPORT
+-- ============================================
+
+-- Add video_url column to episodes table for full episode video playback
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS video_url TEXT;
+
+-- Track user episode views for unlock status (allows rewatching after first view)
+CREATE TABLE IF NOT EXISTS public.user_episode_views (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    episode_id UUID REFERENCES public.episodes(id) ON DELETE CASCADE NOT NULL,
+    first_viewed_at TIMESTAMPTZ DEFAULT NOW(),
+    view_count INTEGER DEFAULT 1,
+    last_viewed_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, episode_id)
+);
+
+-- Index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_user_episode_views_user ON public.user_episode_views(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_episode_views_episode ON public.user_episode_views(episode_id);
+
+-- Enable RLS on user_episode_views
+ALTER TABLE public.user_episode_views ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for user_episode_views
+DROP POLICY IF EXISTS "Users can view their own episode views" ON public.user_episode_views;
+CREATE POLICY "Users can view their own episode views" ON public.user_episode_views
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own episode views" ON public.user_episode_views;
+CREATE POLICY "Users can insert their own episode views" ON public.user_episode_views
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own episode views" ON public.user_episode_views;
+CREATE POLICY "Users can update their own episode views" ON public.user_episode_views
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- ============================================
+-- EPISODE VIDEOS STORAGE BUCKET
+-- ============================================
+
+-- Create episode-videos storage bucket (public for streaming)
+-- Note: This INSERT may fail if bucket already exists - that's okay
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'episode-videos',
+    'episode-videos', 
+    true,  -- Public bucket for easy video streaming
+    524288000,  -- 500MB max file size
+    ARRAY['video/mp4', 'video/quicktime', 'video/webm']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage policies for episode-videos bucket
+DROP POLICY IF EXISTS "Public read access for episode videos" ON storage.objects;
+CREATE POLICY "Public read access for episode videos"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'episode-videos');
+
+DROP POLICY IF EXISTS "Admin upload access for episode videos" ON storage.objects;
+CREATE POLICY "Admin upload access for episode videos"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'episode-videos');

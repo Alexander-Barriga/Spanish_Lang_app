@@ -42,8 +42,8 @@ const openai = new OpenAI({
 const EPISODE_CONFIGS = [
   {
     episodeNumber: 1,
-    title_es: 'El Café de la Esquina',
-    title_en: 'The Corner Café',
+    title_es: 'Café Tortoni - First Encounter',
+    title_en: '',
     location: 'Café Tortoni, Avenida de Mayo',
     grammar_focus: 'present_subjunctive_formation',
     grammar_triggers: ['Quiero que...', 'Espero que...', 'Me alegra que...'],
@@ -59,8 +59,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 2,
-    title_es: 'La Milonga',
-    title_en: 'The Dance Hall',
+    title_es: 'Milonga en Salón Marabú - First Tango',
+    title_en: '',
     location: 'A traditional milonga in San Telmo',
     grammar_focus: 'subjunctive_emotions',
     grammar_triggers: ['Me sorprende que...', 'Es triste que...', 'Me alegra que...'],
@@ -77,8 +77,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 3,
-    title_es: 'El Mercado de San Telmo',
-    title_en: 'The San Telmo Market',
+    title_es: 'San Telmo Market - Colors and Secrets',
+    title_en: '',
     location: 'San Telmo Antique Market',
     grammar_focus: 'subjunctive_doubt',
     grammar_triggers: ['No creo que...', 'Dudo que...', 'No es posible que...'],
@@ -95,8 +95,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 4,
-    title_es: 'El Asado',
-    title_en: 'The Family Barbecue',
+    title_es: 'Family Asado - Entering the Circle',
+    title_en: '',
     location: "Florencia's family home in San Telmo",
     grammar_focus: 'subjunctive_desires',
     grammar_triggers: ['Quiero que...', 'Deseo que...', 'Me gustaría que...'],
@@ -113,8 +113,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 5,
-    title_es: 'La Boca',
-    title_en: 'The Colorful Neighborhood',
+    title_es: 'Cementerio de la Chacarita - The Truth About Valentina',
+    title_en: '',
     location: 'La Boca neighborhood, beyond Caminito',
     grammar_focus: 'preterite_vs_imperfect',
     grammar_triggers: ['Cuando era...', 'Un día...', 'Siempre...'],
@@ -131,8 +131,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 6,
-    title_es: 'La Crisis',
-    title_en: 'Economic Reality',
+    title_es: 'Teatro Colón - The Artist Revealed',
+    title_en: '',
     location: "A local café / Florencia's apartment",
     grammar_focus: 'imperfect_subjunctive',
     grammar_triggers: ['Si tuviera...', 'Si pudiera...', 'Ojalá pudiera...'],
@@ -149,8 +149,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 7,
-    title_es: 'La Bombonera',
-    title_en: 'The Stadium',
+    title_es: 'La Boca - Beauty Born from Necessity',
+    title_en: '',
     location: 'Outside La Bombonera stadium (Boca Juniors)',
     grammar_focus: 'conditional',
     grammar_triggers: ['Sería...', 'Podría...', '¿Qué harías?'],
@@ -167,8 +167,8 @@ const EPISODE_CONFIGS = [
   },
   {
     episodeNumber: 8,
-    title_es: 'La Despedida',
-    title_en: 'The Farewell',
+    title_es: 'Cafe Tortoni - Soñemos',
+    title_en: '',
     location: 'Café Tortoni / Buenos Aires waterfront at sunset',
     grammar_focus: 'comprehensive_review',
     grammar_triggers: ['All forms integrated'],

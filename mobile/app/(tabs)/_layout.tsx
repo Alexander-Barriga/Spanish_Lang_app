@@ -25,6 +25,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="episodes"
+        options={{
+          title: 'Episodes',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="videocam" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="articles"
         options={{
           title: 'Articles',

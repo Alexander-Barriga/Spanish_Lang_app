@@ -66,8 +66,8 @@ const FALLBACK_EPISODE: Episode = {
   id: 'fallback-ep-1',
   story_arc_id: '8ee8009a-ce39-456c-a81e-3bec5fef531e',
   episode_number: 1,
-  title_es: 'El Café de la Esquina',
-  title_en: 'The Corner Café',
+  title_es: 'Café Tortoni - First Encounter',
+  title_en: '',
   scenario: 'You meet Florencia at the historic Café Tortoni in Buenos Aires.',
   grammar_focus: 'present_subjunctive_formation',
   grammar_triggers: ['Quiero que...', 'Es importante que...', 'Espero que...'],
@@ -149,6 +149,58 @@ router.get('/arcs/:id', async (req: Request, res: Response) => {
     res.json({ arc, episodes });
   } catch (error) {
     console.error('Error in GET /stories/arcs/:id:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// GET /stories/episodes/views - Get user's episode view history
+// NOTE: This route MUST be defined BEFORE /episodes/:id to avoid
+// Express matching "views" as an episode ID parameter
+// ============================================
+router.get('/episodes/views', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Get all views for this user with episode info
+    const { data: views, error } = await supabaseAdmin
+      .from('user_episode_views')
+      .select(`
+        episode_id,
+        first_viewed_at,
+        view_count,
+        last_viewed_at,
+        episodes (
+          episode_number,
+          title_es,
+          title_en
+        )
+      `)
+      .eq('user_id', userId)
+      .order('first_viewed_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching views:', error);
+      return res.status(500).json({ error: 'Failed to fetch views' });
+    }
+
+    // Transform the data for the response
+    const formattedViews = (views || []).map((view: any) => ({
+      episodeId: view.episode_id,
+      episodeNumber: view.episodes?.episode_number || 0,
+      titleEs: view.episodes?.title_es || '',
+      titleEn: view.episodes?.title_en || '',
+      firstViewedAt: view.first_viewed_at,
+      viewCount: view.view_count,
+      lastViewedAt: view.last_viewed_at,
+    }));
+
+    res.json({ views: formattedViews });
+  } catch (error) {
+    console.error('Error in GET /stories/episodes/views:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -803,6 +855,86 @@ Respond ONLY with valid JSON.`;
   } catch (error) {
     console.error('Error in POST /stories/analyze-response:', error);
     res.status(500).json({ error: 'Failed to analyze response' });
+  }
+});
+
+// ============================================
+// POST /stories/episodes/:episodeId/view - Track episode video view
+// ============================================
+router.post('/episodes/:episodeId/view', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { episodeId } = req.params;
+
+    // Check if episode exists
+    const { data: episode, error: episodeError } = await supabaseAdmin
+      .from('episodes')
+      .select('id, episode_number')
+      .eq('id', episodeId)
+      .single();
+
+    if (episodeError || !episode) {
+      return res.status(404).json({ error: 'Episode not found' });
+    }
+
+    // Check if user has already viewed this episode
+    const { data: existingView, error: viewError } = await supabaseAdmin
+      .from('user_episode_views')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('episode_id', episodeId)
+      .single();
+
+    let isFirstView = false;
+    let viewCount = 1;
+
+    if (existingView) {
+      // User has viewed before - increment count and update timestamp
+      viewCount = (existingView.view_count || 0) + 1;
+      const { error: updateError } = await supabaseAdmin
+        .from('user_episode_views')
+        .update({
+          view_count: viewCount,
+          last_viewed_at: new Date().toISOString(),
+        })
+        .eq('id', existingView.id);
+
+      if (updateError) {
+        console.error('Error updating view count:', updateError);
+      }
+    } else {
+      // First time viewing - create new record
+      isFirstView = true;
+      const { error: insertError } = await supabaseAdmin
+        .from('user_episode_views')
+        .insert({
+          user_id: userId,
+          episode_id: episodeId,
+          first_viewed_at: new Date().toISOString(),
+          view_count: 1,
+          last_viewed_at: new Date().toISOString(),
+        });
+
+      if (insertError) {
+        console.error('Error recording view:', insertError);
+        return res.status(500).json({ error: 'Failed to record view' });
+      }
+    }
+
+    console.log(`📹 Episode ${episode.episode_number} viewed by user ${userId} (first: ${isFirstView}, total: ${viewCount})`);
+
+    res.json({
+      viewed: true,
+      firstView: isFirstView,
+      viewCount: viewCount,
+    });
+  } catch (error) {
+    console.error('Error in POST /stories/episodes/:episodeId/view:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

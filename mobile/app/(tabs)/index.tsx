@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Image, ImageBackground, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,7 @@ import { api } from '../../src/services/api';
 import { authTokenManager } from '../../src/services/authToken';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import EpisodeRoadmap from '../../src/components/EpisodeRoadmap';
+import { getEpisodeStill } from '../../src/data/episodeStills';
 
 const { width } = Dimensions.get('window');
 
@@ -327,7 +328,7 @@ export default function HomeScreen() {
     setShowEpisodesModal(true);
   };
 
-  const handleSelectEpisode = (episode: any, isUnlocked: boolean) => {
+  const handleSelectEpisode = async (episode: any, isUnlocked: boolean) => {
     if (!isUnlocked) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Locked', 'Complete previous episodes to unlock this one.');
@@ -336,10 +337,20 @@ export default function HomeScreen() {
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setShowEpisodesModal(false);
-    // Set the selected episode to display on Home page
+    
+    // Fetch full episode data (including scenes for background image)
+    try {
+      const result = await api.getEpisode(episode.id);
+      if (result.data?.episode) {
+        setSelectedEpisode(result.data.episode);
+      } else {
+        // Fallback to the episode from the list (without scenes)
     setSelectedEpisode(episode);
-    // Scroll to top to show the episode info
-    // The episode info will be displayed using selectedEpisode instead of currentEpisode
+      }
+    } catch (error) {
+      console.error('Error fetching full episode data:', error);
+      setSelectedEpisode(episode);
+    }
   };
 
 
@@ -362,28 +373,40 @@ export default function HomeScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Minimal Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.brandText}>LoboLingo</Text>
-          </View>
-          <View style={styles.streakBadge}>
-            <Ionicons name="flame" size={16} color={colors.warning} />
-            <Text style={styles.streakNumber}>{streak}</Text>
-          </View>
-        </View>
+  // Get the episode still image for the current episode
+  const currentEpisodeNumber = displayEpisode?.episode_number || 1;
+  const episodeStillSource = getEpisodeStill(currentEpisodeNumber);
 
-        {/* Story Hero Card */}
-        <Pressable onPress={handleStartStory} style={styles.heroCard}>
-          <View style={styles.heroCardInner}>
-            {/* Story info */}
+  return (
+    <View style={styles.fullContainer}>
+      {/* Full-screen unblurred background image */}
+      {episodeStillSource && (
+        <Image
+          source={episodeStillSource}
+          style={styles.fullScreenBackground}
+          resizeMode="cover"
+        />
+      )}
+      {/* Dark overlay for overall readability */}
+      <View style={styles.fullScreenOverlay} />
+      
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Minimal Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.brandText}>LoboLingo</Text>
+            </View>
+          </View>
+
+          {/* Story Hero Card */}
+          <Pressable onPress={handleStartStory} style={styles.heroCard}>
+            <View style={styles.heroCardInner}>
+              {/* Story info */}
             <View style={styles.heroContent}>
               <Text style={styles.overlineText}>
                 {selectedEpisode 
@@ -394,17 +417,13 @@ export default function HomeScreen() {
               <Text style={styles.storyTitle}>
                 {storyData?.arc?.title_es || 'Encuentros en Buenos Aires'}
               </Text>
-              
-              <Text style={styles.storySubtitle}>
-                {storyData?.arc?.title_en || 'Encounters in Buenos Aires'}
-              </Text>
 
               {displayEpisode && (
-                <View style={styles.episodeInfo}>
-                  <Text style={styles.episodeLabel}>
-                    Episode {displayEpisode.episode_number} of {storyData.arc?.total_episodes || 8}
+                <View style={styles.heroEpisodeInfo}>
+                  <Text style={styles.heroEpisodeLabel}>
+                    EPISODE {displayEpisode.episode_number} OF {storyData.arc?.total_episodes || 8}
                   </Text>
-                  <Text style={styles.episodeTitle}>
+                  <Text style={styles.heroEpisodeTitle}>
                     {displayEpisode.title_es}
                   </Text>
                 </View>
@@ -567,12 +586,6 @@ export default function HomeScreen() {
                         ]}>
                           {episode.title_es}
                         </Text>
-                        <Text style={[
-                          styles.episodeSubtitle,
-                          !isUnlocked && styles.textBlurred,
-                        ]}>
-                          {episode.title_en}
-                        </Text>
                       </View>
                     </View>
                     
@@ -598,14 +611,37 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  fullContainer: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  fullScreenBackground: {
+    position: 'absolute',
+    top: -50,
+    left: -20,
+    right: -20,
+    bottom: 50,
+    width: '110%',
+    height: '110%',
+    transform: [{ scale: 1.15 }],
+  },
+  fullScreenOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10,10,11,0.5)',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -670,6 +706,23 @@ const styles = StyleSheet.create({
     padding: spacing[6],
     minHeight: 280,
     justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  heroBackgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   heroContent: {
     gap: spacing[2],
@@ -689,20 +742,26 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontStyle: 'italic',
   },
-  episodeInfo: {
-    marginTop: spacing[4],
-    paddingTop: spacing[4],
+  heroEpisodeInfo: {
+    marginTop: spacing[3],
+    paddingTop: spacing[3],
     borderTopWidth: 1,
     borderTopColor: colors.border.subtle,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: '100%',
   },
-  episodeLabel: {
+  heroEpisodeLabel: {
     ...textStyles.labelSmall,
     color: colors.text.tertiary,
-    marginBottom: spacing[1],
+    marginBottom: spacing[2],
+    letterSpacing: 1,
   },
-  episodeTitle: {
+  heroEpisodeTitle: {
     ...textStyles.h5,
     color: colors.text.primary,
+    textAlign: 'left',
+    width: '100%',
   },
   progressContainer: {
     marginTop: spacing[4],

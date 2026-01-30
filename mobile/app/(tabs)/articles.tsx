@@ -32,6 +32,7 @@ interface EpisodeArticle {
   estimated_read_minutes: number;
   created_at: string;
   has_read: boolean;
+  first_scene_image_url?: string | null;
   episodes?: {
     id: string;
     episode_number: number;
@@ -166,7 +167,21 @@ export default function ArticlesScreen() {
       ]}
       onPress={() => handleArticleTap(article)}
     >
-      {/* Placeholder image - will be replaced with actual images later */}
+      {/* Episode thumbnail image or placeholder */}
+      {article.first_scene_image_url ? (
+        <View style={styles.articleImageContainer}>
+          <Image 
+            source={{ uri: article.first_scene_image_url }}
+            style={styles.articleImage}
+            resizeMode="cover"
+          />
+          <View style={styles.episodeBadge}>
+            <Text style={styles.episodeBadgeText}>
+              Episode {article.episodes?.episode_number || '?'}
+            </Text>
+          </View>
+        </View>
+      ) : (
       <View style={styles.articleImagePlaceholder}>
         <View style={styles.episodeBadge}>
           <Text style={styles.episodeBadgeText}>
@@ -175,6 +190,7 @@ export default function ArticlesScreen() {
         </View>
         <Ionicons name="book" size={48} color={colors.primary.gold} />
       </View>
+      )}
       <View style={styles.articleContent}>
         <Text style={styles.articleTitle}>
           {article.title}
@@ -481,10 +497,16 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
   },
-  articleImage: {
+  articleImageContainer: {
     width: '100%',
     height: 180,
     backgroundColor: colors.background.card,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  articleImage: {
+    width: '100%',
+    height: '100%',
   },
   articleImagePlaceholder: {
     width: '100%',
