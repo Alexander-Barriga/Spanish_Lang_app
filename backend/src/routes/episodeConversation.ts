@@ -16,6 +16,50 @@ import {
 
 const router = Router();
 
+async function unlockNextEpisode(userId: string, episodeId: string) {
+  const { data: episode } = await supabaseAdmin
+    .from('episodes')
+    .select('story_arc_id, episode_number')
+    .eq('id', episodeId)
+    .single();
+
+  if (!episode) return { unlocked: false };
+
+  const { data: storyProgress } = await supabaseAdmin
+    .from('user_story_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('story_arc_id', episode.story_arc_id)
+    .single();
+
+  if (!storyProgress) return { unlocked: false };
+
+  const newEpisodesCompleted = Math.max(
+    storyProgress.episodes_completed || 0,
+    episode.episode_number
+  );
+  const newCurrentEpisode = newEpisodesCompleted + 1;
+
+  if (newCurrentEpisode > storyProgress.current_episode) {
+    const { error } = await supabaseAdmin
+      .from('user_story_progress')
+      .update({
+        current_episode: newCurrentEpisode,
+        episodes_completed: newEpisodesCompleted,
+        last_played_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('story_arc_id', episode.story_arc_id);
+
+    if (!error) {
+      console.log(`[Conversation] Unlocked episode ${newCurrentEpisode} for user ${userId}`);
+      return { unlocked: true, nextEpisodeNumber: newCurrentEpisode };
+    }
+  }
+
+  return { unlocked: false };
+}
+
 // Configure multer for audio file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -452,6 +496,9 @@ router.post('/:conversationId/message', upload.single('audio'), async (req: Requ
         })
         .eq('id', conversationId);
 
+      // Unlock next episode
+      await unlockNextEpisode(userId, conversation.episode_id);
+
       // Generate summary
       const summary = await generateConversationSummary(
         [...conversationHistory, { role: 'assistant', content: farewellText }],
@@ -611,6 +658,9 @@ router.post('/:conversationId/complete', async (req: Request, res: Response) => 
       .from('episode_conversations')
       .update({ completed_at: new Date().toISOString() })
       .eq('id', conversationId);
+
+    // Unlock next episode
+    await unlockNextEpisode(userId, conversation.episode_id);
 
     res.json({ 
       success: true,

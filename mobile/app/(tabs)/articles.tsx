@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { api } from '../../src/services/api';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
+import { getEpisodeStill } from '../../src/data/episodeStills';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - spacing[5] * 2;
@@ -71,7 +72,8 @@ export default function ArticlesScreen() {
       setIsLoading(true);
       
       if (activeTab === 'unlocked') {
-        const result = await api.getUnlockedEpisodeArticles();
+        // DEV MODE: Load all articles instead of just unlocked ones
+        const result = await api.getAllEpisodeArticles();
         if (result.data?.articles) {
           setArticles(result.data.articles);
         }
@@ -158,6 +160,28 @@ export default function ArticlesScreen() {
     return tag.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  // Get simplified grammar label for each episode
+  const getEpisodeGrammarLabel = (episodeNumber: number | undefined): string => {
+    switch (episodeNumber) {
+      case 1: return 'Present Tense Subjunctive';
+      case 2: return 'Present Tense Subjunctive';
+      case 3: return 'Perfect Tense Subjunctive';
+      case 4: return 'Perfect Tense Subjunctive';
+      case 5: return 'Pluperfect Tense Subjunctive';
+      case 6: return 'Imperfect Tense Subjunctive';
+      case 7: return 'Imperfect Tense Subjunctive';
+      case 8: return 'Comprehensive Review of Subjunctive';
+      default: return 'Subjunctive';
+    }
+  };
+
+  const getImageTopOffset = (episodeNumber: number | undefined): number => {
+    switch (episodeNumber) {
+      case 8: return -40;
+      default: return 0;
+    }
+  };
+
   const renderArticleCard = (article: EpisodeArticle) => (
     <Pressable 
       key={article.id}
@@ -167,30 +191,34 @@ export default function ArticlesScreen() {
       ]}
       onPress={() => handleArticleTap(article)}
     >
-      {/* Episode thumbnail image or placeholder */}
-      {article.first_scene_image_url ? (
-        <View style={styles.articleImageContainer}>
-          <Image 
-            source={{ uri: article.first_scene_image_url }}
-            style={styles.articleImage}
-            resizeMode="cover"
-          />
-          <View style={styles.episodeBadge}>
-            <Text style={styles.episodeBadgeText}>
-              Episode {article.episodes?.episode_number || '?'}
-            </Text>
+      {/* Episode thumbnail */}
+      {(() => {
+        const still = getEpisodeStill(article.episodes?.episode_number || 0);
+        const topOffset = getImageTopOffset(article.episodes?.episode_number);
+        return still ? (
+          <View style={styles.articleImageContainer}>
+            <Image 
+              source={still}
+              style={[styles.articleImage, topOffset !== 0 && { top: topOffset, height: '130%' }]}
+              resizeMode="cover"
+            />
+            <View style={styles.episodeBadge}>
+              <Text style={styles.episodeBadgeText}>
+                Episode {article.episodes?.episode_number || '?'}
+              </Text>
+            </View>
           </View>
-        </View>
-      ) : (
-      <View style={styles.articleImagePlaceholder}>
-        <View style={styles.episodeBadge}>
-          <Text style={styles.episodeBadgeText}>
-            Episode {article.episodes?.episode_number || '?'}
-          </Text>
-        </View>
-        <Ionicons name="book" size={48} color={colors.primary.gold} />
-      </View>
-      )}
+        ) : (
+          <View style={styles.articleImagePlaceholder}>
+            <View style={styles.episodeBadge}>
+              <Text style={styles.episodeBadgeText}>
+                Episode {article.episodes?.episode_number || '?'}
+              </Text>
+            </View>
+            <Ionicons name="book" size={48} color={colors.primary.gold} />
+          </View>
+        );
+      })()}
       <View style={styles.articleContent}>
         <Text style={styles.articleTitle}>
           {article.title}
@@ -204,11 +232,11 @@ export default function ArticlesScreen() {
           <Text style={styles.articleReadTime}>
             {article.estimated_read_minutes} min read
           </Text>
-          {article.grammar_focus && (
+          {article.episodes?.episode_number && (
             <>
               <View style={styles.metaDot} />
               <Text style={styles.articleGrammar} numberOfLines={1}>
-                {formatGrammarTag(article.grammar_focus)}
+                {getEpisodeGrammarLabel(article.episodes.episode_number)}
               </Text>
             </>
           )}
@@ -505,8 +533,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   articleImage: {
+    position: 'absolute',
     width: '100%',
     height: '100%',
+    left: 0,
+    top: 0,
   },
   articleImagePlaceholder: {
     width: '100%',
@@ -520,12 +551,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing[2],
     left: spacing[2],
-    backgroundColor: colors.primary.gold + '20',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     paddingVertical: spacing[1],
     paddingHorizontal: spacing[2],
     borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primary.gold,
   },
   episodeBadgeText: {
     ...textStyles.caption,

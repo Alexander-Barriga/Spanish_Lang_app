@@ -8,6 +8,7 @@ declare global {
       user?: {
         id: string;
         email: string;
+        is_admin?: boolean;
       };
     }
   }
@@ -15,23 +16,20 @@ declare global {
 
 /**
  * Ensures the authenticated user has a row in public.users table.
- * This handles cases where users signed up through Supabase Auth directly
- * or where profile creation failed during signup.
+ * Returns { exists, is_admin } so the middleware can attach admin status without an extra query.
  */
-export const ensureUserExists = async (userId: string, email: string): Promise<boolean> => {
+export const ensureUserExists = async (userId: string, email: string): Promise<{ exists: boolean; is_admin: boolean }> => {
   try {
-    // Check if user already exists
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, is_admin')
       .eq('id', userId)
       .single();
 
     if (existingUser) {
-      return true; // User already exists
+      return { exists: true, is_admin: !!existingUser.is_admin };
     }
 
-    // Create the user profile
     console.log('📝 Creating missing user profile for:', userId);
     const { error: createError } = await supabaseAdmin
       .from('users')
@@ -48,14 +46,14 @@ export const ensureUserExists = async (userId: string, email: string): Promise<b
 
     if (createError) {
       console.error('❌ Failed to create user profile:', createError);
-      return false;
+      return { exists: false, is_admin: false };
     }
 
     console.log('✅ Created user profile for:', userId);
-    return true;
+    return { exists: true, is_admin: false };
   } catch (error) {
     console.error('Error in ensureUserExists:', error);
-    return false;
+    return { exists: false, is_admin: false };
   }
 };
 
@@ -79,12 +77,12 @@ export const authenticateToken = async (
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    // Ensure user exists in public.users table
-    await ensureUserExists(user.id, user.email || '');
+    const { is_admin } = await ensureUserExists(user.id, user.email || '');
 
     req.user = {
       id: user.id,
       email: user.email || '',
+      is_admin,
     };
 
     next();
@@ -120,12 +118,12 @@ export const optionalAuth = async (
     if (user) {
       console.log('✅ User authenticated:', user.id);
       
-      // Ensure user exists in public.users table
-      await ensureUserExists(user.id, user.email || '');
+      const { is_admin } = await ensureUserExists(user.id, user.email || '');
       
       req.user = {
         id: user.id,
         email: user.email || '',
+        is_admin,
       };
     } else {
       console.log('⚠️ No user found for token');

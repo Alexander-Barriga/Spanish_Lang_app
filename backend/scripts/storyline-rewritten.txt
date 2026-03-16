@@ -53,7 +53,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 Do you smell that coffee aroma? The walls hold more than one hundred sixty years of stories.
 
---- Scene 3 ---
+--- Scene 3 --- Flor
 [Emotion: nostalgic]
 [Response Type: listen_only]
 
@@ -63,7 +63,7 @@ Mirá la estatua allá, apoyada contra la pared. El que está de pie es Carlos G
 FLORENCIA (English):
 Look at the statue over there, leaning against the wall. The one standing is Carlos Gardel, the king of tango. The one seated is Jorge Luis Borges: writer, poet, dreamer.
 
---- Scene 4 ---
+--- Scene 4 --- FLORENICA IN FRONT OF CAMERA
 [Emotion: warm introduction]
 [Response Type: listen_only]
 
@@ -86,32 +86,10 @@ I want you to know something. This café is special to me. My family has a conne
 
 [PAUSE - User could respond]
 
---- Scene 6 ---
-[Emotion: playful mystery]
-[Response Type: listen_only]
 
-FLORENCIA (Spanish):
-Pero esa historia viene después. Primero, dale, sentémonos.
-
-FLORENCIA (English):
-But that story comes later. First, come on, let's sit down.
-
---- Scene 7 ---
-[Emotion: curious]
-[Response Type: listen_only]
-[GRAMMAR: Present subjunctive - "espero que me cuentes" - expressing desire]
-
-FLORENCIA (Spanish):
-Espero que me cuentes por qué viniste a Buenos Aires. ¿Qué te trajo hasta acá?
-
-FLORENCIA (English):
-I hope you'll tell me why you came to Buenos Aires. What brought you here?
-
-[PAUSE - User could respond]
-
---- Scene 8 ---
+--- Scene 8 --- INCLUDE SHOTS OF THE CITY AT LARGE
 [Emotion: philosophical]
-[Response Type: listen_only]
+[Response Type: listen_only] f
 [GRAMMAR: Present subjunctive - "deseo que entiendas" - expressing desire]
 
 FLORENCIA (Spanish):
@@ -120,7 +98,7 @@ Deseo que entiendas algo desde el principio. Buenos Aires no es solo una ciudad.
 FLORENCIA (English):
 I want you to understand something from the start. Buenos Aires isn't just a city. It's a feeling.
 
---- Scene 9 ---
+--- Scene 9 --- FLORENICA IN FRONT OF CAMERA - NO COFFEE IN HAND YET 
 [Emotion: destiny tease]
 [Response Type: listen_only]
 [GRAMMAR: Present subjunctive - "no creo que sea" - expressing desire/doubt]
@@ -133,47 +111,17 @@ You know what? I don't think it's a coincidence that you're here, in this café,
 
 [PAUSE - User could respond]
 
---- Scene 10 ---
-[Emotion: pleasant interruption]
-[Response Type: listen_only]
 
-WAITER (Spanish):
-Buenas tardes. ¿Qué les traigo?
-
-WAITER (English):
-Good afternoon. What can I bring you?
-
---- Scene 11 ---
-[Emotion: ordering, natural]
-[Response Type: listen_only]
-[GRAMMAR: Present subjunctive - "quiero que nos traiga" - expressing desire]
-
-FLORENCIA (Spanish):
-Hola, che. Quiero que nos traiga dos cafés con leche, por favor. Y unas medialunas si tenés.
-
-FLORENCIA (English):
-Hi there. I'd like you to bring us two cafés con leche, please. And some croissants if you have them.
-
---- Scene 12 ---
-[Emotion: pleasant]
-[Response Type: listen_only]
-
-WAITER (Spanish):
-Enseguida se los traigo.
-
-WAITER (English):
-I'll bring them right away.
-
---- Scene 13 ---
+--- Scene 13 --- 
 [Emotion: warm, teaching culture]
 [Response Type: listen_only]
-[GRAMMAR: Present subjunctive - "necesito que pruebes" - expressing desire]
+[GRAMMAR: Present subjunctive - "Querio que pruebes" - expressing desire]
 
 FLORENCIA (Spanish):
-Necesito que pruebes un café con leche porteño. Es diferente a cualquier otro café del mundo.
+Querio que pruebes un café con leche porteño. Es diferente a cualquier otro café del mundo.
 
 FLORENCIA (English):
-I need you to try a porteño café con leche. It's different from any other coffee in the world.
+I want you to try a porteño café con leche. It's different from any other coffee in the world.
 
 --- Scene 14 ---
 [Emotion: nostalgic personal]
@@ -198,7 +146,7 @@ I hope I can tell you all about her someday. She is... well, she was someone spe
 
 [PAUSE - User could respond]
 
---- Scene 16 ---
+--- Scene 16 --- 
 [Emotion: tango promise hook]
 [Response Type: listen_only]
 [GRAMMAR: Present subjunctive - "quiero que bailes" - expressing desire]
@@ -209,7 +157,7 @@ Hablando de tango... antes de que te vayas de Buenos Aires, quiero que bailes co
 FLORENCIA (English):
 Speaking of tango... before you leave Buenos Aires, I want you to dance with me. Real tango, in a real milonga.
 
---- Scene 17 ---
+--- Scene 17 --- FLORENICA IN FRONT OF CAMERA - NO COFFEE IN HAND YET 
 [Emotion: reassuring]
 [Response Type: listen_only]
 
@@ -221,19 +169,8 @@ Don't look at me like that. It doesn't matter if you don't know how to dance. Ta
 
 [PAUSE - User could respond]
 
---- Scene 18 ---
-[Emotion: coffees arrive, joyful]
-[Response Type: listen_only]
 
-FLORENCIA (Spanish):
-¡Mirá! Llegaron los cafés. Dale, probá. Decime qué te parece.
-
-FLORENCIA (English):
-Look! The coffees are here. Come on, try it. Tell me what you think.
-
-[PAUSE - User could respond]
-
---- Scene 19 ---
+--- Scene 19 ---  
 [Emotion: philosophical, reality/illusion tease]
 [Response Type: listen_only]
 [GRAMMAR: Present subjunctive - "espero que descubras" - expressing desire]
@@ -250,12 +187,11 @@ I hope you discover something surprising about yourself in the next eight weeks.
 [GRAMMAR: Present subjunctive - "no quiero que pienses" - expressing desire]
 
 FLORENCIA (Español):
-No quiero que pienses que ya me conocés. En esta ciudad, la línea entre la realidad y las bellas ilusiones no siempre es tan clara.
+En esta ciudad, la línea entre la realidad y las bellas ilusiones no siempre es tan clara.
 
 FLORENCIA (English):
-I don't want you to think you know me yet. In this city, the line between reality and beautiful illusions isn't always so clear.
+In this city, the line between reality and beautiful illusions isn't always so clear.
 
-[PAUSE - User could respond]
 
 --- Scene 21 ---
 [Emotion: warm, excited]
@@ -268,7 +204,7 @@ Pero bueno, ya vas a ver. Quiero que conozcas los lugares que amo. Los secretos 
 FLORENCIA (English):
 But anyway, you'll see. I want you to get to know the places I love. The secrets of this city.
 
---- Scene 22 ---
+--- Scene 22 --- FLORENICA IN FRONT OF CAMERA 
 [Emotion: toast, warm]
 [Response Type: listen_only]
 
@@ -300,7 +236,7 @@ Ahí vas a escuchar música que te va a cambiar la vida. Te lo prometo, che.
 FLORENCIA (English):
 There you're going to hear music that will change your life. I promise you.
 
---- Scene 25 ---
+--- Scene 25 --- FLORENICA IN FRONT OF CAMERA 
 [Emotion: final moment]
 [Response Type: listen_only]
 
@@ -354,7 +290,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 Do you smell that old wood mixed with perfume? That's history. That's Buenos Aires.
 
---- Scene 4 ---
+--- Scene 4 --- FLORENICA ON CAMERA 1 
 [Emotion: passionate]
 [Response Type: listen_only]
 [GRAMMAR: Present subjunctive - "me emociona que estés" - expressing emotion]
@@ -388,7 +324,7 @@ Es hermoso que se comuniquen sin palabras. El tango es un diálogo entre dos alm
 FLORENCIA (English):
 It's beautiful that they communicate without words. Tango is a dialogue between two souls.
 
---- Scene 7 ---
+--- Scene 7 --- FLORENICA ON CAMERA 2
 [Emotion: music introduction - SOÑEMOS FIRST APPEARANCE]
 [Response Type: listen_only]
 
@@ -404,10 +340,10 @@ Listen... do you hear that song? It's 'Soñemos' by Carlos Di Sarli. It's my fav
 [GRAMMAR: Present subjunctive - "me fascina que la música tenga" - expressing emotion]
 
 FLORENCIA (Spanish):
-Me fascina que la música tenga el poder de transportarnos a otro tiempo. 'Soñemos' significa 'Let's Dream.'
+Me fascina que la música tenga el poder de transportarnos a otro tiempo. 
 
 FLORENCIA (English):
-It fascinates me that music has the power to transport us to another time. 'Soñemos' means 'Let's Dream.'
+It fascinates me that music has the power to transport us to another time. 
 
 --- Scene 9 ---
 [Emotion: personal revelation]
@@ -421,7 +357,7 @@ My grandmother always played this song. She said it speaks of creating dreams to
 
 [PAUSE - User could respond]
 
---- Scene 10 ---
+--- Scene 10 --- 
 [Emotion: flirtatious invitation]
 [Response Type: listen_only]
 [GRAMMAR: Present subjunctive - "me encantaría que bailes" - expressing emotion]
@@ -432,7 +368,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 You know what? I would love for you to dance with me right now. Come on, let's go.
 
---- Scene 11 ---
+--- Scene 11 --- FLORENICA ON CAMERA 3
 [Emotion: reassuring]
 [Response Type: listen_only]
 [GRAMMAR: Present subjunctive - "no me importa que no sepas" - expressing emotion]
@@ -553,7 +489,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 'Soñemos' is ending. But the night is just beginning.
 
---- Scene 22 ---
+--- Scene 22 --- FLORENICA ON CAMERA 4
 [Emotion: warm farewell]
 [Response Type: listen_only]
 
@@ -561,7 +497,7 @@ FLORENCIA (Spanish):
 La próxima vez te voy a llevar al mercado de San Telmo. Vas a ver puestos que venden antigüedades y comida deliciosa; es una gran experiencia.
 
 FLORENCIA (English):
-Next time I'll take you to the San Telmo market. You'll vendors selling antiques and delicous food, it's a great experience. 
+Next time I'll take you to the San Telmo market. You'll see vendors selling antiques and delicous food, it's a great experience. 
 
 --- Scene 23 ---
 [Emotion: hook for next episode]
@@ -586,13 +522,13 @@ The San Telmo Market preserves the immigrant, working-class fabric of Buenos Air
 the raw social material from which tango and porteño identity emerged. Every Sunday, 
 the streets fill with antiques, street performers, and the aroma of choripán.
 
---- Scene 1 ---
+--- Scene 1 --- 
 [Emotion: enthusiastic, sensory]
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
 ¡Bienvenido a la Feria de San Telmo! Mirá... las calles empedradas, los puestos de antigüedades, el olor a choripán.
-
+ 
 FLORENCIA (English):
 Welcome to the San Telmo Fair! Look... the cobblestone streets, the antique stalls, the smell of choripán.
 
@@ -640,7 +576,7 @@ No creo que hayas entendido todavía lo importante que es. Pero vas a ver. Pront
 FLORENCIA (English):
 I don't think you've understood yet how important it is. But you'll see. Soon you're going to try it.
 
---- Scene 6 ---
+--- Scene 6 --- FLORENICA 1
 [Emotion: casual]
 [Response Type: listen_only]
 
@@ -650,7 +586,7 @@ Mirá, necesito ir al baño un momento. ¿Por qué no explorás un poco? Nos enc
 FLORENCIA (English):
 Look, I need to go to the bathroom for a moment. Why don't you explore a bit? We'll meet here in ten minutes.
 
---- Scene 7 ---
+--- Scene 7 --- FLORENICA 2
 [Emotion: playful]
 [Response Type: listen_only]
 
@@ -672,7 +608,7 @@ Diez minutos después... Florencia vuelve y ve al usuario saliendo de una tienda
 FLORENCIA (English):
 Ten minutes later... Florencia returns and sees the user leaving an antique shop.
 
---- Scene 9 ---
+--- Scene 9 --- FLORENICA 3
 [Emotion: curious]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "dudo que haya sido" - expressing doubt]
@@ -719,7 +655,7 @@ I doubt the universe did this without reason. There's something connecting us to
 
 [PAUSE - User could respond]
 
---- Scene 13 ---
+--- Scene 13 --- FLORENICA 4
 [Emotion: playful secret]
 [Response Type: listen_only]
 
@@ -737,14 +673,14 @@ Oh, I also bought something. But it's a secret. Maybe I'll show you one day or m
 [GRAMMAR: Perfect subjunctive - "no creo que hayas adivinado" - expressing doubt]
 
 FLORENCIA (Spanish):
-No creo que hayas adivinado qué es. Y no, no te voy a dar pistas.
+...No creo que hayas adivinado qué es. Y no, no te voy a dar pistas.
 
 FLORENCIA (English):
-I don't think you've guessed what it is. And no, I'm not going to give you hints.
+...I don't think you've guessed what it is. And no, I'm not going to give you hints.
 
 [PAUSE - User could respond]
 
---- Scene 15 ---
+--- Scene 15 --- FLORENICA 5
 [Emotion: mysterious smile]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "dudo que hayas conocido" - expressing doubt]
@@ -760,10 +696,10 @@ I doubt you've met anyone as mysterious as me, right? But you're going to thank 
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Vení, sigamos caminando. Mirá ese mural de tango. Y ese bandoneón en la vidriera.
+Vení, sigamos caminando. Mirá ese mural de tango...y ese bandoneón tocando musica.
 
 FLORENCIA (English):
-Come, let's keep walking. Look at that tango mural. And that bandoneón in the window.
+Come, let's keep walking. Look at that tango mural..and that bandoneón playing music. 
 
 --- Scene 17 ---
 [Emotion: cultural sharing]
@@ -799,17 +735,8 @@ Dudo que hayas probado un asado argentino de verdad, ¿no? La próxima vez te in
 FLORENCIA (English):
 I doubt you've tried a real Argentine asado, right? Next time I'll invite you to eat with my family.
 
---- Scene 20 ---
-[Emotion: excited promise]
-[Response Type: listen_only]
 
-FLORENCIA (Spanish):
-Van a cocinar carne al fuego, vamos a tomar mate juntos. 
-
-FLORENCIA (English):
-They're going to cook meat over fire, we're going to drink mate together. 
-
---- Scene 21 ---
+--- Scene 21 --- FLORENICA 6
 [Emotion: warm farewell]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "espero que haya sido" - expressing doubt about expectation]
@@ -834,12 +761,12 @@ Argentine asado is a communal ritual rooted in gaucho life that transforms beef,
 fire, and time into an expression of national identity and social equality. 
 The asador (grill master) holds a position of honor and responsibility.
 
---- Scene 1 ---
+--- Scene 1 --- FLORENICA 1
 [Emotion: excited welcome]
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-¡Llegamos! Bienvenido al asado de mi familia. Mirá el humo saliendo de la parrilla, el jardín lleno de familia.
+¡Ya llegamos! Bienvenidos al asado de mi familia. Mirá el humo que sale de la parrilla, el jardín lleno de familia.
 
 FLORENCIA (English):
 We're here! Welcome to my family's asado. Look at the smoke coming from the grill, the garden full of family.
@@ -854,7 +781,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 Do you smell that? It's meat roasting slowly over the coals. My dad has been cooking for an hour.
 
---- Scene 3 ---
+--- Scene 3 --- FLORENICA 1
 [Emotion: warm cultural teaching]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "me alegra que hayas venido" - expressing desire about past]
@@ -867,7 +794,7 @@ I'm glad you came today. Asado is more than food. It's ritual, it's family, it's
 
 [PAUSE - User could respond]
 
---- Scene 4 ---
+--- Scene 4 --- 
 [Emotion: philosophical]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "me encanta que hayas aceptado" - expressing desire about past]
@@ -899,7 +826,7 @@ Espero que hayas tenido hambre. Mi viejo hace el mejor asado de Buenos Aires. No
 FLORENCIA (English):
 I hope you came hungry. My old man makes the best asado in Buenos Aires. I'm not exaggerating.
 
---- Scene 7 ---
+--- Scene 7 --- FLORENICA 2
 [Emotion: special moment - mate]
 [Response Type: listen_only]
 
@@ -932,7 +859,7 @@ Mirá cómo lo preparo. Primero la yerba, después el agua caliente pero no hirv
 FLORENCIA (English):
 Watch how I prepare it. First the yerba, then hot water but not boiling. Like this, see?
 
---- Scene 10 ---
+--- Scene 10 --- FLORENICA 3
 [Emotion: offering]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "espero que hayas estado listo" - expressing desire about past]
@@ -955,7 +882,7 @@ Jaja, ¿está amargo? El mate tiene un sabor fuerte al principio. Pero te va a g
 FLORENCIA (English):
 Haha, is it bitter? Mate has a strong flavor at first. But you're going to like it.
 
---- Scene 12 ---
+--- Scene 12 --- FLORENICA 4
 [Emotion: warm declaration]
 [Response Type: listen_only]
 [GRAMMAR: Perfect subjunctive - "me hace feliz que hayas tomado" - expressing desire about past]
@@ -1017,7 +944,7 @@ I'm sorry you haven't been able to meet her today. But I promise you're going to
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Mi abuela es... bueno, era... es complicado. Ya te voy a explicar.
+Mi abuela es… bueno, era… es complicado. Te explico después.
 
 FLORENCIA (English):
 My grandmother is... well, was... it's complicated. I'll explain later.
@@ -1028,14 +955,14 @@ My grandmother is... well, was... it's complicated. I'll explain later.
 [GRAMMAR: Perfect subjunctive - "ojalá hayas disfrutado" - expressing desire about past]
 
 FLORENCIA (Spanish):
-Pero bueno, hoy es día de alegría. Ojalá hayas disfrutado este momento tanto como yo.
+Pero bueno, hoy es un día de alegría. Espero que hayas disfrutado este momento tanto como yo.
 
 FLORENCIA (English):
 But anyway, today is a day of joy. I hope you've enjoyed this moment as much as I have.
 
 [PAUSE - User could respond]
 
---- Scene 19 ---
+--- Scene 19 --- FLORENICA 5
 [Emotion: warm toast]
 [Response Type: listen_only]
 
@@ -1121,7 +1048,7 @@ I know I always talk about her as if she were alive. It's because, for me, she l
 
 [PAUSE - User could respond]
 
---- Scene 4 ---
+--- Scene 4 --- Florenica 1 
 [Emotion: vulnerable revelation]
 [Response Type: listen_only]
 [GRAMMAR: Pluperfect subjunctive - "si te lo hubiera dicho antes" - hypothetical about past]
@@ -1189,7 +1116,7 @@ Pero eligió la familia. Estaba embarazada de mi mamá. Si hubiera aceptado ese 
 FLORENCIA (English):
 But she chose family. She was pregnant with my mom. If she had accepted that role... her life would have been different.
 
---- Scene 10 ---
+--- Scene 10 --- Florenica 2
 [Emotion: philosophical wonder]
 [Response Type: listen_only]
 [GRAMMAR: Pluperfect subjunctive - "si hubiera sido más feliz" - hypothetical about past]
@@ -1229,12 +1156,12 @@ But I... sometimes I wonder if I wish I had had the same courage as her.
 [GRAMMAR: Pluperfect subjunctive - "si hubiera aceptado" - hypothetical about past]
 
 FLORENCIA (Spanish):
-Hace unos años, me ofrecieron un lugar en una compañía de tango. Si hubiera aceptado... pero tuve miedo.
+Hace unos años, me ofrecieron un lugar en una compañía internacional de tango de gira. Si hubiera aceptado… pero tenía miedo de dejar a mi familia.
 
 FLORENCIA (English):
-Hace unos años, me ofrecieron un lugar en una compañía internacional de tango de gira. Si hubiera aceptado… pero tenía miedo de dejar a mi familia. 
 
---- Scene 14 ---
+
+--- Scene 14 --- Florenica 3
 [Emotion: sad reflection]
 [Response Type: listen_only]
 [GRAMMAR: Pluperfect subjunctive - "ojalá no hubiera dejado pasar" - hypothetical about past]
@@ -1268,7 +1195,7 @@ Perdón. Este lugar me pone muy emocional. Vengo acá cuando necesito hablar con
 FLORENCIA (English):
 Sorry. This place makes me very emotional. I come here when I need to talk to her.
 
---- Scene 17 ---
+--- Scene 17 --- Florenica 4
 [Emotion: grateful]
 [Response Type: listen_only]
 [GRAMMAR: Pluperfect subjunctive - "si no hubieras venido" - hypothetical about past]
@@ -1286,10 +1213,14 @@ Thank you for listening to me. If you hadn't come with me today, I don't know if
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Mirá su tumba. Dice: "Valentina Reyes - Bailarina de sueños." Ella creaba sueños para otros.
+Mirá su tumba. Dice: “Valentina Reyes – Bailarina de sueños.” Ella creaba sueños para los demás.
+Cada vez que bailaba, decía que sentía que estaba creando sueños hermosos y compartidos, sueños que sabía que iban a llegar a su fin.
+Por eso “Soñemos” de Carlos Di Sarli era su canción favorita; decía que sentía como si Di Sarli la hubiera escrito para ella.
 
 FLORENCIA (English):
-Look at her tomb. It says: "Valentina Reyes - Dancer of dreams." She created dreams for others.
+Look at her tomb. It says: "Valentina Reyes - Dancer of dreams." She created dreams for others. 
+Whenever she would dance, she said that she felt that she was creating beautiful, shared dreams that she knew would come to an end. 
+That's why Sonemos by Carlos Disarli was here favorite song, she said that she felt as if Disarli wrote it for her. 
 
 --- Scene 19 ---
 [Emotion: recovering, hook]
@@ -1311,7 +1242,7 @@ Ahí vas a entender algo más sobre mí. Sobre los artistas. Sobre la línea ent
 FLORENCIA (English):
 There you're going to understand something more about me. About artists. About the line between reality and illusion.
 
---- Scene 21 ---
+--- Scene 21 --- Florenica 5
 [Emotion: closing, warmth]
 [Response Type: listen_only]
 
@@ -1354,7 +1285,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 Do you feel the energy of this place? More than one hundred years of opera, ballet, and tango have passed through this stage.
 
---- Scene 3 ---
+--- Scene 3 --- Florenica 1
 [Emotion: flirtatious]
 [Response Type: listen_only]
 [GRAMMAR: Imperfect subjunctive - "como si fueras" - wishes/hypotheticals]
@@ -1367,7 +1298,7 @@ Do you like my dress? It's red, like the passion of tango. My grandmother said a
 
 [PAUSE - User could respond]
 
---- Scene 4 ---
+--- Scene 4 --- 
 [Emotion: impressed playful]
 [Response Type: listen_only]
 [GRAMMAR: Imperfect subjunctive - "pareciera que fueras" - wishes/hypotheticals]
@@ -1399,7 +1330,7 @@ Es como si la pobreza se transformara en belleza. Como si el dolor se convirtier
 FLORENCIA (English):
 It's as if poverty transformed into beauty. As if pain became art.
 
---- Scene 7 ---
+--- Scene 7 --- Florenica 2
 [Emotion: mysterious build-up]
 [Response Type: listen_only]
 [GRAMMAR: Imperfect subjunctive - "ojalá pudiera" - wishes/hypotheticals]
@@ -1467,7 +1398,7 @@ FLORENCIA (Spanish):
 FLORENCIA (English):
 And what if I told you that sometimes the line between reality and illusion becomes so thin it disappears?
 
---- Scene 13 ---
+--- Scene 13 --- Florenica 3
 [Emotion: intimate question]
 [Response Type: listen_only]
 [GRAMMAR: Imperfect subjunctive - "como si esto fuera" - wishes/hypotheticals]
@@ -1490,7 +1421,7 @@ Mirá, las luces se están apagando. El espectáculo va a comenzar. Esta noche t
 FLORENCIA (English):
 Look, the lights are dimming. The show is about to begin. Tonight they're playing tango.
 
---- Scene 15 ---
+--- Scene 15 --- Florenica 4
 [Emotion: Soñemos plays]
 [Response Type: listen_only]
 
@@ -1566,7 +1497,7 @@ La Boca is a working-class immigrant port neighborhood where tango, football, an
 Buenos Aires' popular identity took shape. The colorful houses were painted with 
 leftover ship paint — beauty born from economic necessity.
 
---- Scene 1 ---
+--- Scene 1 --- Florenica 1 
 [Emotion: vibrant arrival]
 [Response Type: listen_only]
 
@@ -1621,7 +1552,7 @@ Es como si la necesidad se transformara en arte. Como si el dolor se convirtiera
 FLORENCIA (English):
 It's as if necessity transformed into art. As if pain became colors.
 
---- Scene 6 ---
+--- Scene 6 --- Florenica 2
 [Emotion: connecting to previous episode]
 [Response Type: listen_only]
 
@@ -1655,7 +1586,7 @@ Si me conocieras mejor, sabrías que a veces ni yo sé dónde termina la actuaci
 FLORENCIA (English):
 If you knew me better, you'd know that sometimes even I don't know where the acting ends and the real Florencia begins.
 
---- Scene 9 ---
+--- Scene 9 --- Florenica 3
 [Emotion: honest confession]
 [Response Type: listen_only]
 [GRAMMAR: Imperfect subjunctive - "como si fuéramos" - conditionals/comparisons]
@@ -1713,7 +1644,7 @@ El tiempo pasó tan rápido. Es como si el tiempo pasara diferente cuando estoy 
 FLORENCIA (English):
 Time passed so fast. It's as if time passed differently when I'm with you.
 
---- Scene 14 ---
+--- Scene 14 --- 
 [Emotion: walking together]
 [Response Type: listen_only]
 
@@ -1746,7 +1677,7 @@ Si tuviera el poder de detener el tiempo, lo haría ahora mismo. Pero todo tiene
 FLORENCIA (English):
 If I had the power to stop time, I would do it right now. But everything has to end.
 
---- Scene 17 ---
+--- Scene 17 --- Florenica 4
 [Emotion: secret tease]
 [Response Type: listen_only]
 
@@ -1779,7 +1710,7 @@ Cultural Context:
 Café Tortoni on a quiet afternoon. The same marble tables, the same tango photos 
 on the walls. Some things in Buenos Aires never change. Others... who knows.
 
---- Scene 1 ---
+--- Scene 1 --- Florenica 1
 [Emotion: casual arrival]
 [Response Type: listen_only]
 
@@ -1789,7 +1720,7 @@ Epa, llegaste antes que yo. Me gusta eso.
 FLORENCIA (English):
 Hey, you got here before me. I like that.
 
---- Scene 2 ---
+--- Scene 2 --- Florenica 1
 [Emotion: settling in]
 [Response Type: listen_only]
 
@@ -1802,19 +1733,15 @@ Come on, sit down. This table has good light.
 --- Scene 3 ---
 [Emotion: noticing waiter]
 [Response Type: listen_only]
-[GRAMMAR: Present subjunctive - "quiero que nos traiga" - desire]
+[GRAMMAR: Imperfect subjunctive - "pedí al mozo que nos trajera" - desire]
 
-WAITER (Spanish):
-Buenas tardes. ¿Qué les traigo?
 
-WAITER (English):
-Good afternoon. What can I bring you?
 
 FLORENCIA (Spanish):
-Hola. ¿Nos traés dos cafés con leche y unas medialunas?
+Le pedí al mozo que nos trajera dos cafés con leche y unas medialunas.
 
 FLORENCIA (English):
-Hi there. Could you bring us two cafés con leche and some croissants?
+I asked the waiter to bring us two cafés con leche and some medialunas. 
 
 --- Scene 4 ---
 [Emotion: playful]
@@ -1828,7 +1755,7 @@ See? I don't even have to ask what you want anymore.
 
 [PAUSE - User could respond]
 
---- Scene 5 ---
+--- Scene 5 --- Florenica 2 
 [Emotion: distracted, humming]
 [Response Type: listen_only]
 
@@ -1838,15 +1765,15 @@ Mmm... "soñemos, que los dos estamos libres...Soñemos, en la gloria de este am
 FLORENCIA (English):
 Mmm... "let's dream, that we both are free...Let’s dream of the splendor of our love."
 
---- Scene 6 ---
+--- Scene 6 --- Florenica 2 
 [Emotion: catching herself]
 [Response Type: listen_only]
 
 FLORENCIA (Spanish):
-Perdón. Se me pegó esa canción. No sé por qué.
+Perdón. Se me pegó esa canción de Disarli. 
 
 FLORENCIA (English):
-Sorry. That song got stuck in my head. I don't know why.
+Sorry. That song from Disarli got stuck in my head.
 
 --- Scene 7 ---
 [Emotion: reaching into bag]
@@ -1859,7 +1786,7 @@ Ah, me alegra que hayas venido hoy. Tengo algo para vos.
 FLORENCIA (English):
 Ah, I'm glad you came today. I have something for you.
 
---- Scene 8 ---
+--- Scene 8 --- Florenica 3
 [Emotion: sliding gift across table]
 [Response Type: listen_only]
 
@@ -1871,7 +1798,7 @@ Here. For you.
 
 [PAUSE - User sees mate cup]
 
---- Scene 9 ---
+--- Scene 9 --- Florenica 3
 [Emotion: brief, warm]
 [Response Type: listen_only]
 [GRAMMAR: Pluperfect subjunctive - "si no lo hubiera comprado" - hypothetical about past]
@@ -1955,7 +1882,7 @@ Mmm. I doubt you've had better coffee than this in eight weeks, right?
 
 [PAUSE - User could respond]
 
---- Scene 17 ---
+--- Scene 17 --- Florenica 4
 [Emotion: playful mystery]
 [Response Type: listen_only]
 [GRAMMAR: Imperfect subjunctive - "si te dijera" - conditional]

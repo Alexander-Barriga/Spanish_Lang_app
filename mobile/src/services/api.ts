@@ -819,6 +819,13 @@ class ApiClient {
     }>('/episode-articles/unlocked');
   }
 
+  // DEV MODE: Get all articles regardless of episode completion
+  async getAllEpisodeArticles() {
+    return this.request<{
+      articles: EpisodeArticle[];
+    }>('/episode-articles/all');
+  }
+
   async getEpisodeArticle(episodeId: string) {
     return this.request<{
       article: EpisodeArticle;
@@ -838,7 +845,6 @@ class ApiClient {
       articleRead: boolean;
       writingSubmitted: boolean;
       conversationCompleted: boolean;
-      gymCompleted: boolean;
       nextEpisodeUnlocked: boolean;
       nextEpisodeId?: string;
     }>(`/episode-articles/roadmap/${episodeId}`);
@@ -897,50 +903,6 @@ class ApiClient {
       hasSubmitted: boolean;
       submission: EpisodeArticleSubmission | null;
     }>(`/episode-articles/${episodeId}/submission`);
-  }
-
-  // ============================================
-  // GRAMMAR GYM METHODS
-  // ============================================
-
-  async getGrammarGymQuestions(episodeId: string) {
-    return this.request<{
-      episode: {
-        id: string;
-        title_es: string;
-        title_en: string;
-        grammar_focus: string;
-        grammar_triggers: string[];
-      };
-      questions: GrammarGymQuestion[];
-      totalQuestions: number;
-      defaultCount: number;
-      personalizedCount: number;
-    }>(`/grammar-gym/episode/${episodeId}`);
-  }
-
-  async completeGrammarGym(episodeId: string, data: {
-    correctAnswers: number;
-    totalQuestions: number;
-    results: any[];
-  }) {
-    return this.request<{
-      success: boolean;
-      xpEarned: number;
-      accuracy: number;
-      correctAnswers: number;
-      totalQuestions: number;
-    }>(`/grammar-gym/episode/${episodeId}/complete`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async checkGrammarGymAccess(episodeId: string) {
-    return this.request<{
-      canAccess: boolean;
-      hasWritingSubmission: boolean;
-    }>(`/grammar-gym/episode/${episodeId}/access`);
   }
 
   // ============================================
@@ -1338,15 +1300,6 @@ export interface EpisodeArticleSubmission {
   grammar_score: number;
   word_count: number;
   completed_at: string;
-}
-
-// Grammar Gym Interfaces
-export interface GrammarGymQuestion {
-  question: string;
-  options: string[];
-  correct: string;
-  explanation: string;
-  isPersonalized?: boolean;
 }
 
 // Episode Conversation Interfaces

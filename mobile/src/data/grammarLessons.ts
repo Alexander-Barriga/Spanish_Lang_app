@@ -22,6 +22,13 @@ export interface ConjugationTable {
     nosotros: string;
     ellos: string;
   };
+  indicativeForms?: {
+    yo: string;
+    tú: string;
+    él: string;
+    nosotros: string;
+    ellos: string;
+  };
 }
 
 export interface StoryExample {
@@ -69,6 +76,13 @@ export const grammarLessons: Record<string, GrammarLesson> = {
         él: 'hable',
         nosotros: 'hablemos',
         ellos: 'hablen'
+      },
+      indicativeForms: {
+        yo: 'hablo',
+        tú: 'hablas',
+        él: 'habla',
+        nosotros: 'hablamos',
+        ellos: 'hablan'
       }
     },
     storyExamples: [
@@ -123,6 +137,13 @@ export const grammarLessons: Record<string, GrammarLesson> = {
         él: 'esté',
         nosotros: 'estemos',
         ellos: 'estén'
+      },
+      indicativeForms: {
+        yo: 'estoy',
+        tú: 'estás',
+        él: 'está',
+        nosotros: 'estamos',
+        ellos: 'están'
       }
     },
     storyExamples: [
@@ -157,26 +178,26 @@ export const grammarLessons: Record<string, GrammarLesson> = {
     explanation: 'When expressing doubt, disbelief, or uncertainty about something, Spanish uses the subjunctive. This contrasts with certainty, which uses the indicative.\n\nThe rule is simple: if you\'re sure about something, use indicative. If you doubt it or think it might not be true, use subjunctive.',
     useCases: [
       {
-        title: 'Expressing doubt',
-        description: 'Verbs like dudar, no creer trigger subjunctive.',
-        example: { spanish: 'Dudo que sea verdad.', english: 'I doubt that it\'s true.' }
+        title: 'Expressing doubt about the past',
+        description: 'Verbs like dudar, no creer trigger the present perfect subjunctive when questioning past events.',
+        example: { spanish: 'Dudo que haya sido verdad.', english: 'I doubt that it was true.' }
       },
       {
-        title: 'Expressing possibility',
-        description: '"Es posible que", "es probable que" indicate uncertainty.',
-        example: { spanish: 'Es posible que llueva mañana.', english: 'It\'s possible that it will rain tomorrow.' }
+        title: 'Expressing possibility about the past',
+        description: '"Es posible que", "es probable que" with haya + past participle for past uncertainty.',
+        example: { spanish: 'Es posible que haya llovido anoche.', english: 'It\'s possible that it rained last night.' }
       }
     ],
     conjugationTable: {
       verb: 'ser',
       verbEnglish: 'to be',
-      tense: 'Present Subjunctive',
+      tense: 'Present Perfect Subjunctive',
       forms: {
-        yo: 'sea',
-        tú: 'seas',
-        él: 'sea',
-        nosotros: 'seamos',
-        ellos: 'sean'
+        yo: 'haya sido',
+        tú: 'hayas sido',
+        él: 'haya sido',
+        nosotros: 'hayamos sido',
+        ellos: 'hayan sido'
       }
     },
     storyExamples: [
@@ -211,26 +232,26 @@ export const grammarLessons: Record<string, GrammarLesson> = {
     explanation: 'When expressing what you want, prefer, or need someone else to do, Spanish uses the subjunctive. This is one of the most common uses of the subjunctive in everyday conversation.\n\nThe structure is: desire verb + que + subjunctive. Note that when you want to do something yourself, you use the infinitive instead.',
     useCases: [
       {
-        title: 'Expressing wants',
-        description: 'Querer que + subjunctive when wanting someone else to do something.',
-        example: { spanish: 'Quiero que me ayudes.', english: 'I want you to help me.' }
+        title: 'Expressing gladness about the past',
+        description: 'Me alegra que + haya + past participle when happy about something that already happened.',
+        example: { spanish: 'Me alegra que hayas venido.', english: 'I\'m glad that you came.' }
       },
       {
-        title: 'Expressing preferences',
-        description: 'Preferir que, gustar que for preferences about others\' actions.',
-        example: { spanish: 'Prefiero que llegues temprano.', english: 'I prefer that you arrive early.' }
+        title: 'Expressing hope about completed actions',
+        description: 'Espero que + haya + past participle for wishes about what already occurred.',
+        example: { spanish: 'Espero que hayas disfrutado la comida.', english: 'I hope you enjoyed the food.' }
       }
     ],
     conjugationTable: {
       verb: 'comer',
       verbEnglish: 'to eat',
-      tense: 'Present Subjunctive',
+      tense: 'Present Perfect Subjunctive',
       forms: {
-        yo: 'coma',
-        tú: 'comas',
-        él: 'coma',
-        nosotros: 'comamos',
-        ellos: 'coman'
+        yo: 'haya comido',
+        tú: 'hayas comido',
+        él: 'haya comido',
+        nosotros: 'hayamos comido',
+        ellos: 'hayan comido'
       }
     },
     storyExamples: [
@@ -258,7 +279,61 @@ export const grammarLessons: Record<string, GrammarLesson> = {
     ]
   },
 
-  // Episode 5: Preterite vs Imperfect
+  // Episode 5: Pluperfect Subjunctive
+  'pluperfect_subjunctive': {
+    title: 'Pluperfect Subjunctive',
+    subtitle: 'El Pluscuamperfecto del Subjuntivo',
+    explanation: 'The pluperfect subjunctive expresses hypothetical or contrary-to-fact situations in the past. It\'s formed with the imperfect subjunctive of "haber" (hubiera/hubiese) + past participle.\n\nUse it to imagine how the past could have been different, to express regret about things that didn\'t happen, or in "si" clauses about unreal past conditions.',
+    useCases: [
+      {
+        title: 'Hypothetical past conditions',
+        description: 'Si + pluperfect subjunctive for imagining a different past outcome.',
+        example: { spanish: 'Si hubiera dicho la verdad, todo habría sido diferente.', english: 'If I had told the truth, everything would have been different.' }
+      },
+      {
+        title: 'Expressing regret about the past',
+        description: 'Ojalá + pluperfect subjunctive for wishing past events had gone differently.',
+        example: { spanish: 'Ojalá hubiera dicho que sí.', english: 'I wish I had said yes.' }
+      }
+    ],
+    conjugationTable: {
+      verb: 'decir',
+      verbEnglish: 'to say / to tell',
+      tense: 'Pluperfect Subjunctive',
+      forms: {
+        yo: 'hubiera dicho',
+        tú: 'hubieras dicho',
+        él: 'hubiera dicho',
+        nosotros: 'hubiéramos dicho',
+        ellos: 'hubieran dicho'
+      }
+    },
+    storyExamples: [
+      {
+        spanish: 'Si te lo hubiera dicho antes, quizás no me hubieras entendido.',
+        english: 'If I had told you before, maybe you wouldn\'t have understood me.',
+        context: 'Florencia explaining why she waited to tell you'
+      },
+      {
+        spanish: 'Si hubiera aceptado ese papel... su vida habría sido otra.',
+        english: 'If she had accepted that role... her life would have been different.',
+        context: 'Florencia on her grandmother\'s sacrifice'
+      },
+      {
+        spanish: 'Ojalá no hubiera dejado pasar esa oportunidad.',
+        english: 'I wish I hadn\'t let that opportunity pass.',
+        context: 'Florencia regretting her own missed chance'
+      }
+    ],
+    triggers: ['Si hubiera', 'Ojalá hubiera', 'Si no hubiera', 'Si hubieras'],
+    tips: [
+      'Si + hubiera + past participle + conditional: "Si hubiera sabido, habría ido."',
+      'Ojalá + hubiera + past participle expresses regret: "Ojalá hubiera estudiado más."',
+      'The -ra and -se forms are interchangeable: hubiera dicho = hubiese dicho.'
+    ]
+  },
+
+  // Episode 5 (alt): Preterite vs Imperfect
   'preterite_vs_imperfect': {
     title: 'Preterite vs Imperfect',
     subtitle: 'Pretérito vs Imperfecto',
@@ -339,6 +414,13 @@ export const grammarLessons: Record<string, GrammarLesson> = {
         él: 'tuviera',
         nosotros: 'tuviéramos',
         ellos: 'tuvieran'
+      },
+      indicativeForms: {
+        yo: 'tengo',
+        tú: 'tienes',
+        él: 'tiene',
+        nosotros: 'tenemos',
+        ellos: 'tienen'
       }
     },
     storyExamples: [
@@ -379,8 +461,8 @@ export const grammarLessons: Record<string, GrammarLesson> = {
       },
       {
         title: 'Polite requests and suggestions',
-        description: 'Softer than direct commands or statements.',
-        example: { spanish: '¿Podrías ayudarme?', english: 'Could you help me?' }
+        description: 'Pairing the conditional with the imperfect subjunctive for softer, more nuanced requests.',
+        example: { spanish: 'Me gustaría que me ayudaras con esto.', english: 'I would like you to help me with this.' }
       }
     ],
     conjugationTable: {

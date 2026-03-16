@@ -473,12 +473,12 @@ router.post('/attempt', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Update progress - but do NOT unlock next episode yet
-    // Next episode is only unlocked when Grammar Gym is completed
+    // Next episode is unlocked when the Conversation step is completed
     // We track XP and stars here, but current_episode stays the same
     const { error: updateError } = await supabaseAdmin
       .from('user_story_progress')
       .update({
-        // Note: current_episode is NOT updated here - only updated after Grammar Gym completion
+        // Note: current_episode is NOT updated here - only updated after Conversation completion
         total_stars: (currentProgress?.total_stars || 0) + (starsEarned || 0),
         total_xp: (currentProgress?.total_xp || 0) + xpEarned,
         last_played_at: new Date().toISOString(),
@@ -503,8 +503,8 @@ router.post('/attempt', authMiddleware, async (req: Request, res: Response) => {
     res.json({ 
       attempt,
       xpEarned,
-      message: 'Episode conversation completed. Complete the reading, writing, and grammar gym to unlock the next episode.',
-      nextEpisode: null // Next episode unlocks after Grammar Gym
+      message: 'Episode conversation completed. Complete the reading, writing, and conversation to unlock the next episode.',
+      nextEpisode: null // Next episode unlocks after Conversation completion
     });
   } catch (error) {
     console.error('Error in POST /stories/attempt:', error);

@@ -50,6 +50,7 @@ export interface User {
   correction_depth: 'light' | 'standard' | 'deep';
   voice_speed: number;
   accent_preference: 'spain' | 'mexico' | 'argentina' | 'colombia';
+  is_admin: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -426,10 +426,8 @@ export default function EpisodeConversationScreen() {
     router.back();
   };
 
-  const handleContinueToGym = () => {
-    if (articleId) {
-      router.replace(`/article/episode/${articleId}/gym`);
-    }
+  const handleEpisodeComplete = () => {
+    router.replace('/(tabs)');
   };
 
   // Render explanation text with spacing between numbered points and white formula highlighting
@@ -748,15 +746,15 @@ export default function EpisodeConversationScreen() {
             <Text style={styles.completionHint}>
               ¡Conversación completada! Scroll up to replay any messages.
             </Text>
-            <Pressable onPress={handleContinueToGym}>
+            <Pressable onPress={handleEpisodeComplete}>
               <LinearGradient
                 colors={['#B3F5FF', '#00B8DB']}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.continueButton}
               >
-                <Text style={styles.continueButtonText}>Continue to Grammar Gym</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
+                <Text style={styles.continueButtonText}>Episode Complete — Back to Home</Text>
+                <Ionicons name="home" size={20} color={colors.neutral[950]} />
               </LinearGradient>
             </Pressable>
           </>

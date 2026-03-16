@@ -13,7 +13,6 @@ interface RoadmapProgress {
   articleRead: boolean;
   writingSubmitted: boolean;
   conversationCompleted: boolean;
-  gymCompleted: boolean;
   nextEpisodeUnlocked: boolean;
   nextEpisodeId?: string;
 }
@@ -90,7 +89,7 @@ export default function EpisodeRoadmap({
   const steps: Step[] = [
     {
       id: 1,
-      name: 'Complete Episode',
+      name: 'Watch Episode',
       shortName: 'Episode',
       status: progress.episodeCompleted ? 'completed' : 'in_progress',
       onPress: () => router.push(`/story/${episodeId}`),
@@ -177,46 +176,17 @@ export default function EpisodeRoadmap({
         }
       },
     },
-    {
-      id: 5,
-      name: 'Complete Gym',
-      shortName: 'Gym',
-      status: progress.gymCompleted
-        ? 'completed'
-        : progress.conversationCompleted
-        ? 'in_progress'
-        : 'locked',
-      onPress: async () => {
-        // Check if conversation is completed first
-        if (!progress.conversationCompleted) {
-          Alert.alert(
-            'Conversation Required',
-            'You must complete the conversation with Florencia before accessing the Grammar Gym.'
-          );
-          return;
-        }
-        
-        try {
-          const articleResult = await api.getEpisodeArticle(episodeId);
-          if (articleResult.data?.article) {
-            router.push(`/article/episode/${articleResult.data.article.id}/gym`);
-          }
-        } catch (error) {
-          console.error('Error navigating to gym:', error);
-        }
-      },
-    },
   ];
 
   // Only show "Unlock Next Episode" if not the final episode
   if (episodeNumber < totalEpisodes) {
     steps.push({
-      id: 6,
-      name: 'Unlock Next',
+      id: 5,
+      name: 'Unlock Next Episode',
       shortName: 'Next',
       status: progress.nextEpisodeUnlocked ? 'completed' : 'locked',
-      onPress: progress.nextEpisodeUnlocked && progress.nextEpisodeId
-        ? () => router.push(`/story/${progress.nextEpisodeId}`)
+      onPress: progress.nextEpisodeUnlocked
+        ? () => router.replace('/(tabs)')
         : undefined,
     });
   }

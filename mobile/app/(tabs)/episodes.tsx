@@ -81,11 +81,12 @@ export default function EpisodesScreen() {
         const allEpisodes = arcResult.data?.episodes || [];
 
         // Mark episodes as unlocked/locked based on views
+        const isAdmin = !!user?.profile?.is_admin;
         const episodesWithStatus: EpisodeWithStatus[] = allEpisodes.map((ep: Episode) => {
           const view = viewedMap.get(ep.id);
           return {
             ...ep,
-            isUnlocked: !!view,
+            isUnlocked: !!view || isAdmin,
             viewCount: view?.viewCount || 0,
             lastViewedAt: view?.lastViewedAt,
           };
@@ -243,7 +244,7 @@ export default function EpisodesScreen() {
                     )}
 
                     {/* View count badge */}
-                    {episode.isUnlocked && episode.viewCount && episode.viewCount > 0 && (
+                    {episode.isUnlocked && episode.viewCount > 0 && (
                       <View style={styles.viewCountBadge}>
                         <Ionicons name="eye" size={12} color={colors.text.secondary} />
                         <Text style={styles.viewCountText}>{episode.viewCount}</Text>

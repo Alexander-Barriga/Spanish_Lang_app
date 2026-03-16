@@ -15,7 +15,8 @@ interface UserProfile {
   correction_depth: 'light' | 'standard' | 'deep';
   voice_speed: number;
   accent_preference: 'spain' | 'mexico' | 'argentina' | 'colombia';
-  tutor_character?: string; // The selected tutor character ID
+  tutor_character?: string;
+  is_admin?: boolean;
 }
 
 interface UserProgress {

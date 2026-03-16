@@ -482,45 +482,6 @@ export default function HomeScreen() {
           </View>
         </Pressable>
 
-        {/* Grammar Focus Card - Tappable to open lesson */}
-        {displayEpisode && (
-          <Pressable 
-            style={({ pressed }) => [
-              styles.grammarCard,
-              pressed && styles.grammarCardPressed
-            ]}
-            onPress={() => {
-              const grammarFocus = displayEpisode?.grammar_focus;
-              const episodeId = displayEpisode?.id;
-              if (grammarFocus) {
-                router.push({
-                  pathname: '/grammar/[topic]',
-                  params: { topic: grammarFocus, episodeId: episodeId || '' }
-                });
-              }
-            }}
-          >
-            <View style={styles.grammarHeader}>
-              <Ionicons name="school-outline" size={18} color={colors.accent.tango} />
-              <Text style={styles.grammarLabel}>This Episode's Grammar</Text>
-              <View style={{ flex: 1 }} />
-              <Ionicons name="chevron-forward" size={18} color={colors.accent.tango} />
-            </View>
-            <Text style={styles.grammarFocus}>
-              {displayEpisode.grammar_focus?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Present Subjunctive'}
-            </Text>
-            {displayEpisode.grammar_triggers?.length > 0 && (
-              <View style={styles.triggersContainer}>
-                {displayEpisode.grammar_triggers.slice(0, 3).map((trigger: string, index: number) => (
-                  <View key={index} style={styles.triggerBadge}>
-                    <Text style={styles.triggerText}>{trigger}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            <Text style={styles.grammarHint}>Tap to learn more</Text>
-          </Pressable>
-        )}
 
         {/* Episode Roadmap */}
         {displayEpisode && storyData?.arc && (
@@ -558,7 +519,7 @@ export default function HomeScreen() {
                 const currentEpisodeNum = storyData?.progress?.current_episode || 1;
                 const isCompleted = episode.episode_number < currentEpisodeNum;
                 const isCurrentOrCompleted = episode.episode_number <= currentEpisodeNum;
-                const isUnlocked = isCurrentOrCompleted;
+                const isUnlocked = isCurrentOrCompleted || !!user?.profile?.is_admin;
                 
                 return (
                   <Pressable
@@ -878,57 +839,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing[4],
     right: spacing[4],
-  },
-
-  // Grammar Card
-  grammarCard: {
-    backgroundColor: colors.background.elevated,
-    borderRadius: borderRadius.xl,
-    padding: spacing[5],
-    marginBottom: spacing[5],
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent.tango,
-  },
-  grammarCardPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  grammarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    marginBottom: spacing[2],
-  },
-  grammarLabel: {
-    ...textStyles.labelSmall,
-    color: colors.accent.tango,
-  },
-  grammarFocus: {
-    ...textStyles.h5,
-    color: colors.text.primary,
-    marginBottom: spacing[3],
-  },
-  grammarHint: {
-    ...textStyles.caption,
-    color: colors.text.muted,
-    marginTop: spacing[2],
-    fontStyle: 'italic',
-  },
-  triggersContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
-  triggerBadge: {
-    backgroundColor: colors.neutral[800],
-    paddingVertical: spacing[1],
-    paddingHorizontal: spacing[2],
-    borderRadius: borderRadius.md,
-  },
-  triggerText: {
-    ...textStyles.caption,
-    color: colors.text.secondary,
-    fontStyle: 'italic',
   },
 
   // Quote Card

@@ -6,6 +6,72 @@ import { generateWritingFeedback, calculateGrammarScore } from '../services/arti
 const router = Router();
 
 // ============================================
+// GET /episode-articles/all - Get ALL episode articles (DEV MODE)
+// ============================================
+router.get('/all', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Get ALL articles (no episode completion check)
+    const { data: articles, error: articlesError } = await supabaseAdmin
+      .from('episode_articles')
+      .select(`
+        *,
+        episodes (
+          id,
+          episode_number,
+          title_es,
+          title_en,
+          grammar_focus,
+          scenes
+        )
+      `)
+      .order('created_at', { ascending: true });
+
+    if (articlesError) {
+      console.error('Error fetching all articles:', articlesError);
+      return res.status(500).json({ error: 'Failed to fetch articles' });
+    }
+
+    // Add read status and extract first scene image URL for each article
+    const articlesWithStatus = await Promise.all(
+      (articles || []).map(async (article) => {
+        const { data: readRecord } = await supabaseAdmin
+          .from('episode_article_reads')
+          .select('completed')
+          .eq('user_id', userId)
+          .eq('episode_article_id', article.id)
+          .single();
+
+        // Extract first scene image URL from episodes.scenes array
+        const scenes = (article.episodes as any)?.scenes;
+        const firstSceneImageUrl = Array.isArray(scenes) && scenes.length > 0 
+          ? scenes[0]?.scene_image_url 
+          : null;
+
+        // Remove the full scenes array from response to keep payload small
+        const { scenes: _, ...episodesWithoutScenes } = (article.episodes || {}) as any;
+
+        return {
+          ...article,
+          episodes: episodesWithoutScenes,
+          first_scene_image_url: firstSceneImageUrl,
+          has_read: readRecord?.completed || false,
+        };
+      })
+    );
+
+    res.json({ articles: articlesWithStatus });
+  } catch (error) {
+    console.error('Error in GET /episode-articles/all:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
 // GET /episode-articles/unlocked - Get all unlocked episode articles
 // ============================================
 router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
@@ -113,6 +179,25 @@ router.get('/roadmap/:episodeId', authMiddleware, async (req: Request, res: Resp
       return res.status(404).json({ error: 'Episode not found' });
     }
 
+    // Admin bypass: return all steps as completed
+    if (req.user?.is_admin) {
+      const { data: nextEpisode } = await supabaseAdmin
+        .from('episodes')
+        .select('id')
+        .eq('story_arc_id', episode.story_arc_id)
+        .eq('episode_number', episode.episode_number + 1)
+        .single();
+
+      return res.json({
+        episodeCompleted: true,
+        articleRead: true,
+        writingSubmitted: true,
+        conversationCompleted: true,
+        nextEpisodeUnlocked: true,
+        nextEpisodeId: nextEpisode?.id,
+      });
+    }
+
     // 1. Check if episode is completed
     const { data: attempt } = await supabaseAdmin
       .from('episode_attempts')
@@ -163,18 +248,7 @@ router.get('/roadmap/:episodeId', authMiddleware, async (req: Request, res: Resp
 
     const conversationCompleted = !!(conversation?.completed_at);
 
-    // 4. Check if gym workouts are completed (any workout with matching grammar_focus)
-    const { data: workouts } = await supabaseAdmin
-      .from('workout_sessions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('grammar_focus', episode.grammar_focus)
-      .not('completed_at', 'is', null)
-      .limit(1);
-
-    const gymCompleted = (workouts?.length || 0) > 0;
-
-    // 5. Check if next episode is unlocked
+    // 4. Check if next episode is unlocked
     const { data: progress } = await supabaseAdmin
       .from('user_story_progress')
       .select('current_episode')
@@ -203,7 +277,6 @@ router.get('/roadmap/:episodeId', authMiddleware, async (req: Request, res: Resp
       articleRead,
       writingSubmitted,
       conversationCompleted,
-      gymCompleted,
       nextEpisodeUnlocked,
       nextEpisodeId,
     });

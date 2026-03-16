@@ -24,7 +24,6 @@ import journalRoutes from './routes/journal';
 import audioCacheRoutes from './routes/audio-cache';
 import articlesRoutes from './routes/articles';
 import episodeArticlesRoutes from './routes/episodeArticles';
-import grammarGymRoutes from './routes/grammarGym';
 import episodeConversationRoutes from './routes/episodeConversation';
 
 // Import WebSocket handler
@@ -72,7 +71,6 @@ app.use('/api/v1/journal', journalRoutes);
 app.use('/api/v1/audio', audioCacheRoutes);
 app.use('/api/v1/articles', articlesRoutes);
 app.use('/api/v1/episode-articles', episodeArticlesRoutes);
-app.use('/api/v1/grammar-gym', grammarGymRoutes);
 app.use('/api/v1/episode-conversation', episodeConversationRoutes);
 
 // Error handling middleware

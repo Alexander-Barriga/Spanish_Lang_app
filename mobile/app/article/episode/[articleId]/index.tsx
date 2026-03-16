@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -6,336 +6,114 @@ import {
   ScrollView, 
   Pressable, 
   ActivityIndicator,
-  Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Image,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import Markdown from 'react-native-markdown-display';
 import { api, EpisodeArticle } from '../../../../src/services/api';
 import { colors, textStyles, spacing, borderRadius } from '../../../../src/theme';
+import { getCompleteArticleData, CompleteArticleData } from '../../../../src/data/episodeArticles';
+import { DialogueExample } from '../../../../src/data/episodeDialogueExamples';
 
-// Interface for article images
-interface ArticleImage {
-  id: string;
-  image_type: 'header' | 'inline';
-  position: number;
-  image_url: string;
-  alt_text?: string;
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const { width } = Dimensions.get('window');
-
-// Substack-inspired dark theme markdown styles
-const markdownStyles = StyleSheet.create({
-  // Main body text - clean, readable, Substack-like
-  body: {
-    color: colors.text.primary,
-    fontSize: 18,
-    lineHeight: 30,
-  },
-  
-  // Headings - elegant with subtle gold accents
-  heading1: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text.primary,
-    marginTop: 32,
-    marginBottom: 16,
-    lineHeight: 36,
-  },
-  heading2: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 28,
-    marginBottom: 14,
-    lineHeight: 28,
-    flexWrap: 'wrap',
-  },
-  heading3: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 24,
-    marginBottom: 12,
-    lineHeight: 26,
-  },
-  heading4: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.secondary,
-    marginTop: 20,
-    marginBottom: 10,
-    lineHeight: 24,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-
-  // Paragraphs with Substack-like spacing
-  paragraph: {
-    marginBottom: 20,
-    lineHeight: 30,
-  },
-
-  // Blockquotes - distinctive left border with gold accent
-  blockquote: {
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary.gold,
-    paddingLeft: 20,
-    paddingVertical: 8,
-    marginVertical: 24,
-    marginLeft: 0,
-    backgroundColor: 'transparent',
-  },
-
-  // Strong/Bold text
-  strong: {
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-
-  // Emphasis/Italic - often used for Spanish text
-  em: {
-    fontStyle: 'italic',
-    color: colors.text.primary,
-  },
-
-  // Links with gold accent
-  link: {
-    color: colors.primary.gold,
-    textDecorationLine: 'none',
-  },
-
-  // Lists - clean and readable
-  bullet_list: {
-    marginVertical: 16,
-  },
-  ordered_list: {
-    marginVertical: 16,
-  },
-  list_item: {
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  bullet_list_icon: {
-    color: colors.primary.gold,
-    marginRight: 10,
-    fontSize: 18,
-    lineHeight: 30,
-  },
-  ordered_list_icon: {
-    color: colors.primary.gold,
-    marginRight: 10,
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 30,
-  },
-
-  // Code blocks for grammar examples
-  code_inline: {
-    backgroundColor: colors.background.elevated,
-    color: colors.accent.sky,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    fontFamily: 'Menlo',
-    fontSize: 15,
-  },
-  code_block: {
-    backgroundColor: colors.background.elevated,
-    padding: 20,
-    borderRadius: 12,
-    marginVertical: 20,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary.gold,
-  },
-  fence: {
-    backgroundColor: colors.background.elevated,
-    padding: 20,
-    borderRadius: 12,
-    marginVertical: 20,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary.gold,
-  },
-
-  // Tables for conjugation grids
-  table: {
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    borderRadius: 12,
-    marginVertical: 20,
-    overflow: 'hidden',
-  },
-  thead: {
-    backgroundColor: colors.background.secondary,
-  },
-  tbody: {
-    backgroundColor: 'transparent',
-  },
-  tr: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-    flexDirection: 'row',
-  },
-  th: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    fontWeight: '600',
-    color: colors.text.primary,
-    textAlign: 'center',
-    fontSize: 14,
-    backgroundColor: colors.background.secondary,
-  },
-  td: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    color: colors.text.primary,
-    textAlign: 'center',
-    fontSize: 15,
-  },
-
-  // Horizontal rule - subtle divider
-  hr: {
-    backgroundColor: colors.border.subtle,
-    height: 1,
-    marginVertical: 32,
-  },
-
-  // Images - enhanced for narrative images
-  image: {
-    borderRadius: 12,
-    marginVertical: 20,
-    width: width - 40,
-    height: (width - 40) * 0.56, // 16:9 aspect ratio
-  },
-
-  // Text selection
-  textgroup: {
-    paddingVertical: 0,
-  },
-});
-
-// Custom render rules for enhanced image support
-const createMarkdownRules = (articleImages: ArticleImage[]) => ({
-  // Custom image rendering with better sizing and loading states
-  image: (node: any, children: any, parent: any, styles: any, allowedImageHandlers?: any, defaultImageHandler?: any) => {
-    const { src, alt } = node.attributes;
-    
-    // Find matching image from article_images if using placeholder
-    let imageUrl = src;
-    let imageAlt = alt || '';
-    
-    // Check if this is an [IMAGE: ...] placeholder that was converted
-    if (src && src.startsWith('placeholder_')) {
-      const position = parseInt(src.replace('placeholder_', ''), 10);
-      const matchingImage = articleImages.find(img => img.position === position);
-      if (matchingImage) {
-        imageUrl = matchingImage.image_url;
-        imageAlt = matchingImage.alt_text || imageAlt;
-      }
-    }
-    
-    if (!imageUrl) return null;
-    
-    return (
-      <View key={node.key} style={imageStyles.imageWrapper}>
-        <Image
-          source={{ uri: imageUrl }}
-          style={imageStyles.image}
-          resizeMode="cover"
-        />
-        {imageAlt && (
-          <Text style={imageStyles.imageCaption}>{imageAlt}</Text>
-        )}
-      </View>
-    );
-  },
-});
-
-// Image-specific styles
-const imageStyles = StyleSheet.create({
-  imageWrapper: {
-    marginVertical: 24,
-    alignItems: 'center',
-  },
-  image: {
-    width: width - 40,
-    height: (width - 40) * 0.56, // 16:9 aspect ratio
-    borderRadius: 12,
-    backgroundColor: colors.neutral[800],
-  },
-  imageCaption: {
-    ...textStyles.caption,
-    color: colors.text.muted,
-    marginTop: 8,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    paddingHorizontal: 16,
-  },
-});
+// List of common subjunctive verb patterns to underline
+const SUBJUNCTIVE_PATTERNS = [
+  // Present subjunctive - common verbs
+  /\b(sepas?|entiendas?|sea|estés?|pruebes?|puedas?|bailes?|descubras?|pienses?|conozcas?|traiga|vengas?|vayas?|tengas?|hables?|comas?|vivas?|escribas?|digas?|hagas?|pongas?|salgas?|oigas?|veas?)\b/gi,
+  // Present subjunctive - contar, estudiar, llegar, and other -ar verbs
+  /\b(cuentes?|cuente|contemos|cuenten|estudies?|estudie|estudiemos|estudien|llegues?|llegue|lleguemos|lleguen|trabajes?|trabaje|trabajemos|trabajen)\b/gi,
+  // Perfect subjunctive (haya/hayas + participle)
+  /\b(hayas?)\s+(visto|sido|hecho|dicho|tenido|venido|estado|conocido|probado|adivinado|entendido|disfrutado|sentido|podido|aceptado|tomado|prestado)\b/gi,
+  // Pluperfect subjunctive (hubiera/hubieras + participle)
+  /\b(hubieras?|hubiera)\s+(dicho|sido|aceptado|estado|tenido|conocido|dejado|comprado|venido)\b/gi,
+  // Imperfect subjunctive
+  /\b(fuera|fueras|fuéramos|tuviera|tuvieras|pudiera|pudieras|estuviera|dijera|contara|transformara|durara|preguntara|conocieras|conociera|pasara)\b/gi,
+  // Common subjunctive forms
+  /\b(siga|comuniquen|tenga|muevas?|compartamos|haya|animes?|existiera)\b/gi,
+];
 
 /**
- * Process markdown content to replace [IMAGE: ...] markers with actual images
- * This will convert markers to standard markdown image syntax
+ * Renders Spanish text with subjunctive verbs underlined in blue
  */
-const processContentWithImages = (
-  content: string, 
-  images: ArticleImage[]
-): string => {
-  if (!content) return '';
-  if (!images || images.length === 0) return content;
+function renderSpanishWithUnderlinedVerbs(text: string): JSX.Element[] {
+  const elements: JSX.Element[] = [];
+  let lastIndex = 0;
+  let key = 0;
   
-  let processedContent = content;
+  // Find all matches
+  const matches: { start: number; end: number; text: string }[] = [];
   
-  // Sort images by position
-  const sortedImages = [...images].sort((a, b) => a.position - b.position);
-  
-  // Replace [IMAGE: ...] markers with actual markdown image syntax
-  // Format: [IMAGE: description]
-  const imageMarkerRegex = /\[IMAGE:\s*([^\]]+)\]/gi;
-  let markerIndex = 0;
-  
-  processedContent = processedContent.replace(imageMarkerRegex, (match, description) => {
-    const image = sortedImages[markerIndex];
-    markerIndex++;
-    
-    if (image && image.image_url) {
-      // Use standard markdown image syntax
-      const altText = image.alt_text || description.trim();
-      return `![${altText}](${image.image_url})`;
+  for (const pattern of SUBJUNCTIVE_PATTERNS) {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(text)) !== null) {
+      matches.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        text: match[0],
+      });
     }
-    
-    // If no image available, remove the marker
-    return '';
-  });
+  }
   
-  return processedContent;
-};
+  // Sort by start position and remove overlapping matches
+  matches.sort((a, b) => a.start - b.start);
+  const filteredMatches: typeof matches = [];
+  for (const match of matches) {
+    if (filteredMatches.length === 0 || match.start >= filteredMatches[filteredMatches.length - 1].end) {
+      filteredMatches.push(match);
+    }
+  }
+  
+  // Build elements
+  for (const match of filteredMatches) {
+    if (match.start > lastIndex) {
+      elements.push(
+        <Text key={key++} style={styles.storyExampleSpanishText}>
+          {text.slice(lastIndex, match.start)}
+        </Text>
+      );
+    }
+    elements.push(
+      <Text key={key++} style={styles.underlinedVerb}>
+        {match.text}
+      </Text>
+    );
+    lastIndex = match.end;
+  }
+  
+  if (lastIndex < text.length) {
+    elements.push(
+      <Text key={key++} style={styles.storyExampleSpanishText}>
+        {text.slice(lastIndex)}
+      </Text>
+    );
+  }
+  
+  return elements.length > 0 ? elements : [<Text key={0} style={styles.storyExampleSpanishText}>{text}</Text>];
+}
 
 export default function EpisodeArticleReaderScreen() {
   const { articleId } = useLocalSearchParams<{ articleId: string }>();
   const [article, setArticle] = useState<EpisodeArticle | null>(null);
-  const [articleImages, setArticleImages] = useState<ArticleImage[]>([]);
+  const [articleData, setArticleData] = useState<CompleteArticleData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [readStartTime] = useState(Date.now());
   const [maxScrollPercent, setMaxScrollPercent] = useState(0);
-  const [isSpanish, setIsSpanish] = useState(false);
+  const [showMoreExamples, setShowMoreExamples] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  
-  // Create markdown rules with current images
-  const markdownRules = useMemo(
-    () => createMarkdownRules(articleImages), 
-    [articleImages]
-  );
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadArticle();
@@ -353,9 +131,10 @@ export default function EpisodeArticleReaderScreen() {
       if (result.data?.article) {
         setArticle(result.data.article);
         
-        // Extract images if they exist in the response
-        if (result.data.images && Array.isArray(result.data.images)) {
-          setArticleImages(result.data.images);
+        // Load structured article data based on episode number
+        if (result.data.article.episodes?.episode_number) {
+          const completeData = getCompleteArticleData(result.data.article.episodes.episode_number);
+          setArticleData(completeData);
         }
       }
     } catch (error) {
@@ -394,40 +173,35 @@ export default function EpisodeArticleReaderScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     // Mark article as 100% read when starting writing exercise
-    // This ensures the article step is completed when proceeding to writing
     const readSeconds = Math.round((Date.now() - readStartTime) / 1000);
     try {
-      await api.trackEpisodeArticleRead(articleId!, readSeconds, 100); // 100% completion
+      await api.trackEpisodeArticleRead(articleId!, readSeconds, 100);
     } catch (error) {
       console.error('Error marking article as read:', error);
-      // Continue to writing even if tracking fails
     }
     
     router.push(`/article/episode/${articleId}/writing`);
   };
 
-  const formatGrammarTag = (tag: string) => {
-    return tag.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const handleToggleLanguage = () => {
-    if (!article?.content_markdown_es) {
-      return;
-    }
+  const toggleMoreExamples = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsSpanish(!isSpanish);
+    
+    // Animate rotation
+    Animated.timing(rotateAnim, {
+      toValue: showMoreExamples ? 0 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    
+    // Animate layout
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowMoreExamples(!showMoreExamples);
   };
 
-  // Get the current content based on language selection and process images
-  const rawContentMarkdown = isSpanish && article?.content_markdown_es 
-    ? article.content_markdown_es 
-    : article?.content_markdown || '';
-  
-  // Process content to replace [IMAGE: ...] markers with actual images
-  const currentContentMarkdown = useMemo(
-    () => processContentWithImages(rawContentMarkdown, articleImages),
-    [rawContentMarkdown, articleImages]
-  );
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
 
   if (isLoading) {
     return (
@@ -440,7 +214,7 @@ export default function EpisodeArticleReaderScreen() {
     );
   }
 
-  if (!article) {
+  if (!article || !articleData) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -461,17 +235,26 @@ export default function EpisodeArticleReaderScreen() {
     );
   }
 
+  const { article: articleContent, grammarLesson, dialogueExamples } = articleData;
+  
+  // Split examples: first 2 always shown, rest in expandable section
+  const visibleExamples = dialogueExamples?.examples.slice(0, 2) || [];
+  const hiddenExamples = dialogueExamples?.examples.slice(2, 5) || [];
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Minimal Header */}
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={handleBack} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </Pressable>
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{grammarLesson?.title.toUpperCase() || articleContent.title.toUpperCase()}</Text>
+          <Text style={styles.headerSubtitle}>{grammarLesson?.subtitle || articleContent.subtitle}</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Article Content */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -480,98 +263,234 @@ export default function EpisodeArticleReaderScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {/* Episode Context Badge */}
-        {article.episodes && (
-          <View style={styles.episodeBadge}>
-            <Text style={styles.episodeBadgeText}>
-              Episode {article.episodes.episode_number} · {article.episodes.title_es}
+        {/* Florencia's Letter Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="mail-outline" size={20} color={colors.primary.gold} />
+            <Text style={styles.sectionTitle}>FROM FLORENCIA</Text>
+          </View>
+          {articleContent.narrative_sections.filter(s => s.type === 'intro').map((section, index) => (
+            <View key={index} style={styles.narrativeBlock}>
+              {section.content.split('\n\n').map((paragraph, pIndex) => (
+                <Text key={pIndex} style={styles.narrativeText}>{paragraph}</Text>
+              ))}
+            </View>
+          ))}
+          <View style={styles.signatureRow}>
+            <Text style={styles.signature}>— Florencia</Text>
+          </View>
+        </View>
+
+        {/* What Is It Section - Using grammar_summary instead of detailed explanation */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="book-outline" size={20} color={colors.primary.gold} />
+            <Text style={styles.sectionTitle}>WHAT IS IT?</Text>
+          </View>
+          <Text style={styles.explanationText}>{articleContent.grammar_summary}</Text>
+        </View>
+
+        {/* When To Use It Section */}
+        {grammarLesson && grammarLesson.useCases.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="bulb-outline" size={20} color={colors.primary.gold} />
+              <Text style={styles.sectionTitle}>WHEN TO USE IT</Text>
+            </View>
+            {grammarLesson.useCases.map((useCase, index) => (
+              <View key={index} style={styles.useCaseCard}>
+                <Text style={styles.useCaseNumber}>{index + 1}</Text>
+                <View style={styles.useCaseContent}>
+                  <Text style={styles.useCaseTitle}>{useCase.title}</Text>
+                  <Text style={styles.useCaseDescription}>{useCase.description}</Text>
+                  <View style={styles.exampleBox}>
+                    <Text style={styles.exampleSpanish}>"{useCase.example.spanish}"</Text>
+                    <Text style={styles.exampleEnglish}>{useCase.example.english}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Conjugation Table Section */}
+        {grammarLesson?.conjugationTable && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="grid-outline" size={20} color={colors.primary.gold} />
+              <Text style={styles.sectionTitle}>CONJUGATION: {grammarLesson.conjugationTable.verb.toUpperCase()}</Text>
+            </View>
+            <Text style={styles.conjugationSubtitle}>
+              {grammarLesson.conjugationTable.indicativeForms ? (
+                <>
+                  <Text style={styles.subjunctiveLabel}>Subjunctive</Text>
+                  <Text> verb conjugations have a different ending vowel swap than the </Text>
+                  <Text style={styles.indicativeLabel}>indicative</Text>
+                  <Text> form</Text>
+                </>
+              ) : (
+                `${grammarLesson.conjugationTable.verbEnglish} • ${grammarLesson.conjugationTable.tense}`
+              )}
             </Text>
-          </View>
-        )}
-
-        {/* Article Title - Centered, elegant */}
-        <Text style={styles.articleTitle}>{article.title}</Text>
-
-        {/* Subtitle */}
-        {article.subtitle && (
-          <Text style={styles.articleSubtitle}>{article.subtitle}</Text>
-        )}
-
-        {/* Meta Row: Author + Read Time + Translation Toggle */}
-        <View style={styles.metaRow}>
-          <View style={styles.authorSection}>
-            <View style={styles.authorAvatar}>
-              <Text style={styles.authorInitial}>F</Text>
+            {/* Table Header */}
+            {grammarLesson.conjugationTable.indicativeForms && (
+              <View style={styles.conjugationHeader}>
+                <Text style={styles.conjugationHeaderPronoun}>Pronoun</Text>
+                <Text style={styles.conjugationHeaderIndicative}>Indicative</Text>
+                <Text style={styles.conjugationHeaderSubjunctive}>Subjunctive</Text>
+              </View>
+            )}
+            <View style={styles.conjugationTable}>
+              {Object.entries(grammarLesson.conjugationTable.forms).map(([pronoun, form]) => (
+                <View key={pronoun} style={styles.conjugationRow}>
+                  <Text style={styles.conjugationPronoun}>
+                    {pronoun === 'tú' ? 'tú / vos' : pronoun === 'él' ? 'él / ella' : pronoun}
+                  </Text>
+                  {grammarLesson.conjugationTable?.indicativeForms && (
+                    <Text style={styles.conjugationIndicativeForm}>
+                      {grammarLesson.conjugationTable.indicativeForms[pronoun as keyof typeof grammarLesson.conjugationTable.indicativeForms]}
+                    </Text>
+                  )}
+                  <Text style={styles.conjugationForm}>{form}</Text>
+                </View>
+              ))}
             </View>
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorName}>{article.author || 'Florencia'}</Text>
-              <Text style={styles.articleMeta}>
-                {article.estimated_read_minutes} min read
-                {article.grammar_focus && ` · ${formatGrammarTag(article.grammar_focus)}`}
-              </Text>
-            </View>
-          </View>
-          
-          {article.content_markdown_es && (
-            <Pressable onPress={handleToggleLanguage} style={styles.translateButton}>
-              <Ionicons 
-                name="language" 
-                size={20} 
-                color={colors.primary.gold} 
-              />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Decorative Divider */}
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <View style={styles.dividerDot} />
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Markdown Content with Image Support */}
-        {currentContentMarkdown && (
-          <View style={styles.markdownContainer}>
-            <Markdown 
-              style={markdownStyles}
-              rules={markdownRules}
-            >
-              {currentContentMarkdown}
-            </Markdown>
           </View>
         )}
 
-        {/* Writing Exercise CTA Card */}
+        {/* From This Episode Section - Dialogue Examples with Expandable */}
+        {dialogueExamples && dialogueExamples.examples.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="chatbubbles-outline" size={20} color={colors.primary.gold} />
+              <Text style={styles.sectionTitle}>FROM THIS EPISODE</Text>
+            </View>
+            <Text style={styles.storyExamplesIntro}>
+              Common usage within context. Subjunctive verbs are{' '}
+              <Text style={styles.underlinedVerbDemo}>underlined</Text>.
+            </Text>
+            
+            {/* Always visible examples (first 2) */}
+            {visibleExamples.map((example, index) => (
+              <View key={index} style={styles.storyExampleCard}>
+                <Text style={styles.storyExampleSpanish}>
+                  "{renderSpanishWithUnderlinedVerbs(example.spanish)}"
+                </Text>
+                <Text style={styles.storyExampleEnglish}>{example.english}</Text>
+                <View style={styles.storyExampleContext}>
+                  <Ionicons name="person-outline" size={14} color={colors.text.muted} />
+                  <Text style={styles.storyExampleContextText}>{example.scene_context}</Text>
+                </View>
+              </View>
+            ))}
+            
+            {/* Expandable section for additional examples */}
+            {hiddenExamples.length > 0 && (
+              <>
+                {showMoreExamples && (
+                  <View>
+                    {hiddenExamples.map((example, index) => (
+                      <View key={index + 2} style={styles.storyExampleCard}>
+                        <Text style={styles.storyExampleSpanish}>
+                          "{renderSpanishWithUnderlinedVerbs(example.spanish)}"
+                        </Text>
+                        <Text style={styles.storyExampleEnglish}>{example.english}</Text>
+                        <View style={styles.storyExampleContext}>
+                          <Ionicons name="person-outline" size={14} color={colors.text.muted} />
+                          <Text style={styles.storyExampleContextText}>{example.scene_context}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                
+                <Pressable onPress={toggleMoreExamples} style={styles.showMoreButton}>
+                  <Text style={styles.showMoreText}>
+                    {showMoreExamples ? 'Show Less' : `Show ${hiddenExamples.length} More Examples`}
+                  </Text>
+                  <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+                    <Ionicons name="chevron-down" size={20} color={colors.accent.sky} />
+                  </Animated.View>
+                </Pressable>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Key Phrases Section */}
+        {grammarLesson && grammarLesson.triggers.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="flash-outline" size={20} color={colors.primary.gold} />
+              <Text style={styles.sectionTitle}>KEY PHRASES</Text>
+            </View>
+            <View style={styles.triggersContainer}>
+              {grammarLesson.triggers.map((trigger, index) => (
+                <View key={index} style={styles.triggerChip}>
+                  <Text style={styles.triggerText}>{trigger}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Pro Tips Section */}
+        {grammarLesson && grammarLesson.tips.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="sparkles" size={20} color={colors.primary.gold} />
+              <Text style={styles.sectionTitle}>PRO TIPS</Text>
+            </View>
+            {grammarLesson.tips.map((tip, index) => (
+              <View key={index} style={styles.tipRow}>
+                <View style={styles.tipBullet}>
+                  <Ionicons name="checkmark" size={14} color={colors.primary.gold} />
+                </View>
+                <Text style={styles.tipText}>{tip}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+
+
+        {/* Closing Reflection */}
+        {articleContent.narrative_sections.filter(s => s.type === 'closing').map((section, index) => (
+          <View key={index} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="heart-outline" size={20} color={colors.primary.gold} />
+              <Text style={styles.sectionTitle}>REMEMBER THIS</Text>
+            </View>
+            <View style={styles.closingBlock}>
+              {section.content.split('\n\n').map((paragraph, pIndex) => (
+                <Text key={pIndex} style={styles.closingText}>{paragraph}</Text>
+              ))}
+            </View>
+          </View>
+        ))}
+
+        {/* Writing Exercise CTA - Simplified to button only */}
         {article.writing_exercise_prompt && (
-          <View style={styles.writingExerciseCard}>
-            <View style={styles.writingExerciseHeader}>
-              <Ionicons name="create-outline" size={28} color={colors.primary.gold} />
-              <Text style={styles.writingExerciseTitle}>Your Writing Exercise</Text>
-            </View>
-            <Text style={styles.writingExercisePrompt}>
-              {article.writing_exercise_prompt}
-            </Text>
+          <View style={styles.writingExerciseContainer}>
             <Pressable onPress={handleStartWriting}>
               <LinearGradient
                 colors={['#B3F5FF', '#00B8DB']}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
-                style={styles.startWritingButton}
+                style={styles.writingButton}
               >
-                <Text style={styles.startWritingButtonText}>Begin Writing Exercise</Text>
+                <Ionicons name="create-outline" size={22} color={colors.neutral[950]} />
+                <Text style={styles.writingButtonText}>Begin Writing Exercise</Text>
                 <Ionicons name="arrow-forward" size={20} color={colors.neutral[950]} />
               </LinearGradient>
             </Pressable>
           </View>
         )}
 
-        {/* Footer with decorative element */}
+        {/* Footer */}
         <View style={styles.footer}>
           <View style={styles.footerDivider} />
-          <Text style={styles.footerText}>
-            TheSpanishLanguageLab
-          </Text>
+          <Text style={styles.footerText}>THESPANISHLANGUAGELAB</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -581,172 +500,348 @@ export default function EpisodeArticleReaderScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary, // Dark theme
+    backgroundColor: colors.background.primary,
   },
   
-  // Header - Minimal like Substack
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
+    borderBottomColor: colors.neutral[800],
   },
   headerButton: {
     padding: spacing[2],
     borderRadius: borderRadius.full,
     backgroundColor: colors.background.elevated,
   },
-  headerSpacer: {
+  headerTitleContainer: {
+    alignItems: 'center',
     flex: 1,
+    paddingHorizontal: spacing[2],
+  },
+  headerTitle: {
+    ...textStyles.h4,
+    color: colors.primary.gold,
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 
-  // Scroll View
+  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[6],
-    paddingBottom: spacing[12],
-    maxWidth: 680, // Substack-like content width
-    alignSelf: 'center',
-    width: '100%',
+    padding: spacing[4],
+    paddingBottom: spacing[10],
   },
 
-  // Episode Badge - Subtle context
-  episodeBadge: {
-    marginBottom: spacing[4],
-  },
-  episodeBadgeText: {
-    ...textStyles.labelSmall,
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
-
-  // Title - Large, centered, elegant
-  articleTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing[4],
-    lineHeight: 40,
-    letterSpacing: -0.5,
-  },
-
-  // Subtitle - Supporting context
-  articleSubtitle: {
-    fontSize: 18,
-    color: colors.text.secondary,
-    textAlign: 'center',
+  // Sections
+  section: {
     marginBottom: spacing[6],
-    lineHeight: 26,
-    fontStyle: 'italic',
   },
-
-  // Meta Row
-  metaRow: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing[5],
+    gap: spacing[2],
+    marginBottom: spacing[3],
   },
-  authorSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary.gold,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing[3],
-  },
-  authorInitial: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.neutral[950],
-  },
-  authorInfo: {
-    justifyContent: 'center',
-  },
-  authorName: {
+  sectionTitle: {
     ...textStyles.label,
     color: colors.text.primary,
-    marginBottom: 2,
-  },
-  articleMeta: {
-    ...textStyles.caption,
-    color: colors.text.tertiary,
-  },
-  translateButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.elevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primary.gold + '40',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
-  // Decorative Divider
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[6],
+  // Florencia's Narrative
+  narrativeBlock: {
+    marginBottom: spacing[3],
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border.subtle,
-  },
-  dividerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary.gold,
-    marginHorizontal: spacing[4],
-  },
-
-  // Markdown Container
-  markdownContainer: {
-    marginBottom: spacing[4],
-  },
-
-  // Writing Exercise Card - Prominent CTA
-  writingExerciseCard: {
-    backgroundColor: colors.background.elevated,
-    borderRadius: borderRadius.xl,
-    padding: spacing[6],
-    marginTop: spacing[8],
-    borderWidth: 1,
-    borderColor: colors.primary.gold + '30',
-  },
-  writingExerciseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    marginBottom: spacing[4],
-  },
-  writingExerciseTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  writingExercisePrompt: {
-    fontSize: 16,
+  narrativeText: {
+    ...textStyles.body,
     color: colors.text.secondary,
-    marginBottom: spacing[5],
+    lineHeight: 26,
+    marginBottom: spacing[3],
+    fontStyle: 'italic',
+  },
+  signatureRow: {
+    alignItems: 'flex-start',
+    marginTop: spacing[2],
+  },
+  signature: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontStyle: 'italic',
+    fontWeight: '600',
+  },
+
+  // Grammar Explanation
+  explanationText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
     lineHeight: 26,
   },
-  startWritingButton: {
+
+  // Use Cases
+  useCaseCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  useCaseNumber: {
+    ...textStyles.h2,
+    color: colors.primary.gold,
+    marginRight: spacing[3],
+    opacity: 0.5,
+  },
+  useCaseContent: {
+    flex: 1,
+  },
+  useCaseTitle: {
+    ...textStyles.label,
+    color: colors.text.primary,
+    marginBottom: spacing[1],
+  },
+  useCaseDescription: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+  },
+  exampleBox: {
+    backgroundColor: colors.neutral[900],
+    borderRadius: borderRadius.md,
+    padding: spacing[3],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary.gold,
+  },
+  exampleSpanish: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontStyle: 'italic',
+    marginBottom: spacing[1],
+  },
+  exampleEnglish: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+  },
+
+  // Conjugation Table
+  conjugationSubtitle: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    marginBottom: spacing[3],
+    fontSize: 15,
+  },
+  subjunctiveLabel: {
+    color: colors.primary.gold,
+    fontWeight: '600',
+  },
+  indicativeLabel: {
+    color: colors.accent.sage,
+    fontWeight: '600',
+  },
+  conjugationHeader: {
+    flexDirection: 'row',
+    backgroundColor: colors.neutral[850],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
+  },
+  conjugationHeaderPronoun: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    flex: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  conjugationHeaderIndicative: {
+    ...textStyles.caption,
+    color: colors.accent.sage,
+    flex: 1,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  conjugationHeaderSubjunctive: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    flex: 1,
+    textAlign: 'right',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  conjugationTable: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  conjugationRow: {
+    flexDirection: 'row',
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[800],
+  },
+  conjugationPronoun: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    flex: 1,
+  },
+  conjugationIndicativeForm: {
+    ...textStyles.body,
+    color: colors.accent.sage,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  conjugationForm: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+  },
+
+  // Story Examples
+  storyExamplesIntro: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    marginBottom: spacing[3],
+    fontSize: 15,
+  },
+  underlinedVerbDemo: {
+    color: colors.primary.gold,
+    textDecorationLine: 'underline',
+  },
+  storyExampleCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+    borderWidth: 1,
+    borderColor: colors.accent.tango,
+  },
+  storyExampleSpanish: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontStyle: 'italic',
+    marginBottom: spacing[1],
+  },
+  storyExampleSpanishText: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontStyle: 'italic',
+  },
+  underlinedVerb: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontStyle: 'italic',
+    textDecorationLine: 'underline',
+  },
+  storyExampleEnglish: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+  },
+  storyExampleContext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  storyExampleContextText: {
+    ...textStyles.caption,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+  },
+  
+  // Show More Button
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[3],
+    gap: spacing[2],
+    marginTop: spacing[1],
+  },
+  showMoreText: {
+    ...textStyles.body,
+    color: colors.accent.sky,
+    fontWeight: '600',
+  },
+
+  // Triggers / Key Phrases
+  triggersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  triggerChip: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.primary.gold + '60',
+  },
+  triggerText: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+  },
+
+  // Pro Tips
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing[2],
+  },
+  tipBullet: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary.gold + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing[2],
+  },
+  tipText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    flex: 1,
+  },
+
+  // Closing Section
+  closingBlock: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+  },
+  closingText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    lineHeight: 24,
+    marginBottom: spacing[2],
+  },
+
+  // Writing Exercise CTA - Simplified
+  writingExerciseContainer: {
+    marginTop: spacing[6],
+    marginBottom: spacing[4],
+  },
+  writingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -755,7 +850,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     gap: spacing[2],
   },
-  startWritingButtonText: {
+  writingButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.neutral[950],
@@ -763,7 +858,7 @@ const styles = StyleSheet.create({
 
   // Footer
   footer: {
-    marginTop: spacing[10],
+    marginTop: spacing[8],
     alignItems: 'center',
     paddingVertical: spacing[6],
   },
@@ -815,4 +910,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
