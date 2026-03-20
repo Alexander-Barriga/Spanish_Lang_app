@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "LoboLingo",
+    "name": "Spanish Lab",
     "slug": "lobolingo",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.lobolingo.app",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "LoboLingo needs microphone access to enable voice conversations in Spanish."
+        "NSMicrophoneUsageDescription": "Spanish Lab needs microphone access to enable voice conversations in Spanish."
       }
     },
     "android": {
@@ -39,7 +39,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow LoboLingo to access your microphone for voice conversations."
+          "microphonePermission": "Allow Spanish Lab to access your microphone for voice conversations."
         }
       ]
     ],

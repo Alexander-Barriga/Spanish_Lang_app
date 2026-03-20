@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-// Premium Typography for LoboLingo
+// Premium Typography for Spanish Lab
 // Refined, elegant type system for an elite learning experience
 
 export const typography = {

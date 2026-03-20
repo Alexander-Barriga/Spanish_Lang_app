@@ -81,25 +81,25 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    // Get all episodes where user has completed attempts
-    const { data: completedEpisodes, error: attemptsError } = await supabaseAdmin
-      .from('episode_attempts')
-      .select('episode_id')
+    // Get articles the user has completed reading in Story Mode
+    const { data: completedReads, error: readsError } = await supabaseAdmin
+      .from('episode_article_reads')
+      .select('episode_article_id')
       .eq('user_id', userId)
-      .not('completed_at', 'is', null);
+      .eq('completed', true);
 
-    if (attemptsError) {
-      console.error('Error fetching completed episodes:', attemptsError);
+    if (readsError) {
+      console.error('Error fetching completed reads:', readsError);
       return res.status(500).json({ error: 'Failed to fetch unlocked articles' });
     }
 
-    const episodeIds = completedEpisodes?.map(e => e.episode_id) || [];
+    const articleIds = completedReads?.map(r => r.episode_article_id) || [];
 
-    if (episodeIds.length === 0) {
+    if (articleIds.length === 0) {
       return res.json({ articles: [] });
     }
 
-    // Get articles for completed episodes (include scenes for thumbnail image)
+    // Get those articles with episode data
     const { data: articles, error: articlesError } = await supabaseAdmin
       .from('episode_articles')
       .select(`
@@ -113,7 +113,7 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
           scenes
         )
       `)
-      .in('episode_id', episodeIds)
+      .in('id', articleIds)
       .order('created_at', { ascending: false });
 
     if (articlesError) {
@@ -121,33 +121,22 @@ router.get('/unlocked', authMiddleware, async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to fetch articles' });
     }
 
-    // Add read status and extract first scene image URL for each article
-    const articlesWithStatus = await Promise.all(
-      (articles || []).map(async (article) => {
-        const { data: readRecord } = await supabaseAdmin
-          .from('episode_article_reads')
-          .select('completed')
-          .eq('user_id', userId)
-          .eq('episode_article_id', article.id)
-          .single();
+    // Extract first scene image URL for each article
+    const articlesWithStatus = (articles || []).map((article) => {
+      const scenes = (article.episodes as any)?.scenes;
+      const firstSceneImageUrl = Array.isArray(scenes) && scenes.length > 0 
+        ? scenes[0]?.scene_image_url 
+        : null;
 
-        // Extract first scene image URL from episodes.scenes array
-        const scenes = (article.episodes as any)?.scenes;
-        const firstSceneImageUrl = Array.isArray(scenes) && scenes.length > 0 
-          ? scenes[0]?.scene_image_url 
-          : null;
+      const { scenes: _, ...episodesWithoutScenes } = (article.episodes || {}) as any;
 
-        // Remove the full scenes array from response to keep payload small
-        const { scenes: _, ...episodesWithoutScenes } = (article.episodes || {}) as any;
-
-        return {
-          ...article,
-          episodes: episodesWithoutScenes,
-          first_scene_image_url: firstSceneImageUrl,
-          has_read: readRecord?.completed || false,
-        };
-      })
-    );
+      return {
+        ...article,
+        episodes: episodesWithoutScenes,
+        first_scene_image_url: firstSceneImageUrl,
+        has_read: true,
+      };
+    });
 
     res.json({ articles: articlesWithStatus });
   } catch (error) {
@@ -249,14 +238,33 @@ router.get('/roadmap/:episodeId', authMiddleware, async (req: Request, res: Resp
     const conversationCompleted = !!(conversation?.completed_at);
 
     // 4. Check if next episode is unlocked
-    const { data: progress } = await supabaseAdmin
+    let { data: progress } = await supabaseAdmin
       .from('user_story_progress')
       .select('current_episode')
       .eq('user_id', userId)
       .eq('story_arc_id', episode.story_arc_id)
       .single();
 
-    const currentEpisodeNum = progress?.current_episode || 1;
+    let currentEpisodeNum = progress?.current_episode || 1;
+
+    // If all 4 steps are complete but progress record is missing or stale, fix it
+    if (episodeCompleted && articleRead && writingSubmitted && conversationCompleted && currentEpisodeNum <= episode.episode_number) {
+      const newCurrentEpisode = episode.episode_number + 1;
+      const { error: upsertError } = await supabaseAdmin
+        .from('user_story_progress')
+        .upsert({
+          user_id: userId,
+          story_arc_id: episode.story_arc_id,
+          current_episode: newCurrentEpisode,
+          episodes_completed: episode.episode_number,
+          last_played_at: new Date().toISOString(),
+        });
+      if (!upsertError) {
+        console.log(`[Roadmap] Auto-fixed progress: unlocked episode ${newCurrentEpisode} for user ${userId}`);
+        currentEpisodeNum = newCurrentEpisode;
+      }
+    }
+
     const nextEpisodeUnlocked = currentEpisodeNum > episode.episode_number;
 
     // Get next episode ID if unlocked

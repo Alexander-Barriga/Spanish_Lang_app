@@ -1,4 +1,4 @@
-// LoboLingo Premium Color Palette
+// Spanish Lab Premium Color Palette
 // Elegant, sophisticated colors for an elite learning experience
 
 export const colors = {

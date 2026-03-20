@@ -7,16 +7,14 @@ import {
   ScrollView,
   Dimensions,
   Alert,
-  Animated,
   AppState,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { useAudioPlayback } from '../../src/hooks/useAudioPlayback';
 import { api, EmotionData } from '../../src/services/api';
@@ -52,10 +50,10 @@ export default function ConversationScreen() {
   // Get the selected tutor character for voice synthesis
   const { selectedTutorId } = useAuth();
   const selectedTutor = getTutorById(selectedTutorId);
+  const insets = useSafeAreaInsets();
 
   const [state, setState] = useState<ConversationState>('idle');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [showTranscript, setShowTranscript] = useState(false);
   const [currentCorrection, setCurrentCorrection] = useState<Message['corrections']>(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -66,10 +64,6 @@ export default function ConversationScreen() {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const isRecordingRef = useRef(false);
   const recordingStartTimeRef = useRef<number>(0);
-
-  // Animation values (using React Native's built-in Animated)
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Audio playback hook
   const { 
@@ -126,34 +120,6 @@ export default function ConversationScreen() {
       subscription.remove();
     };
   }, []);
-
-  // Pulse animation for listening state
-  useEffect(() => {
-    if (state === 'listening') {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    } else {
-      Animated.timing(pulseAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [state]);
 
   const cleanupRecording = async () => {
     if (recordingRef.current) {
@@ -632,18 +598,6 @@ export default function ConversationScreen() {
     router.back();
   };
 
-  const getStateText = () => {
-    switch (state) {
-      case 'listening':
-        return 'Listening...';
-      case 'processing':
-        return 'Thinking...';
-      case 'speaking':
-        return 'Speaking...';
-      default:
-        return 'Tap to speak';
-    }
-  };
 
   const getStateColor = () => {
     switch (state) {
@@ -660,15 +614,20 @@ export default function ConversationScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.background.secondary, colors.background.primary]}
+      <Video
+        source={require('../../assets/Other_videos/Speaking_Page_Background.mp4')}
         style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+        isMuted
       />
+      <View style={styles.overlay} />
       
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea, { paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable style={styles.headerButton} onPress={handleEndConversation}>
+          <Pressable style={styles.headerButton} onPress={handleEndConversation} hitSlop={12}>
             <Ionicons name="chevron-down" size={24} color={colors.text.primary} />
           </Pressable>
           
@@ -682,80 +641,40 @@ export default function ConversationScreen() {
             )}
           </View>
           
-          <Pressable 
-            style={styles.headerButton} 
-            onPress={() => setShowTranscript(!showTranscript)}
-          >
-            <Ionicons 
-              name={showTranscript ? 'chatbubbles' : 'chatbubbles-outline'} 
-              size={22} 
-              color={colors.text.primary} 
-            />
-          </Pressable>
+          <View style={styles.headerButton} />
         </View>
 
         {/* Main Content */}
         <View style={styles.content}>
-          {showTranscript ? (
-            // Transcript View
-            <ScrollView 
-              ref={scrollViewRef}
-              style={styles.transcriptContainer}
-              contentContainerStyle={styles.transcriptContent}
-              showsVerticalScrollIndicator={false}
-              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
-            >
-              {messages.map((message) => (
-                <View
-                  key={message.id}
-                  style={[
-                    styles.messageContainer,
-                    message.role === 'user' && styles.userMessageContainer,
-                  ]}
-                >
-                  <View style={[
-                    styles.messageBubble,
-                    message.role === 'user' ? styles.userBubble : styles.assistantBubble,
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.transcriptContainer}
+            contentContainerStyle={styles.transcriptContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
+          >
+            {messages.map((message) => (
+              <View
+                key={message.id}
+                style={[
+                  styles.messageContainer,
+                  message.role === 'user' && styles.userMessageContainer,
+                ]}
+              >
+                <View style={[
+                  styles.messageBubble,
+                  message.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                ]}>
+                  <Text style={[
+                    styles.messageText,
+                    message.role === 'user' && styles.userMessageText,
                   ]}>
-                    <Text style={[
-                      styles.messageText,
-                      message.role === 'user' && styles.userMessageText,
-                    ]}>
-                      {message.content}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            // Avatar View
-            <View style={styles.avatarContainer}>
-              <Animated.View style={[
-                styles.avatarWrapper, 
-                { transform: [{ scale: pulseAnim }] }
-              ]}>
-                {state === 'listening' && (
-                  <View style={styles.listeningRing} />
-                )}
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarEmoji}>🐺</Text>
-                </View>
-              </Animated.View>
-              
-              <Text style={styles.stateText}>
-                {getStateText()}
-              </Text>
-
-              {/* Current Message Preview */}
-              {messages.length > 0 && state === 'idle' && messages[messages.length - 1]?.content && (
-                <View style={styles.messagePreview}>
-                  <Text style={styles.messagePreviewText} numberOfLines={3}>
-                    {messages[messages.length - 1].content}
+                    {message.content}
                   </Text>
                 </View>
-              )}
-            </View>
-          )}
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Correction Card */}
@@ -803,7 +722,7 @@ export default function ConversationScreen() {
             <Ionicons name="ellipsis-horizontal" size={24} color={colors.text.secondary} />
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -811,7 +730,10 @@ export default function ConversationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   safeArea: {
     flex: 1,
@@ -852,58 +774,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  avatarContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing[8],
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginBottom: spacing[6],
-  },
-  listeningRing: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 3,
-    borderColor: colors.success,
-    top: -20,
-    left: -20,
-    opacity: 0.3,
-  },
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.background.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.lg,
-  },
-  avatarEmoji: {
-    fontSize: 64,
-  },
-  stateText: {
-    ...textStyles.body,
-    color: colors.text.secondary,
-    marginBottom: spacing[6],
-  },
-  messagePreview: {
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.xl,
-    padding: spacing[4],
-    maxWidth: '100%',
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  messagePreviewText: {
-    ...textStyles.body,
-    color: colors.text.primary,
-    textAlign: 'center',
-    lineHeight: 24,
   },
   transcriptContainer: {
     flex: 1,

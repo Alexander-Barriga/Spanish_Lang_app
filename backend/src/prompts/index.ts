@@ -5,7 +5,9 @@ export {
   getVocabularyPracticePrompt,
   getGrammarFocusedPrompt,
   getRolePlayPrompt,
+  detectSubjunctiveForm,
   type ModeContext,
+  type SubjunctiveForm,
 } from './modes';
 
 import { SpanishLevel } from '../config/openai';

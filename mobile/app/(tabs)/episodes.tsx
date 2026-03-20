@@ -292,7 +292,7 @@ export default function EpisodesScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle" size={20} color={colors.primary.gold} />
           <Text style={styles.infoText}>
-            Episodes become available for unlimited rewatching after you watch them for the first time.
+            Episodes become available for unlimited reviewings after you've unlocked them in Story Mode.
           </Text>
         </View>
       </ScrollView>

@@ -23,16 +23,40 @@ async function unlockNextEpisode(userId: string, episodeId: string) {
     .eq('id', episodeId)
     .single();
 
-  if (!episode) return { unlocked: false };
+  if (!episode) {
+    console.error('[unlockNextEpisode] Episode not found:', episodeId);
+    return { unlocked: false };
+  }
 
-  const { data: storyProgress } = await supabaseAdmin
+  let { data: storyProgress } = await supabaseAdmin
     .from('user_story_progress')
     .select('*')
     .eq('user_id', userId)
     .eq('story_arc_id', episode.story_arc_id)
     .single();
 
-  if (!storyProgress) return { unlocked: false };
+  if (!storyProgress) {
+    console.log(`[unlockNextEpisode] No user_story_progress found for user ${userId}, creating one...`);
+    const { data: newProgress, error: insertError } = await supabaseAdmin
+      .from('user_story_progress')
+      .upsert({
+        user_id: userId,
+        story_arc_id: episode.story_arc_id,
+        current_episode: 1,
+        episodes_completed: 0,
+        total_stars: 0,
+        total_xp: 0,
+        last_played_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (insertError || !newProgress) {
+      console.error('[unlockNextEpisode] Failed to create user_story_progress:', insertError?.message);
+      return { unlocked: false };
+    }
+    storyProgress = newProgress;
+  }
 
   const newEpisodesCompleted = Math.max(
     storyProgress.episodes_completed || 0,
@@ -51,10 +75,14 @@ async function unlockNextEpisode(userId: string, episodeId: string) {
       .eq('user_id', userId)
       .eq('story_arc_id', episode.story_arc_id);
 
-    if (!error) {
-      console.log(`[Conversation] Unlocked episode ${newCurrentEpisode} for user ${userId}`);
+    if (error) {
+      console.error('[unlockNextEpisode] Failed to update progress:', error.message);
+    } else {
+      console.log(`[unlockNextEpisode] Unlocked episode ${newCurrentEpisode} for user ${userId}`);
       return { unlocked: true, nextEpisodeNumber: newCurrentEpisode };
     }
+  } else {
+    console.log(`[unlockNextEpisode] Episode ${newCurrentEpisode} already unlocked (current: ${storyProgress.current_episode})`);
   }
 
   return { unlocked: false };

@@ -1,7 +1,7 @@
 {
   "name": "lobolingo-backend",
   "version": "1.0.0",
-  "description": "LoboLingo Spanish Learning App Backend API",
+  "description": "Spanish Lab - Spanish Learning App Backend API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",

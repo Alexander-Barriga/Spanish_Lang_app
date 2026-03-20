@@ -1,4 +1,4 @@
--- LoboLingo Database Schema for Supabase
+-- Spanish Lab Database Schema for Supabase
 -- Run this in Supabase SQL Editor to create all tables
 
 -- Enable UUID extension

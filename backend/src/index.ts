@@ -52,7 +52,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    service: 'LoboLingo API'
+    service: 'Spanish Lab API'
   });
 });
 
@@ -100,7 +100,7 @@ server.listen(PORT, async () => {
   await storageService.initializeBucket();
   
   console.log(`
-  🐺 LoboLingo API Server
+  Spanish Lab API Server
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🚀 Server running on port ${PORT}
   🌐 Accessible at http://localhost:${PORT}

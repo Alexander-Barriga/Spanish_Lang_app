@@ -73,9 +73,15 @@ TÉCNICAS DE PRÁCTICA:
 }
 
 export function getGrammarFocusedPrompt(context: ModeContext): string {
+  const focus = context.grammarFocus || '';
+  const formKey = detectSubjunctiveForm(focus);
+
+  if (formKey) {
+    return buildSubjunctivePrompt(formKey, focus);
+  }
+
   const level = context.grammarLevel;
-  const specificRule = context.grammarFocus;
-  
+  const specificRule = focus;
   let rulesText = '';
   if (level && grammarRulesByLevel[level]) {
     rulesText = grammarRulesByLevel[level].join(', ');
@@ -96,10 +102,108 @@ INSTRUCCIONES:
 - Varía los contextos para practicar la misma estructura
 
 TÉCNICAS PARA ELICITAR LA GRAMÁTICA:
-${getGrammarElicitationTips(specificRule || '')}
+${getGrammarElicitationTips(specificRule)}
 
 EJEMPLOS DE CORRECCIÓN PARA ESTA GRAMÁTICA:
-${getGrammarCorrectionExamples(specificRule || '')}`;
+${getGrammarCorrectionExamples(specificRule)}`;
+}
+
+export type SubjunctiveForm = 'present' | 'present_perfect' | 'pluperfect' | 'imperfect' | 'all';
+
+export function detectSubjunctiveForm(focus: string): SubjunctiveForm | null {
+  const lower = focus.toLowerCase();
+  if (lower.includes('all subjunctive')) return 'all';
+  if (lower.includes('present perfect') || lower.includes('pretérito perfecto')) return 'present_perfect';
+  if (lower.includes('pluperfect') || lower.includes('pluscuamperfecto')) return 'pluperfect';
+  if (lower.includes('imperfect') || lower.includes('imperfecto')) return 'imperfect';
+  if (lower.includes('present') && lower.includes('subjunctive')) return 'present';
+  return null;
+}
+
+const SUBJUNCTIVE_FORM_CONFIG: Record<SubjunctiveForm, {
+  nameEs: string;
+  nameEn: string;
+  conjugationPattern: string;
+  opener: string;
+}> = {
+  present: {
+    nameEs: 'Presente de Subjuntivo',
+    nameEn: 'Present Tense Subjunctive',
+    conjugationPattern: 'que yo hable, que tú hables, que él hable...',
+    opener: 'Tu mejor amigo quiere cambiar de carrera. ¿Qué le recomiendas que haga? ¿Qué esperas que pase?',
+  },
+  present_perfect: {
+    nameEs: 'Pretérito Perfecto de Subjuntivo',
+    nameEn: 'Present Perfect Subjunctive',
+    conjugationPattern: 'que yo haya hablado, que tú hayas hablado, que él haya hablado...',
+    opener: 'Un amigo viajó a España la semana pasada y acaba de volver. ¿Qué esperas que haya hecho allí? ¿Dudas que haya visitado algún lugar?',
+  },
+  pluperfect: {
+    nameEs: 'Pluscuamperfecto de Subjuntivo',
+    nameEn: 'Pluperfect Subjunctive',
+    conjugationPattern: 'que yo hubiera hablado, que tú hubieras hablado, que él hubiera hablado...',
+    opener: 'Imagina que perdiste un vuelo importante la semana pasada. ¿Qué habrías hecho diferente? ¿Qué hubiera pasado si hubieras salido antes?',
+  },
+  imperfect: {
+    nameEs: 'Imperfecto de Subjuntivo',
+    nameEn: 'Imperfect Subjunctive',
+    conjugationPattern: 'que yo hablara, que tú hablaras, que él hablara...',
+    opener: 'Si pudieras vivir en cualquier país del mundo, ¿dónde vivirías? ¿Qué harías si tuvieras todo el dinero del mundo?',
+  },
+  all: {
+    nameEs: 'Todas las Formas del Subjuntivo',
+    nameEn: 'All Subjunctive Forms',
+    conjugationPattern: 'presente, pretérito perfecto, pluscuamperfecto e imperfecto de subjuntivo',
+    opener: 'Hablemos de tus experiencias, tus deseos y tus arrepentimientos. Quiero que uses diferentes formas del subjuntivo a lo largo de nuestra conversación.',
+  },
+};
+
+function buildSubjunctivePrompt(form: SubjunctiveForm, focus: string): string {
+  const config = SUBJUNCTIVE_FORM_CONFIG[form];
+
+  const constraintBlock = form === 'all'
+    ? `REGLA PARA TU HABLA:
+- Puedes usar CUALQUIER forma del subjuntivo libremente en tus respuestas.
+- Mezcla deliberadamente diferentes formas del subjuntivo para modelar variedad.
+- El indicativo siempre es permitido.
+
+REGLA PARA EL USUARIO:
+- Acepta cualquier forma del subjuntivo como correcta.
+- Si el usuario solo repite una misma forma del subjuntivo, anímalo a probar otras formas. Por ejemplo: "¡Muy bien con el presente de subjuntivo! ¿Podrías reformular usando el pluscuamperfecto?"
+- Corrige errores de conjugación dentro de cualquier forma.`
+    : `REGLA PARA TU HABLA:
+- Cuando necesites usar el modo subjuntivo, SOLO usa el ${config.nameEs} (${config.nameEn}).
+- El indicativo siempre es permitido para cualquier tiempo verbal.
+- Modela deliberadamente el ${config.nameEs} en tus propias oraciones para que el usuario vea ejemplos correctos.
+- Patrón de conjugación objetivo: ${config.conjugationPattern}
+
+REGLA PARA EL USUARIO:
+- Si el usuario usa una conjugación subjuntiva que NO sea el ${config.nameEs}, DEBES señalarlo con una corrección.
+- Muestra lo que dijeron y ofrece la alternativa correcta en ${config.nameEs}.
+- Si el usuario usa correctamente el ${config.nameEs}, reconócelo positivamente.
+- Si el usuario usa el indicativo donde debería usar el ${config.nameEs}, corrígelo también.`;
+
+  return `MODO: Práctica de Gramática — ${config.nameEn}
+
+ENFOQUE EXCLUSIVO: ${config.nameEs} (${config.nameEn})
+
+${constraintBlock}
+
+INSTRUCCIONES GENERALES:
+- Crea situaciones naturales que requieran el uso del subjuntivo.
+- Mantén la conversación interesante y variada — no repitas los mismos escenarios.
+- Cuando corrijas, sé breve pero claro. Usa el formato [CORRECCIÓN: "error" → "corrección" | explicación].
+- Celebra cuando el usuario use la forma correcta.
+- Mantén respuestas cortas (3-4 oraciones máximo).
+
+ESCENARIO INICIAL SUGERIDO:
+${config.opener}
+
+FRASES GATILLO PARA ELICITAR:
+${getGrammarElicitationTips(focus)}
+
+EJEMPLOS DE CORRECCIÓN:
+${getGrammarCorrectionExamples(focus)}`;
 }
 
 export function getRolePlayPrompt(context: ModeContext): string {
@@ -162,28 +266,110 @@ function getTopicVocabulary(topicId: string): string {
 }
 
 function getGrammarElicitationTips(rule: string): string {
-  const tips: Record<string, string> = {
-    'subjunctive': '- Usa frases como "Es importante que...", "Quiero que...", "Espero que..."\n- Pregunta sobre deseos, dudas y emociones',
+  const lower = rule.toLowerCase();
+
+  if (lower.includes('all subjunctive')) {
+    return `- Mezcla escenarios que requieran diferentes formas del subjuntivo.
+- Deseos y recomendaciones (presente): "Quiero que...", "Es importante que...", "Espero que..."
+- Reacciones a eventos recientes (perfecto): "Me alegra que hayas...", "Dudo que hayan..."
+- Hipótesis pasadas y arrepentimientos (pluscuamperfecto): "Si hubiera...", "Ojalá hubiera..."
+- Hipótesis presentes y peticiones corteses (imperfecto): "Si tuviera...", "Quisiera que...", "Si pudiera..."
+- Si el usuario solo usa una forma, pídele que reformule con otra.`;
+  }
+
+  if (lower.includes('present perfect') || lower.includes('pretérito perfecto')) {
+    return `- Pregunta sobre reacciones a eventos recientes: "Tu amigo acaba de conseguir un trabajo nuevo. ¿Qué piensas?"
+- Usa frases disparadoras: "Espero que haya...", "Dudo que hayan...", "Me alegra que hayas...", "No creo que hayamos..."
+- Pregunta sobre dudas de algo que ya ocurrió: "¿Crees que tu equipo haya ganado el partido?"
+- Pide opiniones sobre noticias recientes usando "es posible que haya...".`;
+  }
+
+  if (lower.includes('pluperfect') || lower.includes('pluscuamperfecto')) {
+    return `- Plantea escenarios de arrepentimiento: "Si hubieras podido cambiar algo del pasado, ¿qué habrías cambiado?"
+- Usa frases disparadoras: "Si hubiera sabido...", "Ojalá hubiera...", "Si hubiéramos...", "Como si hubiera..."
+- Pregunta sobre decisiones pasadas con consecuencias: "¿Qué habría pasado si hubieras estudiado otra carrera?"
+- Describe situaciones pasadas y pide reacciones hipotéticas: "Imagina que no hubieras venido a esta ciudad."`;
+  }
+
+  if (lower.includes('imperfect subjunctive') || lower.includes('imperfecto de subjuntivo')) {
+    return `- Plantea situaciones hipotéticas presentes/futuras: "Si pudieras viajar a cualquier lugar..."
+- Usa frases disparadoras: "Si tuviera...", "Quisiera que...", "Si pudiera...", "Como si fuera...", "Ojalá pudiera..."
+- Pide peticiones corteses: "¿Cómo le pedirías a tu jefe un aumento?"
+- Usa cláusulas condicionales: "Si tuvieras un millón de dólares, ¿qué harías?"
+- Pregunta sobre deseos irreales: "¿Qué cambiarías de tu rutina diaria si pudieras?"`;
+  }
+
+  if (lower.includes('present') && lower.includes('subjunctive')) {
+    return `- Pregunta sobre deseos y recomendaciones: "¿Qué quieres que haga tu gobierno sobre el medio ambiente?"
+- Usa frases disparadoras: "Quiero que...", "Es necesario que...", "Espero que...", "Recomiendo que...", "Dudo que..."
+- Pide opiniones emocionales: "¿Te molesta que la gente hable fuerte en el metro?"
+- Pregunta sobre necesidades: "¿Qué es importante que hagan los estudiantes para aprender español?"
+- Usa expresiones de duda: "¿Crees que sea posible que...?"`;
+  }
+
+  const genericTips: Record<string, string> = {
     'preterite': '- Pregunta sobre acciones específicas completadas: "¿Qué hiciste ayer?"\n- Cuenta una historia y pide que continúe',
-    'imperfect': '- Pregunta sobre rutinas pasadas: "¿Qué hacías de niño?"\n- Pide descripciones de situaciones pasadas',
     'conditional': '- Plantea situaciones hipotéticas: "Si pudieras..."\n- Pregunta sobre preferencias ideales',
     'default': '- Crea contextos naturales que requieran la estructura\n- Haz preguntas abiertas que inviten a usar la gramática',
   };
-  
-  const key = Object.keys(tips).find(k => rule.toLowerCase().includes(k));
-  return tips[key || 'default'];
+  const key = Object.keys(genericTips).find(k => lower.includes(k));
+  return genericTips[key || 'default'];
 }
 
 function getGrammarCorrectionExamples(rule: string): string {
-  const examples: Record<string, string> = {
-    'subjunctive': '[CORRECCIÓN: "Quiero que tú vienes" → "Quiero que tú vengas" | Después de "quiero que" usa el subjuntivo]',
+  const lower = rule.toLowerCase();
+
+  if (lower.includes('all subjunctive')) {
+    return `Errores de indicativo donde se requiere subjuntivo:
+[CORRECCIÓN: "Quiero que vienes" → "Quiero que vengas" | Después de "quiero que" se requiere el presente de subjuntivo]
+[CORRECCIÓN: "Espero que has llegado" → "Espero que hayas llegado" | Después de "espero que" con acción reciente, usa el pretérito perfecto de subjuntivo]
+[CORRECCIÓN: "Si tenía más tiempo" → "Si tuviera más tiempo" | En cláusulas hipotéticas con "si", usa el imperfecto de subjuntivo]
+[CORRECCIÓN: "Si había sabido antes" → "Si hubiera sabido antes" | Para hipótesis sobre el pasado, usa el pluscuamperfecto de subjuntivo]`;
+  }
+
+  if (lower.includes('present perfect') || lower.includes('pretérito perfecto')) {
+    return `Error de indicativo:
+[CORRECCIÓN: "Espero que has llegado bien" → "Espero que hayas llegado bien" | Después de "espero que" con acción reciente, usa haya/hayas/hayan + participio]
+
+Error de forma subjuntiva incorrecta:
+[CORRECCIÓN: "Espero que llegaras bien" → "Espero que hayas llegado bien" | Aquí necesitas el pretérito perfecto de subjuntivo (haya + participio), no el imperfecto]
+[CORRECCIÓN: "Dudo que viene" → "Dudo que haya venido" | Con "dudo que" para una acción ya completada, usa el pretérito perfecto de subjuntivo]`;
+  }
+
+  if (lower.includes('pluperfect') || lower.includes('pluscuamperfecto')) {
+    return `Error de indicativo:
+[CORRECCIÓN: "Si había sabido, habría ido" → "Si hubiera sabido, habría ido" | En hipótesis pasadas con "si", usa hubiera/hubiese + participio]
+
+Error de forma subjuntiva incorrecta:
+[CORRECCIÓN: "Si tuviera tiempo ayer" → "Si hubiera tenido tiempo ayer" | Para situaciones hipotéticas en el pasado, usa el pluscuamperfecto (hubiera + participio), no el imperfecto de subjuntivo]
+[CORRECCIÓN: "Ojalá pudiera ir al concierto de ayer" → "Ojalá hubiera podido ir al concierto de ayer" | Para lamentar algo pasado, usa el pluscuamperfecto de subjuntivo]`;
+  }
+
+  if (lower.includes('imperfect subjunctive') || lower.includes('imperfecto de subjuntivo')) {
+    return `Error de indicativo:
+[CORRECCIÓN: "Si tenía dinero, compraba un coche" → "Si tuviera dinero, compraría un coche" | En hipótesis presentes con "si", usa el imperfecto de subjuntivo (-ra/-se)]
+
+Error de forma subjuntiva incorrecta:
+[CORRECCIÓN: "Quiero que tenga más tiempo" → "Quisiera que tuviera más tiempo" | Para deseos hipotéticos, usa el imperfecto de subjuntivo, no el presente]
+[CORRECCIÓN: "Si hubiera podido viajar" → "Si pudiera viajar" | Para hipótesis presentes/futuras, usa el imperfecto de subjuntivo, no el pluscuamperfecto]`;
+  }
+
+  if (lower.includes('present') && lower.includes('subjunctive')) {
+    return `Error de indicativo:
+[CORRECCIÓN: "Quiero que tú vienes" → "Quiero que tú vengas" | Después de "quiero que" usa el presente de subjuntivo]
+[CORRECCIÓN: "Es importante que estudias" → "Es importante que estudies" | Después de "es importante que" usa el presente de subjuntivo]
+
+Error de forma subjuntiva incorrecta:
+[CORRECCIÓN: "Espero que hayas ido mañana" → "Espero que vayas mañana" | Para acciones futuras, usa el presente de subjuntivo, no el pretérito perfecto]
+[CORRECCIÓN: "Quiero que hablaras con él" → "Quiero que hables con él" | Después de "quiero que", usa el presente de subjuntivo, no el imperfecto]`;
+  }
+
+  const genericExamples: Record<string, string> = {
     'preterite': '[CORRECCIÓN: "Ayer yo como" → "Ayer yo comí" | Para acciones completadas en el pasado, usa el pretérito]',
-    'imperfect': '[CORRECCIÓN: "Cuando era niño, fui al parque cada día" → "...iba al parque" | Para acciones habituales en el pasado, usa el imperfecto]',
     'conditional': '[CORRECCIÓN: "Si tengo dinero, compro un coche" → "Si tuviera dinero, compraría" | Para situaciones hipotéticas, usa imperfecto subjuntivo + condicional]',
     'default': '[CORRECCIÓN: "error" → "corrección" | Explicación clara y breve]',
   };
-  
-  const key = Object.keys(examples).find(k => rule.toLowerCase().includes(k));
-  return examples[key || 'default'];
+  const key = Object.keys(genericExamples).find(k => lower.includes(k));
+  return genericExamples[key || 'default'];
 }
 

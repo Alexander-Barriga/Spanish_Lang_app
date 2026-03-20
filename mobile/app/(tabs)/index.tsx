@@ -399,7 +399,7 @@ export default function HomeScreen() {
           {/* Minimal Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.brandText}>LoboLingo</Text>
+              <Text style={styles.brandText}>Spanish Lab</Text>
             </View>
           </View>
 
@@ -490,6 +490,10 @@ export default function HomeScreen() {
             episodeNumber={displayEpisode.episode_number}
             totalEpisodes={storyData.arc.total_episodes || 8}
             grammarFocus={displayEpisode.grammar_focus}
+            onRefreshHome={async () => {
+              setSelectedEpisode(null);
+              await loadHomeData();
+            }}
           />
         )}
       </ScrollView>

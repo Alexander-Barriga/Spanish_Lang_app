@@ -5,7 +5,9 @@ import {
   getGreetingMessage, 
   ConversationMode, 
   CorrectionDepth,
-  ModeContext 
+  ModeContext,
+  detectSubjunctiveForm,
+  SubjunctiveForm,
 } from '../prompts';
 import { getCharacterPromptSection, getCharacterProfile } from '../prompts/characters';
 import { 
@@ -31,8 +33,39 @@ export interface GreetingResult {
   audioUrl?: string;
 }
 
+const GRAMMAR_GREETINGS: Record<SubjunctiveForm, string[]> = {
+  present: [
+    '¡Hola! Hoy vamos a practicar el presente de subjuntivo. Espero que estés lista para hablar, porque tengo muchas preguntas. Si usás otra forma del subjuntivo, te voy a ayudar a corregirla. Decime, tu mejor amigo quiere cambiar de carrera. ¿Qué le recomendás que haga?',
+    '¡Che, qué bueno verte! Hoy nos enfocamos en el presente de subjuntivo — esas frases con "quiero que...", "espero que...", "es necesario que...". Si te equivocás con la forma, te aviso. Contame, ¿qué querés que pase en tu vida este año?',
+  ],
+  present_perfect: [
+    '¡Hola! Hoy practicamos el pretérito perfecto de subjuntivo — frases con "haya", "hayas", "hayamos" + participio. Me alegra que hayas elegido esta forma, es muy útil. Si usás otra forma del subjuntivo, te voy a corregir. Decime, un amigo acaba de volver de un viaje largo. ¿Qué esperás que haya hecho?',
+    '¡Che, arrancamos! Hoy nos enfocamos en el pretérito perfecto de subjuntivo. Dudo que hayas practicado mucho esta forma, así que vamos a cambiar eso. Si usás el subjuntivo equivocado, te ayudo. Contame, ¿qué es lo mejor que te haya pasado esta semana?',
+  ],
+  pluperfect: [
+    '¡Hola! Hoy vamos con el pluscuamperfecto de subjuntivo — esas frases con "hubiera" o "hubiese" + participio. Ojalá hubiera empezado a enseñarte esto antes, ¡pero nunca es tarde! Si usás otra forma del subjuntivo, te aviso. Decime, si hubieras podido cambiar algo de tu pasado, ¿qué habrías hecho diferente?',
+    '¡Che, qué bueno que estés acá! Hoy practicamos el pluscuamperfecto de subjuntivo — para hablar de lo que podría haber sido pero no fue. Si hubiera sabido que ibas a elegir esta forma, habría preparado algo especial. Contame, ¿qué hubiera pasado si hubieras tomado una decisión diferente en tu vida?',
+  ],
+  imperfect: [
+    '¡Hola! Hoy nos enfocamos en el imperfecto de subjuntivo — esas frases con "pudiera", "tuviera", "quisiera". Si pudiera elegir un tema perfecto para vos, elegiría este. Si usás otra forma del subjuntivo, te corrijo. Decime, si pudieras vivir en cualquier ciudad del mundo, ¿dónde vivirías?',
+    '¡Che, arrancamos con el imperfecto de subjuntivo! Quisiera que practiques mucho hoy. Vamos a hablar de situaciones hipotéticas y deseos. Si te sale otra forma del subjuntivo, te ayudo. Contame, si tuvieras un superpoder, ¿cuál elegirías y por qué?',
+  ],
+  all: [
+    '¡Hola! Hoy vale todo — vamos a mezclar todas las formas del subjuntivo. Espero que estés lista, porque me encantaría que usaras el presente, el perfecto, el pluscuamperfecto y el imperfecto. Si solo usás una forma, te voy a pedir que pruebes otra. Contame, ¿qué deseos tenés, qué lamentás del pasado y qué cambiarías hoy?',
+    '¡Che, hoy es día de mezclar! Quiero que uses todas las formas del subjuntivo: presente, perfecto, pluscuamperfecto e imperfecto. Ojalá hubiera podido practicar así cuando yo aprendía. Si pudieras dominar una sola forma, ¿cuál sería? Pero hoy practicamos todas.',
+  ],
+};
+
 export class ConversationService {
   async generateGreeting(mode: ConversationMode, context: ModeContext, characterId?: string): Promise<GreetingResult> {
+    if (mode === 'grammar' && context.grammarFocus) {
+      const form = detectSubjunctiveForm(context.grammarFocus);
+      if (form) {
+        const options = GRAMMAR_GREETINGS[form];
+        return { text: options[Math.floor(Math.random() * options.length)] };
+      }
+    }
+
     // If we have a character, try to fetch stored greeting from database
     if (characterId) {
       try {
@@ -135,15 +168,12 @@ export class ConversationService {
     ];
 
     try {
-      // Using gpt-4o-mini for faster responses (~10x faster than gpt-4-turbo)
-      // Still maintains good quality for conversational Spanish tutoring
-      // max_tokens: 150 ensures responses are very short to avoid quota issues
-      // This keeps responses to ~100-150 characters, well within API limits
+      const isGrammarMode = conversation.mode === 'grammar';
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         temperature: 0.8,
-        max_tokens: 150, // Very short responses to stay within quota limits
+        max_tokens: isGrammarMode ? 220 : 150,
         presence_penalty: 0.3,
         frequency_penalty: 0.5,
       });

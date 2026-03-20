@@ -338,10 +338,11 @@ export default function WritingExerciseScreen() {
           pointNumber = '';
           currentPoint = '';
         }
-        // Add "Close with:" as a new section with spacing
         renderedParts.push(
           <View key={`close-${keyIndex++}`} style={styles.promptPointSpacing}>
-            <Text style={styles.promptText}>{part.trim()}</Text>
+            <Text style={styles.promptText}>
+              <Text style={styles.closeWithLabel}>Finish your writing sample with</Text>
+            </Text>
           </View>
         );
       }
@@ -442,7 +443,7 @@ export default function WritingExerciseScreen() {
           <View style={styles.promptCard}>
             <View style={styles.promptHeader}>
               <Ionicons name="create-outline" size={24} color={colors.primary.gold} />
-              <Text style={styles.promptTitle}>Your Writing Prompt</Text>
+              <Text style={styles.promptTitle}>Choose 1 Prompt to Write About</Text>
             </View>
             {renderFormattedPrompt(article.writing_exercise_prompt || '')}
           </View>
@@ -472,7 +473,7 @@ export default function WritingExerciseScreen() {
             </View>
             <TextInput
               style={styles.textInput}
-              placeholder="Write your response in Spanish..."
+              placeholder="Text or voice record your response in Spanish..."
               placeholderTextColor={colors.text.muted}
               value={userText}
               onChangeText={setUserText}
@@ -486,9 +487,9 @@ export default function WritingExerciseScreen() {
           <View style={styles.voiceSection}>
             {hasSeenJournalTip && (
               <View style={styles.journalTip}>
-                <Ionicons name="bulb-outline" size={16} color={colors.accent.sky} />
+                <Ionicons name="journal-outline" size={16} color="#7EB8E0" />
                 <Text style={styles.journalTipText}>
-                  Write your response in your Spanish journal first, then type or voice record. Recording will be transcribed into text you can edit.
+                  Florencia highly recommends you first think through and write your response with pencil and paper. Then submit your writing for review.
                 </Text>
               </View>
             )}
@@ -528,7 +529,7 @@ export default function WritingExerciseScreen() {
             style={(!userText.trim() || isSubmitting || isTranscribing) && styles.submitButtonDisabled}
           >
             <LinearGradient
-              colors={['#B3F5FF', '#00B8DB']}
+              colors={['#00D5FF', '#00D5FF']}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.submitButton}
@@ -741,6 +742,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary.gold,
   },
+  closeWithLabel: {
+    fontWeight: '700',
+    color: colors.primary.gold,
+  },
 
   // Submitted Notice
   submittedNotice: {
@@ -813,7 +818,7 @@ const styles = StyleSheet.create({
   journalTip: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.accent.sky + '15',
+    backgroundColor: '#7EB8E0' + '15',
     borderRadius: borderRadius.lg,
     padding: spacing[3],
     marginBottom: spacing[3],
@@ -821,7 +826,7 @@ const styles = StyleSheet.create({
   },
   journalTipText: {
     ...textStyles.bodySmall,
-    color: colors.accent.sky,
+    color: '#7EB8E0',
     flex: 1,
   },
   voiceButton: {
@@ -868,7 +873,7 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.85,
   },
   submitButtonText: {
     ...textStyles.button,

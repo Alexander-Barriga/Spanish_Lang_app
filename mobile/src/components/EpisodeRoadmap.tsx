@@ -22,6 +22,7 @@ interface EpisodeRoadmapProps {
   episodeNumber: number;
   totalEpisodes: number;
   grammarFocus: string;
+  onRefreshHome?: () => void;
 }
 
 type StepStatus = 'completed' | 'in_progress' | 'locked';
@@ -39,6 +40,7 @@ export default function EpisodeRoadmap({
   episodeNumber,
   totalEpisodes,
   grammarFocus,
+  onRefreshHome,
 }: EpisodeRoadmapProps) {
   const [progress, setProgress] = useState<RoadmapProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,13 +182,26 @@ export default function EpisodeRoadmap({
 
   // Only show "Unlock Next Episode" if not the final episode
   if (episodeNumber < totalEpisodes) {
+    const allStepsComplete = progress.episodeCompleted && progress.articleRead && progress.writingSubmitted && progress.conversationCompleted;
+    const unlockStatus: StepStatus = progress.nextEpisodeUnlocked
+      ? 'completed'
+      : allStepsComplete
+      ? 'in_progress'
+      : 'locked';
+
     steps.push({
       id: 5,
       name: 'Unlock Next Episode',
       shortName: 'Next',
-      status: progress.nextEpisodeUnlocked ? 'completed' : 'locked',
-      onPress: progress.nextEpisodeUnlocked
-        ? () => router.replace('/(tabs)')
+      status: unlockStatus,
+      onPress: unlockStatus !== 'locked'
+        ? async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await loadRoadmapProgress();
+            if (onRefreshHome) {
+              await onRefreshHome();
+            }
+          }
         : undefined,
     });
   }

@@ -12,7 +12,7 @@ export const SUPABASE_URL = 'https://bqlnhmsskcnbinexmnra.supabase.co';
 export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbG5obXNza2NuYmluZXhtbnJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3ODA1OTcsImV4cCI6MjA4MDM1NjU5N30.zx-Dznwg2SVQIBVI7lZn7hGTOvD70B-Rm6tZPgN681g';
 
 // App Configuration
-export const APP_NAME = 'LoboLingo';
+export const APP_NAME = 'Spanish Lab';
 
 // Spanish Levels
 export const SPANISH_LEVELS = [
@@ -65,6 +65,51 @@ export const CONVERSATION_MODES = [
     description: 'Practice with different personas',
     icon: 'people',
     color: '#DDA0DD',
+  },
+] as const;
+
+// Grammar Practice Options for Speak page
+// unlockAfterEpisode: the option becomes available when current_episode > this value
+export const GRAMMAR_PRACTICE_OPTIONS = [
+  {
+    id: 'present_subjunctive',
+    title: 'Present Tense Subjunctive',
+    subtitle: 'Presente de Subjuntivo',
+    description: 'Practice forming and using the present subjunctive',
+    grammarFocus: 'Present Tense Subjunctive (Presente de Subjuntivo)',
+    unlockAfterEpisode: 1,
+  },
+  {
+    id: 'present_perfect_subjunctive',
+    title: 'Present Perfect Subjunctive',
+    subtitle: 'Pretérito Perfecto de Subjuntivo',
+    description: 'Practice the present perfect subjunctive',
+    grammarFocus: 'Present Perfect Subjunctive (Pretérito Perfecto de Subjuntivo)',
+    unlockAfterEpisode: 3,
+  },
+  {
+    id: 'pluperfect_subjunctive',
+    title: 'Pluperfect Subjunctive',
+    subtitle: 'Pluscuamperfecto de Subjuntivo',
+    description: 'Practice the pluperfect subjunctive',
+    grammarFocus: 'Pluperfect Subjunctive (Pluscuamperfecto de Subjuntivo)',
+    unlockAfterEpisode: 5,
+  },
+  {
+    id: 'imperfect_subjunctive',
+    title: 'Imperfect Subjunctive',
+    subtitle: 'Imperfecto de Subjuntivo',
+    description: 'Practice the imperfect subjunctive',
+    grammarFocus: 'Imperfect Subjunctive (Imperfecto de Subjuntivo)',
+    unlockAfterEpisode: 6,
+  },
+  {
+    id: 'all_subjunctive',
+    title: 'All Subjunctive Forms',
+    subtitle: 'Todas las Formas del Subjuntivo',
+    description: 'Comprehensive practice across all subjunctive tenses',
+    grammarFocus: 'All Subjunctive Forms - comprehensive review',
+    unlockAfterEpisode: 8,
   },
 ] as const;
 

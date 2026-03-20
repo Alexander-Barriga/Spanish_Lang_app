@@ -82,7 +82,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       type: 'connected',
       payload: { 
         authenticated: !!client.userId,
-        message: '¡Bienvenido a LoboLingo!' 
+        message: '¡Bienvenido a Spanish Lab!' 
       },
     });
   });

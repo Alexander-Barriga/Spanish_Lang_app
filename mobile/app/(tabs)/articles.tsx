@@ -16,6 +16,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { api } from '../../src/services/api';
+import { useAuth } from '../../src/contexts/AuthContext';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 import { getEpisodeStill } from '../../src/data/episodeStills';
 
@@ -49,6 +50,7 @@ interface GrammarTag {
 }
 
 export default function ArticlesScreen() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('unlocked');
   const [articles, setArticles] = useState<EpisodeArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,8 +74,10 @@ export default function ArticlesScreen() {
       setIsLoading(true);
       
       if (activeTab === 'unlocked') {
-        // DEV MODE: Load all articles instead of just unlocked ones
-        const result = await api.getAllEpisodeArticles();
+        const isAdmin = user?.profile?.is_admin;
+        const result = isAdmin
+          ? await api.getAllEpisodeArticles()
+          : await api.getUnlockedEpisodeArticles();
         if (result.data?.articles) {
           setArticles(result.data.articles);
         }

@@ -45,14 +45,26 @@ const EPISODE_DETAILS = {
     forbidden_reveals: 'DO NOT mention: grandmother\'s name (Valentina Reyes), her death, Teatro Colón, any career choices, any sacrifices. Grandmother is IMPLIED TO BE ALIVE.',
     florencia_reveals_safe: 'Her grandmother used to bring her to Café Tortoni as a child — fond memories, nothing more.',
     // WRITING PROMPT
-    writing_prompt: `1. What do you hope to achieve by learning Spanish? (espero que..., quiero que...)
+    writing_prompt: `1. Florencia says: "Deseo que entiendas algo desde el principio. Buenos Aires no es solo una ciudad. Es un sentimiento."
 
-2. If you could travel anywhere in the Spanish-speaking world, where would you want to go and why? (me gustaría que..., deseo que...)
+Think of a place that isn't just a location to you — it's a feeling. What do you want someone you care about to experience there? What do you hope they'll understand about it that words alone can't explain?
 
-3. What kind of experiences do you wish to have while immersing yourself in a new culture? (ojalá que..., espero que...)
+Begin with: "Quiero que..." or "Espero que..."
+
+2. Florencia says: "Mi abuela me traía acá cuando era chica. Ella me enseñó que cada taza de café tiene una historia."
+
+Florencia's grandmother brought her to Café Tortoni as a child, and those visits shaped who she became. Think of a place from your childhood that a person close to you introduced you to. What do you wish others could understand about why it still matters to you?
+
+Begin with: "Ojalá..." or "Deseo que..."
+
+3. Florencia says: "En Buenos Aires, las cosas no siempre son lo que parecen."
+
+Florencia hints that she carries secrets beneath the surface. What is something about yourself that you hope people will discover over time — something that isn't obvious when they first meet you?
+
+Begin with: "Espero que descubras..." or "No quiero que pienses..."
 
 
-Close with: "Espero que..." — expressing your deepest hope for this journey.`,
+Close with: "Espero que..." — expressing what you hope this journey will reveal about you.`,
   },
   2: {
     article_title: 'Dancing with Emotion',
@@ -66,14 +78,26 @@ Close with: "Espero que..." — expressing your deepest hope for this journey.`,
     forbidden_reveals: 'DO NOT mention: grandmother\'s name, her death, Teatro Colón, any career choices or sacrifices. Grandmother is ALIVE in reader\'s mind.',
     florencia_reveals_safe: 'Her grandmother danced professionally during the Golden Age of tango and taught Florencia to dance.',
     // WRITING PROMPT
-    writing_prompt: `1. How does music or dance make you feel? Describe a time when art moved you emotionally. (me emociona que..., es increíble que...)
+    writing_prompt: `1. Florencia says: "Mi abuela bailaba como si el mundo dejara de existir."
 
-2. Is there someone in your life who taught you something meaningful, like Florencia's grandmother taught her tango? (me alegra que..., es maravilloso que...)
+Florencia's grandmother danced tango as if the world stopped existing. Is there something you do — a passion, a hobby, a ritual — that makes you feel that way? What surprises you about how it makes you feel?
 
-3. What emotions do you experience when trying something new and challenging? (me sorprende que..., es emocionante que...)
+Begin with: "Me emociona que..." or "Es increíble que..."
+
+2. Florencia says: "Ella me enseñó a bailar tango. Me enseñó a sentir."
+
+Florencia's grandmother didn't just teach her dance steps — she taught her to feel. Think about someone who taught you something that went far beyond the skill itself. What did they really teach you?
+
+Begin with: "Me alegra que..." or "Es maravilloso que..."
+
+3. Florencia says: "¿Quieres intentarlo? No te preocupes si no es perfecto."
+
+Florencia invites you to dance even if it won't be perfect. When was the last time you tried something new even though you were afraid of failing? What emotions surprised you?
+
+Begin with: "Me sorprende que..." or "Es emocionante que..."
 
 
-Close with: "Me alegra que..." — expressing gratitude for an emotional experience in your life.`,
+Close with: "Me alegra que..." — expressing gratitude for someone who taught you to feel, not just to do.`,
   },
   3: {
     article_title: 'The Art of Doubt',
@@ -87,14 +111,26 @@ Close with: "Me alegra que..." — expressing gratitude for an emotional experie
     forbidden_reveals: 'DO NOT mention: grandmother\'s name, death, Teatro Colón, sacrifices. DO NOT reveal the secret purchase is a mate cup.',
     florencia_reveals_safe: 'She bought something mysterious at San Telmo — teasing the reader, keeping the secret.',
     // WRITING PROMPT
-    writing_prompt: `1. Have you ever found something by chance that felt like fate? Do you think it was coincidence or destiny? (dudo que haya sido..., no creo que haya sido...)
+    writing_prompt: `1. Florencia says: "Dudo que haya sido un accidente que encontraras ese disco."
 
-2. Is there something in your past that you question — a decision, a meeting, an opportunity? (es posible que haya..., puede que haya...)
+You found a "Soñemos" record at the San Telmo market — and Florencia doesn't believe it was an accident. Think about a coincidence in your own life that felt too perfect to be random. Do you doubt it was just chance?
 
-3. Do you believe everything happens for a reason, or are some things just random? (no estoy seguro/a de que haya..., dudo que...)
+Begin with: "Dudo que haya sido..." or "No creo que haya sido..."
+
+2. Florencia says: "Compré algo hoy... pero es un secreto."
+
+Florencia is keeping a secret — she bought something at the market but won't say what. We all carry small secrets and unspoken intentions. Is there something you've done for someone that they may not know about? Or a choice you've kept to yourself?
+
+Begin with: "Es posible que haya..." or "Puede que haya..."
+
+3. Florencia says: "En Buenos Aires, los misterios están en todas partes. Solo hay que saber mirar."
+
+Florencia sees mystery everywhere — she doubts the obvious and questions appearances. Looking back at a moment in your past, what do you now question that you once took at face value? A relationship, a decision, a turning point?
+
+Begin with: "No estoy seguro/a de que haya sido..." or "Dudo que..."
 
 
-Close with: "Dudo que haya sido..." — expressing healthy skepticism about a past event.`,
+Close with: "Dudo que haya sido..." — expressing that some things in life are too meaningful to be mere coincidence.`,
   },
   4: {
     article_title: 'The Grammar of Belonging',
@@ -108,14 +144,26 @@ Close with: "Dudo que haya sido..." — expressing healthy skepticism about a pa
     forbidden_reveals: 'DO NOT mention: grandmother\'s name (Valentina Reyes), that she is DEAD, Teatro Colón offer, her sacrifice, Florencia\'s missed tango company opportunity. Grandmother is still ALIVE to the reader.',
     florencia_reveals_safe: 'Why sharing mate means "you belong" in Argentine culture. Grandmother couldn\'t make it to the asado (implying alive).',
     // WRITING PROMPT
-    writing_prompt: `1. What family traditions or rituals make you feel like you belong? (espero que hayas experimentado..., me alegra que hayas...)
+    writing_prompt: `1. Florencia says: "Ahora somos amigos. Cuando compartís un mate, ya no sos un extraño."
 
-2. Is there a friendship that started unexpectedly and became meaningful? How did it form? (ojalá hayas tenido..., espero que hayas sentido...)
+Florencia tells you that sharing mate means you belong. In your life, what ritual or moment marked the shift from being an outsider to being welcomed? What do you hope that experience has taught you about connection?
 
-3. What does "belonging" mean to you? When have you felt truly welcomed somewhere? (me alegra que hayas podido..., espero que hayas encontrado...)
+Begin with: "Espero que hayas experimentado..." or "Me alegra que hayas..."
+
+2. Florencia says: "Mi abuela no pudo venir al asado, pero siempre está presente."
+
+Florencia's grandmother "couldn't make it," but she is always present in spirit. Think about someone whose absence you feel, even when surrounded by others. What do you wish you had told them during a shared moment?
+
+Begin with: "Ojalá hayas tenido..." or "Espero que hayas sentido..."
+
+3. Florencia says: "El mate no se toma solo. Se comparte."
+
+Mate is never drunk alone — it's shared. Florencia is teaching you that belonging requires vulnerability and trust. When in your life have you let someone in, and how did it change you? What does belonging truly mean to you?
+
+Begin with: "Me alegra que hayas podido..." or "Espero que hayas encontrado..."
 
 
-Close with: "Ojalá hayas..." — expressing a wish that something meaningful has happened in your life.`,
+Close with: "Ojalá hayas..." — expressing a wish that someone in your life knows how much they mean to you.`,
   },
   5: {
     article_title: 'What If: The Grammar of Regret',
@@ -129,14 +177,26 @@ Close with: "Ojalá hayas..." — expressing a wish that something meaningful ha
     forbidden_reveals: 'None for grandmother — this is the reveal episode. Still do NOT reveal the mate cup is the secret purchase.',
     florencia_reveals_safe: 'Grandmother Valentina Reyes was offered Teatro Colón but chose family. Florencia was also offered a tango company spot but didn\'t take it.',
     // WRITING PROMPT
-    writing_prompt: `1. Is there a decision in your past that you wonder about? What would have happened if you had chosen differently? (si hubiera..., habría...)
+    writing_prompt: `1. Florencia says: "Si hubiera sabido lo que mi abuela sacrificó... no habría preguntado tanto."
 
-2. Have you ever missed an opportunity that still lingers in your mind? What did you learn from it? (ojalá hubiera..., si hubiera tenido el valor...)
+Florencia's grandmother Valentina Reyes was offered a role at Teatro Colón — the chance of a lifetime — but chose family instead. If you had known earlier what someone sacrificed for you, what would you have done differently?
 
-3. Is there something you wish you had said or done for someone you've lost or drifted from? (hubiera querido..., si hubiera sabido...)
+Begin with: "Si hubiera sabido..." or "No habría..."
+
+2. Florencia says: "Ella también fue bailarina. Le ofrecieron un lugar en una compañía de tango... y no lo acepté."
+
+Florencia herself was offered a spot in a tango company and didn't take it — just like her grandmother before her. Is there an opportunity you didn't take that still lives in your mind? What do you think would have happened if you had been braver?
+
+Begin with: "Ojalá hubiera..." or "Si hubiera tenido el valor..."
+
+3. Florencia says: "Hay cosas que quería decirle y ya no puedo."
+
+Florencia stands at her grandmother's grave at Chacarita, carrying words she never said. Is there someone in your life — gone or simply distant — to whom you owe unspoken words? What would you say if you could go back?
+
+Begin with: "Hubiera querido..." or "Si hubiera sabido..."
 
 
-Close with: "Si hubiera..." — imagining a different past, but accepting the present.`,
+Close with: "Si hubiera..." — imagining a different past, but accepting the present with grace.`,
   },
   6: {
     article_title: 'The Grammar of Dreams',
@@ -150,14 +210,26 @@ Close with: "Si hubiera..." — imagining a different past, but accepting the pr
     forbidden_reveals: 'Do NOT reveal the mate cup yet.',
     florencia_reveals_safe: 'The cost of being an artist — what performers sacrifice for their audience. Can reference grandmother\'s full story.',
     // WRITING PROMPT
-    writing_prompt: `1. If you could pursue any dream without limitations, what would it be? (quisiera que..., si pudiera...)
+    writing_prompt: `1. Florencia says: "Quisiera que pudieras ver lo que yo veo cuando miro este escenario."
 
-2. Have you ever sacrificed something important to pursue a passion or help someone you love? (como si fuera..., aunque fuera difícil...)
+You're standing inside Teatro Colón — the stage where Florencia's grandmother almost performed. If you could stand in a place that represents someone else's unfulfilled dream, what would you wish for them? What dream would you want to bring back to life?
 
-3. Do you believe art and beauty can transform reality? How has creativity touched your life? (desearía que..., si tuviera la oportunidad...)
+Begin with: "Quisiera que..." or "Si pudiera..."
+
+2. Florencia says: "Los artistas sacrifican todo para que otros puedan sentir algo."
+
+Florencia reflects on what artists give up so that others can feel something real. Have you ever given up something important so that someone else could benefit? What made that sacrifice feel worth it — or did it?
+
+Begin with: "Como si fuera..." or "Aunque fuera difícil..."
+
+3. Florencia says: "La ilusión y la realidad... a veces no hay diferencia."
+
+At Teatro Colón, illusion and reality blur. Florencia asks whether beauty can reshape the world. Is there a dream you hold that others might call an illusion? What would it take for that dream to become real?
+
+Begin with: "Desearía que..." or "Si tuviera la oportunidad..."
 
 
-Close with: "Quisiera que..." — expressing a deep wish for the future.`,
+Close with: "Quisiera que..." — expressing the dream you would bring to life if nothing stood in your way.`,
   },
   7: {
     article_title: 'Beauty Born from Hardship',
@@ -171,14 +243,26 @@ Close with: "Quisiera que..." — expressing a deep wish for the future.`,
     forbidden_reveals: 'Do NOT reveal the mate cup yet.',
     florencia_reveals_safe: 'Sometimes illusions can be as real as reality — choosing to believe makes it true.',
     // WRITING PROMPT
-    writing_prompt: `1. Have you ever found beauty in a difficult situation? Describe a time when hardship created something meaningful. (como si fuera..., aunque pareciera...)
+    writing_prompt: `1. Florencia says: "La gente pintó estas casas con lo que tenía. No tenían mucho, pero lo hicieron hermoso."
 
-2. Is there something you choose to believe in, even if others might doubt it? (como si existiera..., aunque no fuera obvio...)
+In La Boca, poor immigrant families painted their homes with leftover ship paint — and created one of the most beautiful neighborhoods in the world. Think of a time when you built something meaningful out of very little. What did that experience teach you?
 
-3. When has an "illusion" — a hope, a dream, a belief — become real in your life? (para que fuera posible..., como si ya fuera real...)
+Begin with: "Como si fuera..." or "Aunque pareciera..."
+
+2. Florencia says: "A veces las ilusiones pueden ser tan reales como la realidad."
+
+Florencia says illusions can be as real as reality — if you choose to believe. Is there something you believe in that others might call naive or unrealistic? A hope, a conviction, a vision for the future?
+
+Begin with: "Como si existiera..." or "Aunque no fuera obvio..."
+
+3. Florencia says: "A veces hay que creer primero para que se haga real."
+
+Sometimes you have to believe first for something to become real. Florencia and you are standing in a place built by dreamers. When in your life has a hope or belief — one that others doubted — actually become your reality?
+
+Begin with: "Para que fuera posible..." or "Como si ya fuera real..."
 
 
-Close with: "Como si..." — describing something as though it were already true.`,
+Close with: "Como si..." — describing your life as though the dream you believe in were already true.`,
   },
   8: {
     article_title: 'Farewell in All the Tenses',
@@ -192,14 +276,26 @@ Close with: "Como si..." — describing something as though it were already true
     forbidden_reveals: 'None — all reveals complete.',
     florencia_reveals_safe: 'The mate cup was for the user all along. What this friendship meant. Hope for the future.',
     // WRITING PROMPT
-    writing_prompt: `1. Reflect on your Spanish learning journey so far. What are you most proud of? What do you hope to continue? (espero que..., me alegra que haya..., quisiera que...)
+    writing_prompt: `1. Florencia says: "Este mate lo compré en San Telmo... el día que nos conocimos. Era para ti."
 
-2. Is there someone who has guided you in life, like Florencia guided you through Buenos Aires? What would you say to thank them? (ojalá que..., si pudiera..., hubiera querido...)
+The secret purchase from Episode 3 was a mate cup — and it was for you all along. Florencia planned this farewell gift from the moment your friendship began. Has someone ever shown you that they valued your connection more than you realized? What do you wish you had known sooner?
 
-3. What dreams do you have for your future? What do you wish for yourself and those you love? (quiero que..., espero que..., ojalá...)
+Begin with: "Espero que..." or "Me alegra que haya..." or "Quisiera que..."
+
+2. Florencia says: "Gracias por caminar conmigo."
+
+Florencia thanks you for walking alongside her through Buenos Aires, through memories of her grandmother, and through her own grief. Who in your life has walked alongside you? If you could thank them using everything this journey has taught you, what would you say?
+
+Begin with: "Ojalá que..." or "Si pudiera..." or "Hubiera querido..."
+
+3. Florencia says: "Los sueños que compartimos... esos no tienen que terminar nunca."
+
+The shared dreams don't have to end. This is the final episode, but Florencia is telling you that what you've built together — in language, in connection, in understanding — continues. What dreams do you carry forward? What do you wish for yourself and those you love?
+
+Begin with: "Quiero que..." or "Espero que..." or "Ojalá..."
 
 
-Close with: "Los sueños que compartimos..." — honoring a connection and looking toward the future.`,
+Close with: "Los sueños que compartimos..." — honoring what this journey gave you, and the dreams that continue.`,
   },
 };
 

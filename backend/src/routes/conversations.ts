@@ -334,7 +334,7 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
       characterId // Pass character ID for personality
     );
 
-    const { data: aiMessage } = await supabaseAdmin
+    const { data: aiMessage, error: aiMsgError } = await supabaseAdmin
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -347,6 +347,10 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
       .select()
       .single();
 
+    if (aiMsgError) {
+      console.warn('⚠️ Failed to save AI message to DB:', aiMsgError.message);
+    }
+
     await supabaseAdmin
       .from('conversations')
       .update({ message_count: conversation.message_count + 2 })
@@ -357,8 +361,12 @@ router.post('/:id/messages', async (req: Request, res: Response) => {
       console.log(`🎭 Emotion: ${response.emotion.type} (intensity: ${response.emotion.intensity})`);
     }
 
+    const finalMessage = aiMessage 
+      ? { ...aiMessage, emotion: response.emotion }
+      : { id: `${conversationId}-${Date.now()}`, role: 'assistant', content: response.content, emotion: response.emotion };
+
     res.json({
-      message: { ...aiMessage, emotion: response.emotion },
+      message: finalMessage,
       corrections: response.corrections,
       emotion: response.emotion,
     });

@@ -1,52 +1,45 @@
-import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Link } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
-const { width } = Dimensions.get('window');
-
 export default function WelcomeScreen() {
   return (
-    <LinearGradient
-      colors={[colors.background.secondary, colors.background.primary]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
+      <Video
+        source={require('../../assets/Other_videos/Sign_in_video.mp4')}
+        style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+        isMuted
+      />
+      <View style={styles.overlay} />
+
       <SafeAreaView style={styles.safeArea}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.mascotContainer}>
-            <Text style={styles.mascotEmoji}>🐺</Text>
-            <View style={styles.speechBubble}>
-              <Text style={styles.speechText}>¡Hola!</Text>
-            </View>
-          </View>
-
-          <View>
-            <Text style={styles.title}>LoboLingo</Text>
-            <Text style={styles.subtitle}>
-              Master Spanish through{'\n'}
-              <Text style={styles.subtitleAccent}>real conversations</Text>
-            </Text>
-          </View>
+          <Text style={styles.title}>Spanish Lab</Text>
+          <Text style={styles.subtitle}>
+            Master Spanish Subjunctive with{'\n'}
+            <Text style={styles.subtitleAccent}>Story based writing and conversations.</Text>
+          </Text>
         </View>
 
         {/* Features */}
         <View style={styles.featuresContainer}>
-          <FeatureItem 
-            icon="🎙️" 
-            title="Voice-First" 
-            description="Practice speaking naturally" 
+          <FeatureItem
+            title="AI Conversations"
+            description="Practice grammar through real-time dialogue"
           />
-          <FeatureItem 
-            icon="🧠" 
-            title="AI-Powered" 
-            description="Smart corrections & feedback" 
+          <FeatureItem
+            title="Smart Feedback"
+            description="Personalized writing & grammar corrections"
           />
-          <FeatureItem 
-            icon="🎭" 
-            title="Role Play" 
-            description="Practice any scenario" 
+          <FeatureItem
+            title="Story-Based Learning"
+            description="Explore Buenos Aires"
           />
         </View>
 
@@ -67,18 +60,16 @@ export default function WelcomeScreen() {
           </Link>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
-function FeatureItem({ icon, title, description }: { 
-  icon: string; 
+function FeatureItem({ title, description }: { 
   title: string; 
   description: string; 
 }) {
   return (
     <View style={styles.featureItem}>
-      <Text style={styles.featureIcon}>{icon}</Text>
       <View style={styles.featureText}>
         <Text style={styles.featureTitle}>{title}</Text>
         <Text style={styles.featureDescription}>{description}</Text>
@@ -91,6 +82,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
   safeArea: {
     flex: 1,
     paddingHorizontal: spacing[6],
@@ -100,28 +95,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: spacing[10],
-  },
-  mascotContainer: {
-    alignItems: 'center',
-    marginBottom: spacing[8],
-  },
-  mascotEmoji: {
-    fontSize: 80,
-  },
-  speechBubble: {
-    position: 'absolute',
-    top: -10,
-    right: -30,
-    backgroundColor: colors.primary.gold,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.lg,
-    transform: [{ rotate: '12deg' }],
-  },
-  speechText: {
-    ...textStyles.label,
-    color: colors.neutral[900],
-    fontWeight: '700',
   },
   title: {
     ...textStyles.h1,
@@ -151,10 +124,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border.default,
-  },
-  featureIcon: {
-    fontSize: 28,
-    marginRight: spacing[4],
   },
   featureText: {
     flex: 1,
@@ -196,4 +165,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

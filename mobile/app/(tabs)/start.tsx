@@ -1,31 +1,90 @@
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link, router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { CONVERSATION_MODES } from '../../src/config/constants';
+import * as Haptics from 'expo-haptics';
+import { Video, ResizeMode } from 'expo-av';
+import { GRAMMAR_PRACTICE_OPTIONS } from '../../src/config/constants';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { api } from '../../src/services/api';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
 export default function StartScreen() {
+  const { user } = useAuth();
+  const [currentEpisode, setCurrentEpisode] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProgress();
+    }, [])
+  );
+
+  const loadProgress = async () => {
+    try {
+      setIsLoading(true);
+      const result = await api.getCurrentStory();
+      if (result.data?.progress?.current_episode) {
+        setCurrentEpisode(result.data.progress.current_episode);
+      }
+    } catch (error) {
+      console.error('Error loading progress:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isAdmin = !!user?.profile?.is_admin;
+
+  const isOptionUnlocked = (unlockAfterEpisode: number) => {
+    return isAdmin || currentEpisode > unlockAfterEpisode;
+  };
+
+  const getUnlockHint = (unlockAfterEpisode: number): string => {
+    return `Complete Episode ${unlockAfterEpisode} to unlock`;
+  };
+
   const handleQuickStart = () => {
-    // Start an open conversation directly
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({
       pathname: '/conversation/[id]',
       params: { id: 'new', mode: 'open' },
     });
   };
 
+  const handleGrammarTap = (option: typeof GRAMMAR_PRACTICE_OPTIONS[number]) => {
+    if (!isOptionUnlocked(option.unlockAfterEpisode)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({
+      pathname: '/conversation/[id]',
+      params: { id: 'new', mode: 'grammar', grammarFocus: option.grammarFocus },
+    });
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
+    <View style={styles.container}>
+      <Video
+        source={require('../../assets/Other_videos/Speaking_Page_Background.mp4')}
+        style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+        isMuted
+      />
+      <View style={styles.overlay} />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View 
-         
-          style={styles.header}
-        >
+        <View style={styles.header}>
           <Text style={styles.title}>Start a Conversation</Text>
           <Text style={styles.subtitle}>Choose your practice mode</Text>
         </View>
@@ -42,10 +101,10 @@ export default function StartScreen() {
                 Jump into a free conversation
               </Text>
             </View>
-            <Ionicons 
-              name="arrow-forward" 
-              size={24} 
-              color={colors.primary.gold} 
+            <Ionicons
+              name="arrow-forward"
+              size={24}
+              color={colors.primary.gold}
             />
           </Pressable>
         </View>
@@ -53,79 +112,101 @@ export default function StartScreen() {
         {/* Divider */}
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or choose a mode</Text>
+          <Text style={styles.dividerText}>or practice grammar</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Mode Options */}
-        <View style={styles.modesContainer}>
-          {CONVERSATION_MODES.map((mode, index) => (
-            <View
-              key={mode.id}
-             
-            >
-              <Link 
-                href={{
-                  pathname: '/mode-setup',
-                  params: { mode: mode.id },
-                }} 
-                asChild
-              >
-                <Pressable style={styles.modeOption}>
-                  <View 
-                    style={[
-                      styles.modeIconBg, 
-                      { backgroundColor: mode.color + '20' }
-                    ]}
-                  >
-                    <Ionicons 
-                      name={mode.icon as keyof typeof Ionicons.glyphMap} 
-                      size={28} 
-                      color={mode.color} 
+        {/* Grammar Practice Options */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary.gold} />
+          </View>
+        ) : (
+          <View style={styles.optionsContainer}>
+            {GRAMMAR_PRACTICE_OPTIONS.map((option) => {
+              const unlocked = isOptionUnlocked(option.unlockAfterEpisode);
+
+              return (
+                <Pressable
+                  key={option.id}
+                  style={({ pressed }) => [
+                    styles.optionCard,
+                    unlocked ? styles.optionCardUnlocked : styles.optionCardLocked,
+                    pressed && unlocked && styles.optionCardPressed,
+                  ]}
+                  onPress={() => handleGrammarTap(option)}
+                  disabled={false}
+                >
+                  <View style={styles.optionLeft}>
+                    <View style={[
+                      styles.optionIconContainer,
+                      unlocked ? styles.optionIconUnlocked : styles.optionIconLocked,
+                    ]}>
+                      {unlocked ? (
+                        <Ionicons name="mic" size={22} color={colors.primary.gold} />
+                      ) : (
+                        <Ionicons name="lock-closed" size={20} color="#FF0000" />
+                      )}
+                    </View>
+                    <View style={styles.optionContent}>
+                      <Text style={[
+                        styles.optionTitle,
+                        !unlocked && styles.optionTitleLocked,
+                      ]}>
+                        {option.title}
+                      </Text>
+                      <Text style={[
+                        styles.optionSubtitle,
+                        !unlocked && styles.optionSubtitleLocked,
+                      ]}>
+                        {unlocked ? option.subtitle : getUnlockHint(option.unlockAfterEpisode)}
+                      </Text>
+                    </View>
+                  </View>
+                  {unlocked && (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={colors.primary.gold}
                     />
-                  </View>
-                  <View style={styles.modeContent}>
-                    <Text style={styles.modeTitle}>{mode.title}</Text>
-                    <Text style={styles.modeDescription}>{mode.description}</Text>
-                  </View>
-                  <Ionicons 
-                    name="chevron-forward" 
-                    size={20} 
-                    color={colors.neutral[500]} 
-                  />
+                  )}
                 </Pressable>
-              </Link>
-            </View>
-          ))}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Voice Tips */}
-        <View 
-         
-          style={styles.tipsCard}
-        >
-          <Text style={styles.tipsTitle}>🎙️ Voice Tips</Text>
+        <View style={styles.tipsCard}>
+          <Text style={styles.tipsTitle}>Voice Tips</Text>
           <View style={styles.tipsList}>
             <Text style={styles.tipItem}>
-              • Speak naturally - don't worry about mistakes
+              Speak naturally — don't worry about mistakes
             </Text>
             <Text style={styles.tipItem}>
-              • Pause for 1.5 seconds when you're done
+              Pause for 1.5 seconds when you're done
             </Text>
             <Text style={styles.tipItem}>
-              • Say "corrígeme" to ask for corrections
+              Say "corrígeme" to ask for corrections
             </Text>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -191,39 +272,73 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     paddingHorizontal: spacing[4],
   },
-  modesContainer: {
+  loadingContainer: {
+    paddingVertical: spacing[6],
+    alignItems: 'center',
+  },
+  optionsContainer: {
     gap: spacing[3],
     marginBottom: spacing[6],
   },
-  modeOption: {
+  optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.card,
+    justifyContent: 'space-between',
     borderRadius: borderRadius.xl,
     padding: spacing[4],
-    borderWidth: 1,
-    borderColor: colors.border.default,
+    borderWidth: 2,
+    backgroundColor: colors.background.elevated,
   },
-  modeIconBg: {
-    width: 52,
-    height: 52,
+  optionCardUnlocked: {
+    borderColor: colors.primary.gold,
+  },
+  optionCardLocked: {
+    borderColor: '#FF0000',
+    backgroundColor: colors.neutral[900],
+    opacity: 0.6,
+  },
+  optionCardPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing[3],
+  },
+  optionIconContainer: {
+    width: 44,
+    height: 44,
     borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing[4],
   },
-  modeContent: {
+  optionIconUnlocked: {
+    backgroundColor: colors.primary.gold + '20',
+  },
+  optionIconLocked: {
+    backgroundColor: 'rgba(255,0,0,0.1)',
+  },
+  optionContent: {
     flex: 1,
+    gap: spacing[1],
   },
-  modeTitle: {
-    ...textStyles.body,
+  optionTitle: {
+    ...textStyles.h5,
     color: colors.text.primary,
     fontWeight: '600',
-    marginBottom: spacing[0.5],
   },
-  modeDescription: {
-    ...textStyles.bodySmall,
-    color: colors.text.secondary,
+  optionTitleLocked: {
+    color: colors.text.muted,
+  },
+  optionSubtitle: {
+    ...textStyles.caption,
+    color: colors.primary.gold,
+    fontSize: 12,
+  },
+  optionSubtitleLocked: {
+    color: colors.text.muted,
   },
   tipsCard: {
     backgroundColor: colors.background.card,
@@ -247,4 +362,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-

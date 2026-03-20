@@ -1,4 +1,4 @@
-# 🐺 LoboLingo - Spanish Conversational Learning App
+# Spanish Lab - Spanish Conversational Learning App
 
 A voice-first Spanish language learning app featuring AI-powered conversations, real-time corrections, and multiple practice modes.
 
@@ -235,5 +235,5 @@ MIT License - see LICENSE for details
 
 ---
 
-Built with 🐺 by the LoboLingo team
+Built by the Spanish Lab team
 
