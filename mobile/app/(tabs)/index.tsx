@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
 import { useAuth, supabase } from '../../src/contexts/AuthContext';
+import { useSubscription } from '../../src/contexts/SubscriptionContext';
 import { api } from '../../src/services/api';
 import { authTokenManager } from '../../src/services/authToken';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
@@ -24,6 +25,7 @@ interface StoryProgress {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const params = useLocalSearchParams<{ episodeId?: string }>();
   const displayName = user?.profile?.display_name || 'Learner';
   const streak = user?.progress?.current_streak || 0;
@@ -288,6 +290,11 @@ export default function HomeScreen() {
         const episodeToPlay = selectedEpisode || currentStoryData.currentEpisode;
         
         if (episodeToPlay) {
+          const isAdmin = user?.profile?.is_admin;
+          if (episodeToPlay.episode_number > 1 && !isPremium && !isAdmin) {
+            router.push('/paywall');
+            return;
+          }
           console.log('▶️ Continuing to episode:', episodeToPlay.id);
           router.push({
             pathname: '/story/[episode]',
@@ -332,6 +339,13 @@ export default function HomeScreen() {
     if (!isUnlocked) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Locked', 'Complete previous episodes to unlock this one.');
+      return;
+    }
+    
+    const isAdmin = user?.profile?.is_admin;
+    if (episode.episode_number > 1 && !isPremium && !isAdmin) {
+      setShowEpisodesModal(false);
+      router.push('/paywall');
       return;
     }
     

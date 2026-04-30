@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { SubscriptionProvider } from '../src/contexts/SubscriptionContext';
 import { colors } from '../src/theme';
 
 // Prevent the splash screen from auto-hiding
@@ -127,6 +128,14 @@ function RootLayoutNav() {
             animation: 'slide_from_bottom',
           }} 
         />
+        <Stack.Screen 
+          name="paywall" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }} 
+        />
       </Stack>
     </>
   );
@@ -138,7 +147,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <RootLayoutNav />
+            <SubscriptionProvider>
+              <RootLayoutNav />
+            </SubscriptionProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

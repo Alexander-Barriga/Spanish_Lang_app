@@ -4,6 +4,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { api } from '../services/api';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { useAuth } from '../contexts/AuthContext';
 import { colors, textStyles, spacing, borderRadius } from '../theme';
 
 const { width } = Dimensions.get('window');
@@ -42,6 +44,8 @@ export default function EpisodeRoadmap({
   grammarFocus,
   onRefreshHome,
 }: EpisodeRoadmapProps) {
+  const { isPremium } = useSubscription();
+  const { user } = useAuth();
   const [progress, setProgress] = useState<RoadmapProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,6 +70,12 @@ export default function EpisodeRoadmap({
   const handleStepPress = (step: Step) => {
     if (step.status === 'locked' || !step.onPress) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    const isAdmin = user?.profile?.is_admin;
+    if (episodeNumber > 1 && !isPremium && !isAdmin) {
+      router.push('/paywall');
       return;
     }
 

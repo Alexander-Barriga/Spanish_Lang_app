@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "Spanish Lab",
-    "slug": "lobolingo",
+    "slug": "spanishlab",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "scheme": "lobolingo",
+    "scheme": "spanishlab",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lobolingo.app",
+      "bundleIdentifier": "com.spanishlab.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Spanish Lab needs microphone access to enable voice conversations in Spanish."
       }
@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a1f36"
       },
-      "package": "com.lobolingo.app",
+      "package": "com.spanishlab.app",
       "permissions": ["RECORD_AUDIO"]
     },
     "web": {
@@ -45,6 +45,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
     }
   }
 }

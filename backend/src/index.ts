@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
@@ -25,6 +26,8 @@ import audioCacheRoutes from './routes/audio-cache';
 import articlesRoutes from './routes/articles';
 import episodeArticlesRoutes from './routes/episodeArticles';
 import episodeConversationRoutes from './routes/episodeConversation';
+import legalRoutes from './routes/legal';
+import subscriptionRoutes from './routes/subscription';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -38,14 +41,35 @@ const PORT = Number(process.env.PORT) || 3001;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['your-production-domain.com'] 
-    : true, // Allow all origins in development (mobile apps don't send origin headers consistently)
+  origin: true,
   credentials: true,
 }));
-app.use(morgan('dev'));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'AI request limit reached. Please wait a moment.' },
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/v1/conversations', aiLimiter);
+app.use('/api/v1/voice', aiLimiter);
+app.use('/api/v1/episode-conversation', aiLimiter);
+app.use('/api/v1/writing', aiLimiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -72,6 +96,10 @@ app.use('/api/v1/audio', audioCacheRoutes);
 app.use('/api/v1/articles', articlesRoutes);
 app.use('/api/v1/episode-articles', episodeArticlesRoutes);
 app.use('/api/v1/episode-conversation', episodeConversationRoutes);
+app.use('/api/v1/subscription', subscriptionRoutes);
+
+// Legal pages (served at root level, not behind /api/v1)
+app.use('/', legalRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

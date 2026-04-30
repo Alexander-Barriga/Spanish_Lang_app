@@ -1,12 +1,16 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useSubscription } from '../../src/contexts/SubscriptionContext';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const { isPremium, restorePurchases } = useSubscription();
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -38,6 +42,55 @@ export default function ProfileScreen() {
             {user?.email || 'Learner'}
           </Text>
         </View>
+
+        {/* Subscription status */}
+        <View style={styles.subscriptionCard}>
+          <View style={styles.subscriptionRow}>
+            <Ionicons 
+              name={isPremium ? 'star' : 'star-outline'} 
+              size={20} 
+              color={isPremium ? colors.primary.gold : colors.text.secondary} 
+            />
+            <Text style={styles.subscriptionText}>
+              {isPremium ? 'Premium Subscriber' : 'Free Plan'}
+            </Text>
+          </View>
+          {!isPremium && (
+            <Pressable style={styles.upgradeButton} onPress={() => router.push('/paywall')}>
+              <Text style={styles.upgradeText}>Upgrade to Premium</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Restore Purchases */}
+        <Pressable
+          style={styles.restoreButton}
+          disabled={isRestoring}
+          onPress={async () => {
+            setIsRestoring(true);
+            try {
+              const success = await restorePurchases();
+              if (success) {
+                Alert.alert('Restored!', 'Your subscription has been restored.');
+              } else {
+                Alert.alert('No Subscription Found', 'We could not find an active subscription for your account.');
+              }
+            } catch {
+              Alert.alert('Error', 'Could not restore purchases. Please try again.');
+            } finally {
+              setIsRestoring(false);
+            }
+          }}
+        >
+          {isRestoring ? (
+            <ActivityIndicator size="small" color={colors.text.secondary} />
+          ) : (
+            <>
+              <Ionicons name="refresh-outline" size={18} color={colors.text.secondary} />
+              <Text style={styles.restoreText}>Restore Purchases</Text>
+            </>
+          )}
+        </Pressable>
 
         <View>
           <Pressable style={styles.signOutButton} onPress={handleSignOut}>
@@ -71,6 +124,49 @@ const styles = StyleSheet.create({
   displayName: {
     ...textStyles.h4,
     color: colors.text.primary,
+  },
+  subscriptionCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  subscriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  subscriptionText: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  upgradeButton: {
+    marginTop: spacing[3],
+    backgroundColor: colors.primary.gold + '20',
+    paddingVertical: spacing[2.5],
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  upgradeText: {
+    ...textStyles.body,
+    color: colors.primary.gold,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  restoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[3],
+    marginBottom: spacing[2],
+  },
+  restoreText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
   signOutButton: {
     flexDirection: 'row',

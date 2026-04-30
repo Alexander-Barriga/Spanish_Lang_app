@@ -1,11 +1,11 @@
 // API Configuration
 export const API_URL = __DEV__
-  ? 'http://192.168.0.12:3001/api/v1'  // ← Your actual IP here
-  : 'https://your-production-api.com/api/v1';
+  ? 'http://192.168.0.12:3001/api/v1'
+  : 'https://spanish-lab-api.onrender.com/api/v1';
 
 export const WS_URL = __DEV__
   ? 'ws://localhost:3001/ws'
-  : 'wss://your-production-api.com/ws';
+  : 'wss://spanish-lab-api.onrender.com/ws';
 
 // Supabase Configuration
 export const SUPABASE_URL = 'https://bqlnhmsskcnbinexmnra.supabase.co';
