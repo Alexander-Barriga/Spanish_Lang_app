@@ -1,10 +1,14 @@
 // API Configuration
+// Dev: Use Mac's LAN IP so physical iOS/Android devices on the same Wi-Fi can reach it.
+// `localhost` here would resolve to the device itself, not your dev machine.
+const DEV_HOST = '192.168.0.12';
+
 export const API_URL = __DEV__
-  ? 'http://192.168.0.12:3001/api/v1'
+  ? `http://${DEV_HOST}:3001/api/v1`
   : 'https://spanish-lab-api.onrender.com/api/v1';
 
 export const WS_URL = __DEV__
-  ? 'ws://localhost:3001/ws'
+  ? `ws://${DEV_HOST}:3001/ws`
   : 'wss://spanish-lab-api.onrender.com/ws';
 
 // Supabase Configuration

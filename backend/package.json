@@ -11,7 +11,9 @@
     "test": "jest",
     "generate-greetings": "ts-node scripts/generate-greetings.ts",
     "generate-episode-audio": "ts-node scripts/generate-episode-audio.ts",
-    "generate-articles": "ts-node scripts/generate-episode-articles.ts"
+    "generate-articles": "ts-node scripts/generate-episode-articles.ts",
+    "generate-codes": "ts-node scripts/generate-redemption-codes.ts",
+    "check-migration": "ts-node scripts/check-paywall-migration.ts"
   },
   "keywords": [
     "spanish",

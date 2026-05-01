@@ -40,6 +40,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // Database types
+export type SubscriptionTier = 'free' | 'monthly' | 'annual' | 'comp';
+export type EntitlementSource = 'revenuecat' | 'comp_code' | 'admin';
+
 export interface User {
   id: string;
   email: string;
@@ -51,6 +54,11 @@ export interface User {
   voice_speed: number;
   accent_preference: 'spain' | 'mexico' | 'argentina' | 'colombia';
   is_admin: boolean;
+  is_premium: boolean;
+  subscription_tier: SubscriptionTier | null;
+  subscription_expires_at: string | null;
+  entitlement_source: EntitlementSource | null;
+  revenuecat_app_user_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -49,6 +49,13 @@
     "extra": {
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
+      },
+      "revenuecat": {
+        "iosApiKey": "YOUR_REVENUECAT_IOS_API_KEY",
+        "androidApiKey": "YOUR_REVENUECAT_ANDROID_API_KEY",
+        "entitlementId": "premium",
+        "monthlyProductId": "spanishlab_monthly_1499",
+        "annualProductId": "spanishlab_annual_9999"
       }
     }
   }

@@ -5,6 +5,9 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, DEFAULT_TUTOR_ID } from '../config/con
 import { authTokenManager } from '../services/authToken';
 
 // Types
+export type SubscriptionTier = 'free' | 'monthly' | 'annual' | 'comp';
+export type EntitlementSource = 'revenuecat' | 'comp_code' | 'admin';
+
 interface UserProfile {
   id: string;
   email: string;
@@ -17,6 +20,10 @@ interface UserProfile {
   accent_preference: 'spain' | 'mexico' | 'argentina' | 'colombia';
   tutor_character?: string;
   is_admin?: boolean;
+  is_premium?: boolean;
+  subscription_tier?: SubscriptionTier | null;
+  subscription_expires_at?: string | null;
+  entitlement_source?: EntitlementSource | null;
 }
 
 interface UserProgress {

@@ -420,6 +420,26 @@ router.post('/attempt', authMiddleware, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'episodeId is required' });
     }
 
+    // Get episode early so we can gate before any writes.
+    const { data: episode, error: episodeError } = await supabaseAdmin
+      .from('episodes')
+      .select('story_arc_id, episode_number')
+      .eq('id', episodeId)
+      .single();
+
+    if (episodeError || !episode) {
+      return res.status(404).json({ error: 'Episode not found' });
+    }
+
+    // Paywall: free users can only record attempts for episode 1.
+    if (!req.user?.is_admin && !req.user?.is_premium && (episode.episode_number ?? 0) > 1) {
+      return res.status(403).json({
+        error: 'Premium subscription required',
+        code: 'PAYWALL',
+        tier: 'free',
+      });
+    }
+
     // Calculate XP based on performance
     const baseXP = 50;
     const starBonus = (starsEarned || 0) * 25;
@@ -447,17 +467,6 @@ router.post('/attempt', authMiddleware, async (req: Request, res: Response) => {
     if (attemptError) {
       console.error('Error recording attempt:', attemptError);
       return res.status(500).json({ error: 'Failed to record attempt' });
-    }
-
-    // Get episode to find story arc
-    const { data: episode, error: episodeError } = await supabaseAdmin
-      .from('episodes')
-      .select('story_arc_id, episode_number')
-      .eq('id', episodeId)
-      .single();
-
-    if (episodeError || !episode) {
-      return res.status(404).json({ error: 'Episode not found' });
     }
 
     // Update user's story progress

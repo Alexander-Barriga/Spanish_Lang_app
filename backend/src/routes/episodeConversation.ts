@@ -3,6 +3,10 @@ import multer from 'multer';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticateToken } from '../middleware/auth';
 import {
+  requirePremiumForEpisodeId,
+  requirePremiumForConversationId,
+} from '../middleware/requirePremium';
+import {
   generateFlorenciaResponse,
   generateFlorenciaAudio,
   transcribeUserAudio,
@@ -100,7 +104,7 @@ router.use(authenticateToken);
 // ============================================
 // GET /episode-conversation/:episodeId - Get existing conversation
 // ============================================
-router.get('/:episodeId', async (req: Request, res: Response) => {
+router.get('/:episodeId', requirePremiumForEpisodeId(), async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const { episodeId } = req.params;
@@ -164,7 +168,7 @@ router.get('/:episodeId', async (req: Request, res: Response) => {
 // ============================================
 // POST /episode-conversation/:episodeId/start - Start new conversation
 // ============================================
-router.post('/:episodeId/start', async (req: Request, res: Response) => {
+router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const { episodeId } = req.params;
@@ -354,7 +358,11 @@ router.post('/:episodeId/start', async (req: Request, res: Response) => {
 // ============================================
 // POST /episode-conversation/:conversationId/message - Send user message
 // ============================================
-router.post('/:conversationId/message', upload.single('audio'), async (req: Request, res: Response) => {
+router.post(
+  '/:conversationId/message',
+  requirePremiumForConversationId('episode_conversations'),
+  upload.single('audio'),
+  async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const { conversationId } = req.params;
@@ -652,12 +660,16 @@ router.post('/:conversationId/message', upload.single('audio'), async (req: Requ
     console.error('Error in POST /episode-conversation/:conversationId/message:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+  }
+);
 
 // ============================================
 // POST /episode-conversation/:conversationId/complete - Mark complete
 // ============================================
-router.post('/:conversationId/complete', async (req: Request, res: Response) => {
+router.post(
+  '/:conversationId/complete',
+  requirePremiumForConversationId('episode_conversations'),
+  async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const { conversationId } = req.params;
@@ -698,7 +710,8 @@ router.post('/:conversationId/complete', async (req: Request, res: Response) => 
     console.error('Error in POST /episode-conversation/:conversationId/complete:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+  }
+);
 
 // ============================================
 // GET /episode-conversation/:episodeId/access - Check access

@@ -5,7 +5,38 @@ import { authTokenManager } from './authToken';
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
+  /**
+   * Set when the server replies with a 403 PAYWALL envelope, signalling that
+   * the request was blocked because the user is on the free tier and tried to
+   * access premium content. Callers can use this to surface the paywall.
+   */
+  paywall?: boolean;
 }
+
+export interface SubscriptionStatus {
+  isPremium: boolean;
+  tier: 'free' | 'monthly' | 'annual' | 'comp' | null;
+  expiresAt: string | null;
+  source: 'revenuecat' | 'comp_code' | 'admin' | null;
+}
+
+export interface RedeemCodeResponse {
+  ok: boolean;
+  kind: 'full_access' | 'percent_off';
+  percentOff?: number;
+  entitlement?: SubscriptionStatus;
+}
+
+/**
+ * Optional global listener invoked any time the server returns 403 PAYWALL.
+ * The mobile app installs one of these in its top-level navigator so that any
+ * screen (not just ones that explicitly check) can route the user to /paywall.
+ */
+type PaywallListener = () => void;
+let paywallListener: PaywallListener | null = null;
+export const setPaywallListener = (listener: PaywallListener | null) => {
+  paywallListener = listener;
+};
 
 export interface ConversationResponse {
   id: string;
@@ -110,13 +141,28 @@ class ApiClient {
 
       if (!response.ok) {
         console.error(`❌ API Error: ${data.error || 'Request failed'}`);
-        
+
         // If token is invalid/expired, clear it so user can re-authenticate
         if (response.status === 401 || data.error?.includes('Invalid') || data.error?.includes('expired')) {
           console.log('🔓 Clearing invalid/expired token');
           authTokenManager.setToken(null);
         }
-        
+
+        // 403 PAYWALL envelope -> notify the global listener (e.g. router) so
+        // the user is taken to the paywall, and surface a typed flag back to
+        // the caller so it can render its own fallback UI.
+        if (response.status === 403 && data?.code === 'PAYWALL') {
+          console.log('🔒 Paywall response received');
+          if (paywallListener) {
+            try {
+              paywallListener();
+            } catch (listenerError) {
+              console.error('Paywall listener threw:', listenerError);
+            }
+          }
+          return { error: data.error || 'Premium subscription required', paywall: true };
+        }
+
         return { error: data.error || 'Request failed' };
       }
 
@@ -1044,6 +1090,25 @@ class ApiClient {
 
   async getGrammarTags() {
     return this.request<{ tags: Array<{ grammar_focus: string; title_en: string }> }>('/articles/grammar-tags');
+  }
+
+  // ============================================
+  // SUBSCRIPTION / REDEMPTION
+  // ============================================
+
+  async getSubscriptionStatus() {
+    return this.request<SubscriptionStatus>('/subscription/status');
+  }
+
+  async verifySubscription() {
+    return this.request<SubscriptionStatus>('/subscription/verify');
+  }
+
+  async redeemCode(code: string) {
+    return this.request<RedeemCodeResponse>('/redemption/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
   }
 }
 

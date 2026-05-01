@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useSubscription } from '../../src/contexts/SubscriptionContext';
 import { api, Episode } from '../../src/services/api';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { getEpisodeStill } from '../../src/data/episodeStills';
@@ -35,13 +36,19 @@ interface EpisodeView {
 }
 
 interface EpisodeWithStatus extends Episode {
+  /** True when the user is allowed to play this episode (paywall + progression). */
   isUnlocked: boolean;
+  /** True when the user has watched this episode at least once (purely informational). */
+  hasWatched: boolean;
+  /** True when the episode is gated by the paywall specifically (rather than progression). */
+  isPaywalled: boolean;
   viewCount?: number;
   lastViewedAt?: string;
 }
 
 export default function EpisodesScreen() {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [episodes, setEpisodes] = useState<EpisodeWithStatus[]>([]);
   const [views, setViews] = useState<EpisodeView[]>([]);
@@ -80,13 +87,22 @@ export default function EpisodesScreen() {
         const arcResult = await api.getStoryArc(storyResult.data.arc.id);
         const allEpisodes = arcResult.data?.episodes || [];
 
-        // Mark episodes as unlocked/locked based on views
+        // Unify episode-locking with Home / Roadmap. The single source of truth is:
+        //   - Episode 1 is always playable (free tier).
+        //   - Episode 2+ is playable only when isPremium / admin.
+        //   - View history is shown as a "watched" badge but does NOT grant access
+        //     to E2+ for free users.
         const isAdmin = !!user?.profile?.is_admin;
+        const currentEpisodeProgression = storyResult.data?.progress?.current_episode ?? 1;
         const episodesWithStatus: EpisodeWithStatus[] = allEpisodes.map((ep: Episode) => {
           const view = viewedMap.get(ep.id);
+          const passesPaywall = isAdmin || isPremium || ep.episode_number <= 1;
+          const passesProgression = isAdmin || ep.episode_number <= currentEpisodeProgression;
           return {
             ...ep,
-            isUnlocked: !!view || isAdmin,
+            isUnlocked: passesPaywall && passesProgression,
+            isPaywalled: !passesPaywall,
+            hasWatched: !!view,
             viewCount: view?.viewCount || 0,
             lastViewedAt: view?.lastViewedAt,
           };
@@ -105,12 +121,16 @@ export default function EpisodesScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!episode.isUnlocked) {
-      // Show message that episode is locked
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      // For paywalled episodes, route to the paywall so the user has a clear
+      // path to unlock. For progression-locked episodes, do nothing — the user
+      // needs to finish earlier episodes first.
+      if (episode.isPaywalled) {
+        router.push('/paywall');
+      }
       return;
     }
 
-    // Navigate to the episode player
     router.push(`/story/${episode.id}`);
   };
 
@@ -222,11 +242,13 @@ export default function EpisodesScreen() {
                     {!episode.isUnlocked && (
                       <View style={styles.lockOverlay}>
                         <Ionicons
-                          name="lock-closed"
+                          name={episode.isPaywalled ? 'lock-closed' : 'time-outline'}
                           size={32}
-                          color={colors.text.muted}
+                          color={episode.isPaywalled ? colors.primary.gold : colors.text.muted}
                         />
-                        <Text style={styles.lockText}>Not yet watched</Text>
+                        <Text style={styles.lockText}>
+                          {episode.isPaywalled ? 'Premium — Tap to unlock' : 'Complete earlier episodes'}
+                        </Text>
                       </View>
                     )}
 

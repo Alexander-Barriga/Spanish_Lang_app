@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { SubscriptionProvider } from '../src/contexts/SubscriptionContext';
+import { setPaywallListener } from '../src/services/api';
 import { colors } from '../src/theme';
 
 // Prevent the splash screen from auto-hiding
@@ -27,6 +28,7 @@ function RootLayoutNav() {
   const { isLoading, isAuthenticated } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const lastPaywallNavAt = useRef(0);
 
   useEffect(() => {
     if (!isLoading) {
@@ -48,6 +50,21 @@ function RootLayoutNav() {
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, segments, isLoading]);
+
+  // Install a global handler so any API call that returns 403 PAYWALL pushes
+  // the user to the paywall — defence-in-depth for screens that don't already
+  // surface the response themselves.
+  useEffect(() => {
+    setPaywallListener(() => {
+      // Throttle so a burst of paywall responses (e.g. parallel queries)
+      // doesn't push the screen multiple times in a row.
+      const now = Date.now();
+      if (now - lastPaywallNavAt.current < 1500) return;
+      lastPaywallNavAt.current = now;
+      router.push('/paywall');
+    });
+    return () => setPaywallListener(null);
+  }, [router]);
 
   if (isLoading) {
     return (

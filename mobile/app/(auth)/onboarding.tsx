@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SPANISH_LEVELS, DEFAULT_TOPICS } from '../../src/config/constants';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
+import { ONBOARDING_PAYWALL_SHOWN_KEY } from '../../src/config/storageKeys';
 
 type Step = 'level' | 'topics' | 'goals';
 
@@ -45,9 +47,15 @@ export default function OnboardingScreen() {
     try {
       // TODO: Save onboarding data to backend
       // await api.updateOnboarding({ level: selectedLevel, topics: selectedTopics });
-      router.replace('/(tabs)');
+
+      // Mark that the user has just finished onboarding so the paywall knows
+      // to show in "onboarding mode" (Continue Free dismisses to tabs) and so
+      // we don't re-show the onboarding paywall after this single time.
+      await AsyncStorage.setItem(ONBOARDING_PAYWALL_SHOWN_KEY, '1');
+      router.replace({ pathname: '/paywall', params: { source: 'onboarding' } });
     } catch (error) {
       console.error('Onboarding error:', error);
+      router.replace('/(tabs)');
     } finally {
       setIsLoading(false);
     }

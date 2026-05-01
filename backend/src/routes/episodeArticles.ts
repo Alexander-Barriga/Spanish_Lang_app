@@ -553,6 +553,24 @@ router.post('/:articleId/submit', authMiddleware, async (req: Request, res: Resp
       return res.status(404).json({ error: 'Article not found' });
     }
 
+    // Paywall: free users can only submit for episode 1's article. The cost
+    // of the AI feedback call (and the value of getting it) makes this the
+    // single most important server-side gate for episodeArticles.
+    if (!req.user?.is_admin && !req.user?.is_premium) {
+      const { data: ep } = await supabaseAdmin
+        .from('episodes')
+        .select('episode_number')
+        .eq('id', article.episode_id)
+        .single();
+      if ((ep?.episode_number ?? 0) > 1) {
+        return res.status(403).json({
+          error: 'Premium subscription required',
+          code: 'PAYWALL',
+          tier: 'free',
+        });
+      }
+    }
+
     // Calculate word count
     const wordCount = submission_text.trim().split(/\s+/).length;
 

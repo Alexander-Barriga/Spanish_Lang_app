@@ -28,6 +28,8 @@ import episodeArticlesRoutes from './routes/episodeArticles';
 import episodeConversationRoutes from './routes/episodeConversation';
 import legalRoutes from './routes/legal';
 import subscriptionRoutes from './routes/subscription';
+import redemptionRoutes from './routes/redemption';
+import webhookRoutes from './routes/webhooks';
 
 // Import WebSocket handler
 import { setupWebSocket } from './websocket';
@@ -97,6 +99,10 @@ app.use('/api/v1/articles', articlesRoutes);
 app.use('/api/v1/episode-articles', episodeArticlesRoutes);
 app.use('/api/v1/episode-conversation', episodeConversationRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
+app.use('/api/v1/redemption', redemptionRoutes);
+// Webhooks are mounted explicitly outside of any auth middleware. Authorization
+// is verified per-route via a shared bearer secret set in the RC dashboard.
+app.use('/api/v1/webhooks', webhookRoutes);
 
 // Legal pages (served at root level, not behind /api/v1)
 app.use('/', legalRoutes);
