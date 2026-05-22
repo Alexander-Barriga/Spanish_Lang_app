@@ -5,11 +5,11 @@ const DEV_HOST = '192.168.0.12';
 
 export const API_URL = __DEV__
   ? `http://${DEV_HOST}:3001/api/v1`
-  : 'https://spanish-lab-api.onrender.com/api/v1';
+  : 'https://spanish-lang-app.onrender.com/api/v1';
 
 export const WS_URL = __DEV__
   ? `ws://${DEV_HOST}:3001/ws`
-  : 'wss://spanish-lab-api.onrender.com/ws';
+  : 'wss://spanish-lang-app.onrender.com/ws';
 
 // Supabase Configuration
 export const SUPABASE_URL = 'https://bqlnhmsskcnbinexmnra.supabase.co';
