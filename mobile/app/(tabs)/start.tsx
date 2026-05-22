@@ -69,7 +69,7 @@ export default function StartScreen() {
   return (
     <View style={styles.container}>
       <Video
-        source={require('../../assets/Other_videos/Speaking_Page_Background.mp4')}
+        source={{ uri: 'https://pub-eaa84f1d0f9b40b8b0fb15b73338527c.r2.dev/other_videos/Speaking_Page_Background.mp4' }}
         style={StyleSheet.absoluteFill}
         resizeMode={ResizeMode.COVER}
         shouldPlay

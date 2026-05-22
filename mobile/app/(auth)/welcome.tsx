@@ -4,11 +4,13 @@ import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
+const R2_BASE_URL = 'https://pub-eaa84f1d0f9b40b8b0fb15b73338527c.r2.dev';
+
 export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <Video
-        source={require('../../assets/Other_videos/Sign_in_video.mp4')}
+        source={{ uri: `${R2_BASE_URL}/other_videos/Sign_in_video.mp4` }}
         style={StyleSheet.absoluteFill}
         resizeMode={ResizeMode.COVER}
         shouldPlay
