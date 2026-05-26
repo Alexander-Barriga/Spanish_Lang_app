@@ -42,6 +42,37 @@ async function getPreStoredGreeting(episodeNumber: number): Promise<{ textConten
   }
 }
 
+// ============================================
+// Patch the first assistant message on resume
+// Replaces stale content/audioUrl with the pre-stored greeting so that:
+//  1. Users who started a conversation before the pre-stored greeting was added
+//     see the correct episode-specific text.
+//  2. Expired 24-h signed URLs are replaced with the permanent public URL.
+// ============================================
+async function patchFirstGreeting(
+  messages: Array<{ id: string; role: string; content: string; highlightedVerbs: any; audioUrl: string | null; created_at: string }>,
+  episodeId: string
+): Promise<void> {
+  const firstAssistant = messages.find(m => m.role === 'assistant');
+  if (!firstAssistant) return;
+
+  // Look up the episode number so we can find the pre-stored greeting
+  const { data: episode } = await supabaseAdmin
+    .from('episodes')
+    .select('episode_number')
+    .eq('id', episodeId)
+    .single();
+
+  if (!episode?.episode_number) return;
+
+  const stored = await getPreStoredGreeting(episode.episode_number);
+  if (!stored) return;
+
+  // Always override: the pre-stored content is episode-specific and the URL is permanent
+  firstAssistant.content = stored.textContent;
+  firstAssistant.audioUrl = stored.audioUrl;
+}
+
 async function unlockNextEpisode(userId: string, episodeId: string) {
   const { data: episode } = await supabaseAdmin
     .from('episodes')
@@ -174,6 +205,10 @@ router.get('/:episodeId', requirePremiumForEpisodeId(), async (req: Request, res
       created_at: m.created_at,
     }));
 
+    // Override the first assistant message with the pre-stored greeting so that
+    // old conversations (stale text / expired signed URL) are repaired on every load.
+    await patchFirstGreeting(formattedMessages, episodeId);
+
     res.json({
       conversation,
       messages: formattedMessages,
@@ -232,6 +267,10 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
         audioUrl: m.audio_url,
         created_at: m.created_at,
       }));
+
+      // Override the first assistant message with the pre-stored greeting so that
+      // old conversations (stale text / expired signed URL) are repaired on every load.
+      await patchFirstGreeting(formattedMessages, episodeId);
 
       // Count user replies for resumed conversation
       const userReplyCount = formattedMessages.filter((m: any) => m.role === 'user').length;
@@ -334,21 +373,22 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       greetingHighlightedVerbs = greeting.highlightedVerbs;
 
       // Generate TTS audio for the OpenAI-generated greeting
+      // Store in the public episode-audio bucket so the URL never expires.
       try {
         const audioBuffer = await generateFlorenciaAudio(greetingMessage_text);
         const audioFileName = `conversation-audio/${newConversation.id}/florencia-${Date.now()}.mp3`;
         const { error: uploadError } = await supabaseAdmin.storage
-          .from('audio-recordings')
+          .from('episode-audio')
           .upload(audioFileName, audioBuffer, {
             contentType: 'audio/mpeg',
             upsert: true,
           });
 
         if (!uploadError) {
-          const { data: urlData } = await supabaseAdmin.storage
-            .from('audio-recordings')
-            .createSignedUrl(audioFileName, 60 * 60 * 24); // 24-hour expiry
-          audioUrl = urlData?.signedUrl || null;
+          const { data: urlData } = supabaseAdmin.storage
+            .from('episode-audio')
+            .getPublicUrl(audioFileName);
+          audioUrl = urlData?.publicUrl || null;
         }
       } catch (audioError: any) {
         console.error('Audio generation error:', audioError.message);
@@ -535,18 +575,19 @@ router.post(
         const audioBuffer = await generateFlorenciaAudio(farewellText);
         
         const audioFileName = `conversation-audio/${conversationId}/florencia-farewell-${Date.now()}.mp3`;
+        // Store in the public episode-audio bucket so the URL never expires.
         const { error: uploadError } = await supabaseAdmin.storage
-          .from('audio-recordings')
+          .from('episode-audio')
           .upload(audioFileName, audioBuffer, {
             contentType: 'audio/mpeg',
             upsert: true,
           });
 
         if (!uploadError) {
-          const { data: urlData } = await supabaseAdmin.storage
-            .from('audio-recordings')
-            .createSignedUrl(audioFileName, 60 * 60 * 24); // 24 hour expiry
-          farewellAudioUrl = urlData?.signedUrl || null;
+          const { data: urlData } = supabaseAdmin.storage
+            .from('episode-audio')
+            .getPublicUrl(audioFileName);
+          farewellAudioUrl = urlData?.publicUrl || null;
         }
       } catch (audioError) {
         console.error('Error generating farewell audio:', audioError);
@@ -638,23 +679,24 @@ router.post(
     );
 
     // Generate audio for response
+    // Store in the public episode-audio bucket so the URL never expires.
     let responseAudioUrl: string | null = null;
     try {
       const audioBuffer = await generateFlorenciaAudio(response.message);
       
       const audioFileName = `conversation-audio/${conversationId}/florencia-${Date.now()}.mp3`;
       const { error: uploadError } = await supabaseAdmin.storage
-        .from('audio-recordings')
+        .from('episode-audio')
         .upload(audioFileName, audioBuffer, {
           contentType: 'audio/mpeg',
           upsert: true,
         });
 
       if (!uploadError) {
-        const { data: urlData } = await supabaseAdmin.storage
-          .from('audio-recordings')
-          .createSignedUrl(audioFileName, 60 * 60 * 24); // 24 hour expiry
-        responseAudioUrl = urlData?.signedUrl || null;
+        const { data: urlData } = supabaseAdmin.storage
+          .from('episode-audio')
+          .getPublicUrl(audioFileName);
+        responseAudioUrl = urlData?.publicUrl || null;
       }
     } catch (audioError) {
       console.error('Error generating response audio:', audioError);
