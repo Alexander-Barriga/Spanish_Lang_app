@@ -136,13 +136,133 @@ IMPORTANT:
 }
 
 // ============================================
+// Episode-specific fallback greetings (used when OpenAI is unavailable)
+// Each greeting references the episode location, uses natural subjunctive, ends with a question
+// ============================================
+export const EPISODE_FALLBACK_GREETINGS: Record<number, { message: string; highlightedVerbs: HighlightedVerb[] }> = {
+  1: {
+    message: '¡Che, qué bueno que hayas escrito sobre el Café Tortoni! Es que ese lugar tiene una historia increíble, ¿no? Quiero que me cuentes qué fue lo que más te llamó la atención cuando escribiste sobre él.',
+    highlightedVerbs: [
+      {
+        verb: 'hayas',
+        startIndex: 15,
+        endIndex: 20,
+        infinitive: 'haber',
+        indicativeForm: 'has',
+        trigger: 'qué bueno que',
+        explanation: '"Qué bueno que" (How wonderful that) triggers subjunctive because it expresses an emotional reaction to someone else\'s action. Structure: Exclamation of emotion (qué bueno) + que + Subject 2 (tú) + subjunctive verb (hayas escrito).',
+      },
+    ],
+  },
+  2: {
+    message: '¡Hola! Me alegra tanto que hayas podido capturar la energía de esa noche en el Marabú. El tango tiene algo que te emociona cada vez que lo sentís. ¿Qué querés que conversemos sobre lo que escribiste?',
+    highlightedVerbs: [
+      {
+        verb: 'hayas',
+        startIndex: 25,
+        endIndex: 30,
+        infinitive: 'haber',
+        indicativeForm: 'has',
+        trigger: 'Me alegra que',
+        explanation: '"Me alegra que" (It makes me happy that) requires subjunctive because it expresses an emotional reaction to someone else\'s completed action. Structure: Subject 1 (me) + emotion verb (alegra) + que + Subject 2 (tú) + subjunctive verb (hayas podido capturar).',
+      },
+    ],
+  },
+  3: {
+    message: '¡Buenas! Dudo que haya sido pura casualidad que ese disco de Di Sarli te llamara la atención en San Telmo. Tu texto me hizo pensar mucho. ¿Creés que fue suerte o algo más que te atrajo hacia él?',
+    highlightedVerbs: [
+      {
+        verb: 'haya',
+        startIndex: 14,
+        endIndex: 18,
+        infinitive: 'haber',
+        indicativeForm: 'fue',
+        trigger: 'Dudo que',
+        explanation: '"Dudo que" (I doubt that) triggers subjunctive because it expresses doubt about whether something happened. Structure: Subject 1 + verb of doubt (dudo) + que + Subject 2 + subjunctive verb (haya sido). Compare with indicative: "Sé que fue casualidad" (I know it was coincidence).',
+      },
+    ],
+  },
+  4: {
+    message: '¡Che, me encanta que hayas escrito sobre el asado! Ese momento del mate fue muy especial — me alegra que lo hayas sentido así también. ¿Qué fue lo más difícil de describir en español?',
+    highlightedVerbs: [
+      {
+        verb: 'hayas',
+        startIndex: 19,
+        endIndex: 24,
+        infinitive: 'haber',
+        indicativeForm: 'has',
+        trigger: 'me encanta que',
+        explanation: '"Me encanta que" (I love that) requires subjunctive because it expresses an emotional reaction to someone else\'s action. Structure: Subject 1 (me) + emotion verb (encanta) + que + Subject 2 (tú) + subjunctive verb (hayas escrito).',
+      },
+    ],
+  },
+  5: {
+    message: 'Tu texto sobre la Chacarita me llegó al corazón, de verdad. Si hubiera sabido que ese lugar te iba a afectar tanto, habríamos pasado más tiempo entre los murales. ¿Hay algo que desearías haber hecho diferente ese día?',
+    highlightedVerbs: [
+      {
+        verb: 'hubiera',
+        startIndex: 54,
+        endIndex: 61,
+        infinitive: 'haber',
+        indicativeForm: 'había',
+        trigger: 'Si',
+        explanation: '"Si hubiera + past participle" expresses a hypothetical condition in the past that didn\'t happen (pluperfect subjunctive). Structure: Si + pluperfect subjunctive (hubiera sabido) + conditional perfect (habríamos pasado). This is the classic "if only I had known..." structure expressing regret.',
+      },
+    ],
+  },
+  6: {
+    message: '¡Hola! El Teatro Colón es otro mundo, ¿verdad? Me encantó cómo reflexionaste sobre los artistas y las ilusiones. Si pudieras volver ahora mismo, ¿a qué parte del teatro irías primero?',
+    highlightedVerbs: [
+      {
+        verb: 'pudieras',
+        startIndex: 114,
+        endIndex: 122,
+        infinitive: 'poder',
+        indicativeForm: 'puedes',
+        trigger: 'Si',
+        explanation: '"Si pudieras" (If you could) uses the imperfect subjunctive to express a hypothetical or counterfactual condition. Structure: Si + imperfect subjunctive (pudieras) + conditional (irías). This is used for hypothetical situations that are unlikely or contrary to the current reality.',
+      },
+    ],
+  },
+  7: {
+    message: '¡Buenas! Esas casas de colores de La Boca tienen algo que te atrapa, ¿no? Tu reflexión sobre la belleza que nace del sacrificio me pareció muy profunda. Si pudieras vivir en ese barrio, ¿lo elegirías?',
+    highlightedVerbs: [
+      {
+        verb: 'pudieras',
+        startIndex: 143,
+        endIndex: 151,
+        infinitive: 'poder',
+        indicativeForm: 'puedes',
+        trigger: 'Si',
+        explanation: '"Si pudieras" (If you could) uses the imperfect subjunctive to create a hypothetical scenario. Structure: Si + imperfect subjunctive (pudieras) + conditional (elegirías). This differs from the pluperfect subjunctive: "si pudieras" is about present hypotheticals, while "si hubieras podido" would refer to past ones.',
+      },
+    ],
+  },
+  8: {
+    message: 'Che... llegamos al final de nuestro viaje por Buenos Aires. Aunque no me guste que se acabe tan rápido, estoy muy orgullosa de todo lo que hemos compartido. ¿Qué es lo que más vas a recordar de estas semanas?',
+    highlightedVerbs: [
+      {
+        verb: 'guste',
+        startIndex: 83,
+        endIndex: 88,
+        infinitive: 'gustar',
+        indicativeForm: 'gusta',
+        trigger: 'aunque',
+        explanation: '"Aunque" (although/even though) can trigger subjunctive when expressing a concession about something uncertain or hypothetical. Here, "aunque no me guste" acknowledges something the speaker doesn\'t want but must accept. Compare: "aunque no me gusta" (indicative, stating a known fact) vs. "aunque no me guste" (subjunctive, expressing the feeling as a concession).',
+      },
+    ],
+  },
+};
+
+// ============================================
 // Generate Florencia's Response
 // ============================================
 export async function generateFlorenciaResponse(
   episodeContext: EpisodeContext,
   writingSubmission: WritingSubmission,
   conversationHistory: Array<{ role: 'assistant' | 'user'; content: string }>,
-  isGreeting: boolean = false
+  isGreeting: boolean = false,
+  episodeNumber?: number
 ): Promise<ConversationMessage> {
   const systemPrompt = buildSystemPrompt(
     episodeContext,
@@ -255,7 +375,12 @@ export async function generateFlorenciaResponse(
   } catch (error) {
     console.error('[Conversation Service] Error generating response:', error);
     
-    // Fallback response
+    // Use episode-specific fallback greeting if episode number is available and it's a greeting
+    if (isGreeting && episodeNumber && EPISODE_FALLBACK_GREETINGS[episodeNumber]) {
+      return EPISODE_FALLBACK_GREETINGS[episodeNumber];
+    }
+
+    // Generic fallback for replies or unknown episode
     return {
       message: 'Me alegro que estés practicando tu español conmigo. ¿Qué te parece si seguimos hablando?',
       highlightedVerbs: [

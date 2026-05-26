@@ -20,6 +20,28 @@ import {
 
 const router = Router();
 
+// ============================================
+// Pre-stored greeting lookup
+// Checks pre_generated_audio for an episode-specific greeting with a permanent public URL
+// ============================================
+async function getPreStoredGreeting(episodeNumber: number): Promise<{ textContent: string; audioUrl: string } | null> {
+  const contentKey = `ep${episodeNumber}_florencia_conv_greeting`;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('pre_generated_audio')
+      .select('text_content, audio_url')
+      .eq('content_key', contentKey)
+      .single();
+
+    if (error || !data?.text_content || !data?.audio_url) {
+      return null;
+    }
+    return { textContent: data.text_content, audioUrl: data.audio_url };
+  } catch {
+    return null;
+  }
+}
+
 async function unlockNextEpisode(userId: string, episodeId: string) {
   const { data: episode } = await supabaseAdmin
     .from('episodes')
@@ -223,10 +245,10 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       });
     }
 
-    // Get episode details
+    // Get episode details (include episode_number for pre-stored greeting lookup)
     const { data: episode, error: episodeError } = await supabaseAdmin
       .from('episodes')
-      .select('id, title_es, title_en, grammar_focus, grammar_triggers, scenario')
+      .select('id, title_es, title_en, grammar_focus, grammar_triggers, scenario, episode_number')
       .eq('id', episodeId)
       .single();
 
@@ -266,7 +288,6 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       return res.status(500).json({ error: 'Failed to create conversation' });
     }
 
-    // Generate Florencia's greeting
     const episodeContext = {
       episodeId: episode.id,
       titleEs: episode.title_es,
@@ -281,37 +302,58 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       aiFeedback: submission.ai_feedback,
     };
 
-    const greeting = await generateFlorenciaResponse(
-      episodeContext,
-      writingSubmission,
-      [],
-      true // isGreeting
-    );
-
-    // Generate audio for greeting
+    // -------------------------------------------------------
+    // Greeting strategy (cheapest → most expensive):
+    // 1. Pre-stored greeting in pre_generated_audio (public URL, zero API cost)
+    // 2. OpenAI-generated greeting personalized to the user's writing
+    // 3. Hardcoded episode-specific fallback (if OpenAI is unavailable)
+    // -------------------------------------------------------
+    let greetingMessage_text: string;
+    let greetingHighlightedVerbs: HighlightedVerb[] = [];
     let audioUrl: string | null = null;
-    try {
-      const audioBuffer = await generateFlorenciaAudio(greeting.message);
-      
-      // Store audio in Supabase storage - use 'audio-recordings' bucket (matches storageService)
-      const audioFileName = `conversation-audio/${newConversation.id}/florencia-${Date.now()}.mp3`;
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from('audio-recordings')
-        .upload(audioFileName, audioBuffer, {
-          contentType: 'audio/mpeg',
-          upsert: true,
-        });
 
-      if (!uploadError) {
-        // Use signed URL since bucket is private
-        const { data: urlData } = await supabaseAdmin.storage
+    const preStored = await getPreStoredGreeting(episode.episode_number);
+
+    if (preStored) {
+      // Use pre-stored greeting — free, permanent public URL, no API calls
+      console.log(`[Start] Using pre-stored greeting for episode ${episode.episode_number}`);
+      greetingMessage_text = preStored.textContent;
+      audioUrl = preStored.audioUrl;
+      // No highlighted verbs for pre-stored greetings (served without verb analysis)
+    } else {
+      // Fall back to OpenAI-generated greeting (personalized to user's writing)
+      console.log(`[Start] No pre-stored greeting for episode ${episode.episode_number}, calling OpenAI`);
+      const greeting = await generateFlorenciaResponse(
+        episodeContext,
+        writingSubmission,
+        [],
+        true, // isGreeting
+        episode.episode_number
+      );
+      greetingMessage_text = greeting.message;
+      greetingHighlightedVerbs = greeting.highlightedVerbs;
+
+      // Generate TTS audio for the OpenAI-generated greeting
+      try {
+        const audioBuffer = await generateFlorenciaAudio(greetingMessage_text);
+        const audioFileName = `conversation-audio/${newConversation.id}/florencia-${Date.now()}.mp3`;
+        const { error: uploadError } = await supabaseAdmin.storage
           .from('audio-recordings')
-          .createSignedUrl(audioFileName, 60 * 60 * 24); // 24 hour expiry
-        audioUrl = urlData?.signedUrl || null;
+          .upload(audioFileName, audioBuffer, {
+            contentType: 'audio/mpeg',
+            upsert: true,
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = await supabaseAdmin.storage
+            .from('audio-recordings')
+            .createSignedUrl(audioFileName, 60 * 60 * 24); // 24-hour expiry
+          audioUrl = urlData?.signedUrl || null;
+        }
+      } catch (audioError: any) {
+        console.error('Audio generation error:', audioError.message);
+        // Continue without audio
       }
-    } catch (audioError: any) {
-      console.error('Audio generation error:', audioError.message);
-      // Continue without audio
     }
 
     // Save greeting message
@@ -320,8 +362,8 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       .insert({
         conversation_id: newConversation.id,
         role: 'assistant',
-        content: greeting.message,
-        content_with_highlights: greeting.highlightedVerbs,
+        content: greetingMessage_text,
+        content_with_highlights: greetingHighlightedVerbs,
         audio_url: audioUrl,
       })
       .select()
@@ -342,8 +384,8 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       message: {
         id: greetingMessage?.id,
         role: 'assistant',
-        content: greeting.message,
-        highlightedVerbs: greeting.highlightedVerbs,
+        content: greetingMessage_text,
+        highlightedVerbs: greetingHighlightedVerbs,
         audioUrl,
       },
       userReplyCount: 0,
@@ -591,7 +633,8 @@ router.post(
       episodeContext,
       { submissionText: submission?.submission_text || '', aiFeedback: submission?.ai_feedback },
       historyMessages?.map(m => ({ role: m.role as 'assistant' | 'user', content: m.content })) || [],
-      false
+      false,
+      episode.episode_number
     );
 
     // Generate audio for response
