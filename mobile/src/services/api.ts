@@ -982,8 +982,8 @@ class ApiClient {
     const formData = new FormData();
     formData.append('audio', {
       uri: (audioBlob as any).uri || '',
-      type: (audioBlob as any).mimeType || 'audio/webm',
-      name: 'recording.webm',
+      type: (audioBlob as any).mimeType || 'audio/m4a',
+      name: (audioBlob as any).name || 'recording.m4a',
     } as any);
 
     const token = await this.getAuthToken();

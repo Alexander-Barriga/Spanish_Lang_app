@@ -174,12 +174,13 @@ export async function generateFlorenciaResponse(
       model: 'gpt-4o',
       messages,
       temperature: 0.8,
-      max_tokens: 500,
+      max_tokens: 400,
       response_format: { type: 'json_object' },
+      timeout: 20000, // 20s hard cap so Render doesn't hold the request open too long
     });
 
     const responseText = completion.choices[0].message.content || '{}';
-    console.log('[Conversation Service] OpenAI response:', responseText);
+    console.log('[Conversation Service] OpenAI response:', responseText.substring(0, 200));
 
     const parsed = JSON.parse(responseText);
 
@@ -379,6 +380,7 @@ Respond with ONLY the farewell message in Spanish. No JSON, no formatting, just 
       messages,
       temperature: 0.8,
       max_tokens: 150,
+      timeout: 15000,
     });
 
     const farewell = completion.choices[0].message.content?.trim() || '';
@@ -446,6 +448,7 @@ If no subjunctive verbs are found, return: { "verbs": [] }`;
       temperature: 0.3,
       max_tokens: 500,
       response_format: { type: 'json_object' },
+      timeout: 15000,
     });
 
     const responseText = completion.choices[0].message.content || '{"verbs": []}';

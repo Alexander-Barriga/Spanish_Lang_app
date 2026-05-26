@@ -37,20 +37,29 @@ export class VoiceService {
     const { language = 'es', prompt, mimeType = 'audio/m4a' } = options || {};
 
     // Map MIME type to file extension for Whisper
+    // Supported Whisper formats: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
+    // iOS CAF (Core Audio Format) is NOT supported by Whisper — remap to m4a
     const mimeToExt: Record<string, string> = {
       'audio/m4a': 'm4a',
       'audio/mp4': 'm4a',
       'audio/x-m4a': 'm4a',
-      'audio/aac': 'aac',
+      'audio/aac': 'm4a',
       'audio/wav': 'wav',
       'audio/webm': 'webm',
-      'audio/3gpp': '3gp',
-      'audio/x-caf': 'caf',
+      'audio/3gpp': 'mp4',
+      'audio/x-caf': 'm4a', // iOS CAF uses AAC codec internally — label as m4a for Whisper
       'audio/mpeg': 'mp3',
       'audio/ogg': 'ogg',
     };
+    // Normalize content types so Whisper accepts them
+    const mimeToContentType: Record<string, string> = {
+      'audio/x-caf': 'audio/m4a',
+      'audio/x-m4a': 'audio/m4a',
+      'audio/3gpp': 'audio/mp4',
+      'audio/aac': 'audio/m4a',
+    };
     const fileExt = mimeToExt[mimeType] || 'm4a';
-    const contentType = mimeType || 'audio/m4a';
+    const contentType = mimeToContentType[mimeType] || mimeType || 'audio/m4a';
 
     // Create form data for the API request
     const formData = new FormData();

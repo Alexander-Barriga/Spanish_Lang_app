@@ -50,6 +50,7 @@ export default function EpisodeConversationScreen() {
   const [verbModalVisible, setVerbModalVisible] = useState(false);
   
   // Audio playback
+  const currentSoundRef = useRef<Audio.Sound | null>(null);
   const [currentSound, setCurrentSound] = useState<Audio.Sound | null>(null);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -62,9 +63,10 @@ export default function EpisodeConversationScreen() {
     setupAudio();
     
     return () => {
-      // Cleanup audio on unmount
-      if (currentSound) {
-        currentSound.unloadAsync();
+      // Use ref so the cleanup always has the current sound, not a stale closure
+      if (currentSoundRef.current) {
+        currentSoundRef.current.unloadAsync().catch(() => {});
+        currentSoundRef.current = null;
       }
     };
   }, [articleId]);
@@ -219,17 +221,22 @@ export default function EpisodeConversationScreen() {
   const playAudio = async (audioUrl: string, messageId: string, onFinish?: () => void) => {
     try {
       // If this message is already playing, stop it (toggle behavior)
-      if (playingMessageId === messageId && currentSound) {
-        await currentSound.stopAsync();
-        await currentSound.unloadAsync();
+      if (playingMessageId === messageId && currentSoundRef.current) {
+        await currentSoundRef.current.stopAsync();
+        await currentSoundRef.current.unloadAsync();
+        currentSoundRef.current = null;
         setCurrentSound(null);
         setPlayingMessageId(null);
         return;
       }
 
       // Stop any currently playing audio
-      if (currentSound) {
-        await currentSound.unloadAsync();
+      if (currentSoundRef.current) {
+        try {
+          await currentSoundRef.current.unloadAsync();
+        } catch (_) {}
+        currentSoundRef.current = null;
+        setCurrentSound(null);
       }
 
       // Switch to playback mode (speaker, not earpiece)
@@ -240,6 +247,7 @@ export default function EpisodeConversationScreen() {
         { uri: audioUrl },
         { shouldPlay: false } // Don't autoplay, set rate first
       );
+      currentSoundRef.current = sound;
       setCurrentSound(sound);
 
       // Apply the current playback speed
@@ -250,6 +258,8 @@ export default function EpisodeConversationScreen() {
 
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
+          currentSoundRef.current = null;
+          setCurrentSound(null);
           setPlayingMessageId(null);
           if (onFinish) {
             onFinish();
@@ -258,8 +268,15 @@ export default function EpisodeConversationScreen() {
       });
     } catch (error: any) {
       console.error('Error playing audio:', error);
+      currentSoundRef.current = null;
+      setCurrentSound(null);
       setPlayingMessageId(null);
-      // Call onFinish even on error so the flow continues
+      Alert.alert(
+        'Audio Unavailable',
+        'Could not play the audio. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+      // Call onFinish even on error so the conversation flow continues
       if (onFinish) {
         onFinish();
       }
