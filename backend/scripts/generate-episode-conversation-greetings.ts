@@ -130,10 +130,13 @@ async function saveToDatabase(
 ): Promise<void> {
   const contentKey = `ep${episodeNumber}_florencia_conv_greeting`;
 
+  // content_type must be one of the allowed enum values in pre_generated_audio_content_type_check.
+  // We use 'episode_intro' since these greetings open the conversational task for each episode.
+  // The unique content_key (ep{N}_florencia_conv_greeting) distinguishes them from scene audio.
   const { error } = await supabaseAdmin.from('pre_generated_audio').upsert(
     {
       content_key: contentKey,
-      content_type: 'florencia_conv_greeting',
+      content_type: 'episode_intro',
       character_id: 'florencia',
       text_content: text,
       audio_url: audioUrl,
