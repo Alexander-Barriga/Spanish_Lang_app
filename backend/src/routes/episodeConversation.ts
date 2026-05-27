@@ -334,6 +334,7 @@ router.post('/:episodeId/start', requirePremiumForEpisodeId(), async (req: Reque
       grammarFocus: episode.grammar_focus,
       grammarTriggers: episode.grammar_triggers || [],
       scenario: episode.scenario,
+      episodeNumber: episode.episode_number,
     };
 
     const writingSubmission = {
@@ -552,6 +553,7 @@ router.post(
         grammarFocus: episode.grammar_focus,
         grammarTriggers: episode.grammar_triggers || [],
         scenario: episode.scenario,
+        episodeNumber: episode.episode_number,
       };
 
       // Generate Florencia's farewell message
@@ -668,6 +670,7 @@ router.post(
       grammarFocus: episode.grammar_focus,
       grammarTriggers: episode.grammar_triggers || [],
       scenario: episode.scenario,
+      episodeNumber: episode.episode_number,
     };
 
     const response = await generateFlorenciaResponse(

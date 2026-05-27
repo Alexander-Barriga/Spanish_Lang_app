@@ -39,6 +39,7 @@ export interface EpisodeContext {
   grammarFocus: string;
   grammarTriggers: string[];
   scenario: string;
+  episodeNumber: number;
 }
 
 export interface WritingSubmission {
@@ -52,6 +53,50 @@ export interface WritingSubmission {
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// ============================================
+// Grammar Guardrail Builder
+// ============================================
+function getGrammarGuardrail(episodeNumber: number): string {
+  // Cumulative grammar rules: each tier adds to what was allowed before.
+  // Ep 1-2:  Present subjunctive only
+  // Ep 3-4:  + Perfect subjunctive
+  // Ep 5:    + Pluperfect subjunctive
+  // Ep 6-7:  + Imperfect subjunctive
+  // Ep 8:    All forms (no restriction)
+
+  if (episodeNumber >= 8) {
+    return `GRAMMAR GUARDRAIL:
+All subjunctive forms are allowed. Feel free to use present subjunctive (hable), perfect subjunctive (haya hablado), pluperfect subjunctive (hubiera hablado), and imperfect subjunctive (hablara) as appropriate.`;
+  }
+
+  if (episodeNumber >= 6) {
+    return `GRAMMAR GUARDRAIL — STRICT:
+The learner has been taught: Present Subjunctive (hable, sea, tenga), Perfect Subjunctive (haya hablado, haya sido), Pluperfect Subjunctive (hubiera hablado, hubiera sido), and Imperfect Subjunctive (hablara, fuera).
+You MUST NOT use any other advanced or non-standard subjunctive structures not listed above.
+Only include verbs in highlightedVerbs that belong to one of these four allowed forms.`;
+  }
+
+  if (episodeNumber === 5) {
+    return `GRAMMAR GUARDRAIL — STRICT:
+The learner has been taught: Present Subjunctive (hable, sea, tenga), Perfect Subjunctive (haya hablado, haya sido), and Pluperfect Subjunctive (hubiera hablado, hubiera sido).
+You MUST NOT use Imperfect Subjunctive (hablara, fuera, tuviera) — the learner has not encountered this form yet.
+Only include verbs in highlightedVerbs that belong to one of these three allowed forms.`;
+  }
+
+  if (episodeNumber >= 3) {
+    return `GRAMMAR GUARDRAIL — STRICT:
+The learner has been taught: Present Subjunctive (hable, sea, tenga) and Perfect Subjunctive (haya hablado, haya sido, haya tenido).
+You MUST NOT use Pluperfect Subjunctive (hubiera hablado) or Imperfect Subjunctive (hablara, fuera) — the learner has not encountered these forms yet.
+Only include verbs in highlightedVerbs that belong to either Present or Perfect Subjunctive.`;
+  }
+
+  // Episodes 1-2: present subjunctive only
+  return `GRAMMAR GUARDRAIL — STRICT:
+The learner has only been taught Present Subjunctive (e.g., hable, sea, tenga, llegue, quiera).
+You MUST NOT use Perfect Subjunctive (haya hablado, hayas disfrutado), Pluperfect Subjunctive (hubiera hablado), or Imperfect Subjunctive (hablara, fuera). These forms have not been introduced yet.
+Only include verbs in highlightedVerbs that are Present Subjunctive forms.`;
+}
 
 // ============================================
 // System Prompt Builder
@@ -70,6 +115,8 @@ function buildSystemPrompt(
     ? `Common triggers for this grammar: ${episodeContext.grammarTriggers.join(', ')}`
     : '';
 
+  const grammarGuardrail = getGrammarGuardrail(episodeContext.episodeNumber);
+
   return `You are Florencia, a warm and friendly Argentine woman from Buenos Aires. You are having a natural conversation with a Spanish learner who is practicing the subjunctive mood.
 
 CRITICAL RULES:
@@ -79,6 +126,8 @@ CRITICAL RULES:
 4. ALWAYS end your message with a question to keep the conversation going.
 5. In EVERY response, naturally include at least 1 example of the subjunctive mood related to "${grammarFocusReadable}".
 ${triggersExamples}
+
+${grammarGuardrail}
 
 CONVERSATION CONTEXT:
 - Episode: "${episodeContext.titleEs}" (${episodeContext.titleEn})
