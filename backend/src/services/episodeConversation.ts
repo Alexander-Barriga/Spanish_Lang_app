@@ -290,14 +290,16 @@ export async function generateFlorenciaResponse(
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.8,
-      max_tokens: 400,
-      response_format: { type: 'json_object' },
-      timeout: 20000, // 20s hard cap so Render doesn't hold the request open too long
-    });
+    const completion = await openai.chat.completions.create(
+      {
+        model: 'gpt-4o',
+        messages,
+        temperature: 0.8,
+        max_tokens: 400,
+        response_format: { type: 'json_object' },
+      },
+      { timeout: 20000 } // 20s hard cap so Render doesn't hold the request open too long
+    );
 
     const responseText = completion.choices[0].message.content || '{}';
     console.log('[Conversation Service] OpenAI response:', responseText.substring(0, 200));
@@ -500,13 +502,15 @@ Respond with ONLY the farewell message in Spanish. No JSON, no formatting, just 
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.8,
-      max_tokens: 150,
-      timeout: 15000,
-    });
+    const completion = await openai.chat.completions.create(
+      {
+        model: 'gpt-4o',
+        messages,
+        temperature: 0.8,
+        max_tokens: 150,
+      },
+      { timeout: 15000 }
+    );
 
     const farewell = completion.choices[0].message.content?.trim() || '';
     console.log('[Conversation Service] Farewell message:', farewell);
@@ -564,17 +568,19 @@ RESPONSE FORMAT (JSON):
 If no subjunctive verbs are found, return: { "verbs": [] }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyze this text: "${text}"` },
-      ],
-      temperature: 0.3,
-      max_tokens: 500,
-      response_format: { type: 'json_object' },
-      timeout: 15000,
-    });
+    const completion = await openai.chat.completions.create(
+      {
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Analyze this text: "${text}"` },
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+      },
+      { timeout: 15000 }
+    );
 
     const responseText = completion.choices[0].message.content || '{"verbs": []}';
     const parsed = JSON.parse(responseText);
