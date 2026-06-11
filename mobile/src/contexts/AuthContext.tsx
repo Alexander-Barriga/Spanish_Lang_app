@@ -51,6 +51,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   // Tutor character selection (stored locally)
   selectedTutorId: string;
   setSelectedTutorId: (tutorId: string) => Promise<void>;
@@ -172,26 +174,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes.
+    // IMPORTANT: the callback must be synchronous — GoTrue waits for it to
+    // return before resolving in-flight calls like updateUser(). Calling async
+    // Supabase operations (e.g. DB queries) directly inside causes a deadlock
+    // where updateUser() never resolves. Defer all async work via setTimeout.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('🔐 Auth state changed:', event);
-        
+
         if (event === 'SIGNED_IN' && session?.user) {
-          // Store the token for API calls (both in SecureStore and in-memory)
-          await SecureStore.setItemAsync('auth_token', session.access_token);
-          authTokenManager.setToken(session.access_token);
-          const userData = await fetchUserData(session.user);
-          setUser(userData);
+          const capturedSession = session;
+          setTimeout(async () => {
+            await SecureStore.setItemAsync('auth_token', capturedSession.access_token);
+            authTokenManager.setToken(capturedSession.access_token);
+            const userData = await fetchUserData(capturedSession.user);
+            setUser(userData);
+          }, 0);
         } else if (event === 'SIGNED_OUT') {
-          // Clear the stored token
-          await SecureStore.deleteItemAsync('auth_token');
+          SecureStore.deleteItemAsync('auth_token').catch(() => {});
           authTokenManager.setToken(null);
           setUser(null);
         } else if (event === 'TOKEN_REFRESHED' && session) {
-          // Update stored token on refresh
-          await SecureStore.setItemAsync('auth_token', session.access_token);
-          authTokenManager.setToken(session.access_token);
+          const capturedSession = session;
+          SecureStore.setItemAsync('auth_token', capturedSession.access_token).catch(() => {});
+          authTokenManager.setToken(capturedSession.access_token);
         }
       }
     );
@@ -279,6 +286,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  // Send password reset email
+  const resetPasswordForEmail = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'spanishlab://reset-password',
+    });
+    if (error) throw error;
+  };
+
+  // Update password (requires an active recovery session)
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  };
+
   // Refresh user data
   const refreshUser = async () => {
     const { data: { user: supabaseUser } } = await supabase.auth.getUser();
@@ -299,6 +320,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         refreshUser,
+        resetPasswordForEmail,
+        updatePassword,
         selectedTutorId,
         setSelectedTutorId,
       }}

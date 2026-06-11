@@ -6,7 +6,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import * as Linking from 'expo-linking';
+import { AuthProvider, useAuth, supabase } from '../src/contexts/AuthContext';
 import { SubscriptionProvider } from '../src/contexts/SubscriptionContext';
 import { setPaywallListener } from '../src/services/api';
 import { colors } from '../src/theme';
@@ -36,20 +37,77 @@ function RootLayoutNav() {
     }
   }, [isLoading]);
 
-  // Handle auth-based navigation
+  // Handle auth-based navigation.
+  // The reset-password screen is exempt from the unauthenticated redirect:
+  // the user arrives there with a recovery session before the normal auth
+  // guard would consider them "logged in".
   useEffect(() => {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inResetPassword = segments[0] === 'reset-password';
 
-    if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to auth if not authenticated
+    if (!isAuthenticated && !inAuthGroup && !inResetPassword) {
       router.replace('/(auth)/welcome');
     } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to main app if authenticated
       router.replace('/(tabs)');
     }
+    // isAuthenticated && inResetPassword → stay on reset screen, don't push to tabs
   }, [isAuthenticated, segments, isLoading]);
+
+  // Handle password-reset deep links (spanishlab://reset-password).
+  //
+  // Supabase v2 uses PKCE by default → URL is spanishlab://reset-password?code=XXX
+  // Older / implicit flow → URL is spanishlab://reset-password#access_token=XXX&...
+  //
+  // We exchange/set the session here so Supabase fires PASSWORD_RECOVERY.
+  // The onAuthStateChange listener below handles the actual navigation.
+  useEffect(() => {
+    const handleUrl = async (url: string) => {
+      if (!url.includes('reset-password')) return;
+
+      // PKCE flow: ?code=xxx
+      const queryString = url.split('?')[1]?.split('#')[0] ?? '';
+      const code = new URLSearchParams(queryString).get('code');
+      if (code) {
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch (e) {
+          console.error('[DeepLink] exchangeCodeForSession failed:', e);
+        }
+        return;
+      }
+
+      // Implicit flow: #access_token=xxx&refresh_token=xxx
+      const fragment = url.split('#')[1] ?? '';
+      const fragParams = new URLSearchParams(fragment);
+      const accessToken = fragParams.get('access_token');
+      const refreshToken = fragParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        try {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        } catch (e) {
+          console.error('[DeepLink] setSession failed:', e);
+        }
+      }
+    };
+
+    Linking.getInitialURL().then((url) => { if (url) handleUrl(url); });
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    return () => sub.remove();
+  }, []);
+
+  // Navigate to the reset-password screen when Supabase fires PASSWORD_RECOVERY.
+  // This is the single authoritative navigation trigger for both PKCE and
+  // implicit flows — fired after exchangeCodeForSession / setSession above.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        router.replace('/reset-password');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   // Install a global handler so any API call that returns 403 PAYWALL pushes
   // the user to the paywall — defence-in-depth for screens that don't already
@@ -152,6 +210,13 @@ function RootLayoutNav() {
             presentation: 'fullScreenModal',
             animation: 'slide_from_bottom',
           }} 
+        />
+        <Stack.Screen
+          name="reset-password"
+          options={{
+            headerShown: false,
+            animation: 'fade',
+          }}
         />
       </Stack>
     </>
