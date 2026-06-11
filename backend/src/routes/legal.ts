@@ -70,7 +70,7 @@ router.get('/privacy', (req: Request, res: Response) => {
   </ul>
 
   <h2>Contact Us</h2>
-  <p>If you have questions about this Privacy Policy, please contact us at: <strong>spanishlab.app@gmail.com</strong></p>
+  <p>If you have questions about this Privacy Policy, please contact us at: <strong>alexanderbarriga03@gmail.com</strong></p>
 </body>
 </html>`);
 });
@@ -140,7 +140,7 @@ router.get('/terms', (req: Request, res: Response) => {
   <p>We may update these Terms from time to time. Continued use of the app after changes constitutes acceptance of the new Terms.</p>
 
   <h2>Contact Us</h2>
-  <p>If you have questions about these Terms, please contact us at: <strong>spanishlab.app@gmail.com</strong></p>
+  <p>If you have questions about these Terms, please contact us at: <strong>alexanderbarriga03@gmail.com</strong></p>
 </body>
 </html>`);
 });
@@ -167,7 +167,7 @@ router.get('/support', (req: Request, res: Response) => {
   <p>We're here to help. If you have a question, issue, or feedback about Spanish Lab, please reach out.</p>
 
   <h2>Contact Us</h2>
-  <p>Email: <a href="mailto:spanishlab.app@gmail.com">spanishlab.app@gmail.com</a></p>
+  <p>Email: <a href="mailto:alexanderbarriga03@gmail.com">alexanderbarriga03@gmail.com</a></p>
   <p>We typically respond within 24 hours.</p>
 
   <h2>Common Topics</h2>

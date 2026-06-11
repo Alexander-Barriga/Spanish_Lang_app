@@ -33,7 +33,7 @@ below. After signing in with the demo account above:
 Comp code: SPANLAB-4QNZ-5KTZ-ZY9R
 
 If the code is consumed (single-use) and you need to re-test on a different
-account, reach out at spanishlab.app@gmail.com and we will issue a new one
+account, reach out at alexanderbarriga03@gmail.com and we will issue a new one
 within 24 hours.
 
 Test card / sandbox tester:
@@ -57,7 +57,7 @@ Privacy / Terms (also linked from the paywall screen):
 Microphone permission is required for the AI conversation feature in Episode 1
 (free) and in Episodes 2-8 (premium). The app declines gracefully if denied.
 
-Support contact: spanishlab.app@gmail.com
+Support contact: alexanderbarriga03@gmail.com
 ```
 
 ---
