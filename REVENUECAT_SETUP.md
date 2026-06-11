@@ -56,7 +56,7 @@ Marketing / influencer codes should use Apple Offer Codes (Apps -> In-App Purcha
    - Copy the iOS public SDK key (e.g. `appl_xxxxxxxx`). This goes into `mobile/app.json -> extra.revenuecat.iosApiKey` (or, preferably, an EAS secret — see "EAS secrets" below).
    - Copy the secret/master key (NOT the public key) into the backend env as `REVENUECAT_SECRET_KEY`. Used by `/subscription/verify` for defence-in-depth lookups.
 6. **Webhook**:
-   - URL: `https://spanish-lab-api.onrender.com/api/v1/webhooks/revenuecat`
+   - URL: `https://spanish-lang-app.onrender.com/api/v1/webhooks/revenuecat`
    - Authorization header: `Bearer ${RC_WEBHOOK_SECRET}` — generate a random secret (e.g. `openssl rand -hex 32`) and put the same value in your backend env as `RC_WEBHOOK_SECRET` and in the RC dashboard's "Authorization header value" field.
    - Send all default events.
 

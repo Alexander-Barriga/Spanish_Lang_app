@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.spanishlab.app",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Spanish Lab needs microphone access to enable voice conversations in Spanish."
+        "NSMicrophoneUsageDescription": "Spanish Lab needs microphone access to enable voice conversations in Spanish.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +27,11 @@
         "backgroundColor": "#1a1f36"
       },
       "package": "com.spanishlab.app",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -48,15 +53,17 @@
     },
     "extra": {
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "1b30dc85-1152-43c8-af95-c69febff855d"
       },
       "revenuecat": {
-        "iosApiKey": "YOUR_REVENUECAT_IOS_API_KEY",
+        "iosApiKey": "appl_CipctfJtlwSkKHPeZzYwbgBwhVE",
         "androidApiKey": "YOUR_REVENUECAT_ANDROID_API_KEY",
         "entitlementId": "premium",
         "monthlyProductId": "spanishlab_monthly_1499",
         "annualProductId": "spanishlab_annual_9999"
-      }
-    }
+      },
+      "router": {}
+    },
+    "owner": "alexbarriga"
   }
 }

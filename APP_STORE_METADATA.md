@@ -31,7 +31,11 @@ Deepen your understanding with companion reading articles for each episode that 
 - Trigger phrases, emotional expression, and real-world usage
 
 **FREEMIUM MODEL**
-Episode 1 is completely free. Subscribe for $14.99/month to unlock all 8 episodes and the full learning experience.
+Episode 1 is completely free. Unlock all 8 episodes with Spanish Lab Premium:
+- Monthly plan: $14.99 / month
+- Annual plan: $99.99 / year (best value — save 44% vs monthly)
+
+Both plans give full access to every episode, every writing exercise, every AI conversation, and every article.
 
 Download Spanish Lab and start your journey into the most expressive part of Spanish grammar.
 
@@ -48,7 +52,10 @@ Education
 Free (with In-App Purchases)
 
 ## In-App Purchases
-- Spanish Lab Premium: $14.99/month (auto-renewable subscription)
+- Spanish Lab Premium — Monthly: $14.99/month (auto-renewable subscription)
+- Spanish Lab Premium — Annual: $99.99/year (auto-renewable subscription)
+
+Both products belong to the `Spanish Lab Premium` subscription group and are gated behind the `premium` RevenueCat entitlement (see `REVENUECAT_SETUP.md`).
 
 ## App Icon
 - 1024x1024 PNG, no transparency, no rounded corners ✅
@@ -69,10 +76,15 @@ Free (with In-App Purchases)
 8. Paywall / subscription screen
 
 ## Support URL
-https://spanish-lab-api.onrender.com/privacy
+https://spanish-lang-app.onrender.com/support
 
 ## Privacy Policy URL
-https://spanish-lab-api.onrender.com/privacy
+https://spanish-lang-app.onrender.com/privacy
 
 ## Terms of Service URL
-https://spanish-lab-api.onrender.com/terms
+https://spanish-lang-app.onrender.com/terms
+
+> ⚠️  These URLs are served by the Express backend (`backend/src/routes/legal.ts`).
+> They will return 404 until the Render service is redeployed — see
+> `RENDER_REDEPLOY.md`. Reviewers click these URLs during App Review; if they
+> 404 your submission is rejected.
