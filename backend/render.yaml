@@ -1,0 +1,57 @@
+# Render Blueprint for Spanish Lab backend.
+#
+# Usage:
+#   1. Commit this file to the repo root of `backend/` (or one level up if you
+#      prefer a monorepo-aware blueprint — see Render's docs on "rootDir").
+#   2. In the Render dashboard: New + -> Blueprint -> point at this repo.
+#      Render reads this file and provisions the service declaratively.
+#   3. Set the `sync: false` env vars (secrets) in the dashboard after the
+#      first deploy. Render will mark those env vars red until they are set.
+#
+# Why we ship this:
+#   - Reproducible: anyone can recreate the production service from this file.
+#   - Free-tier guard: `plan: starter` is checked in to prevent an accidental
+#     downgrade to the sleeping `free` plan, which would break Apple's review
+#     of the privacy/terms URLs and cause real-user cold-start UX.
+#   - Documents the production env shape next to the code.
+
+services:
+  - type: web
+    name: spanish-lab-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: starter        # $7/mo. NOT `free` — free tier sleeps after 15min idle.
+    region: oregon       # change if your audience is closer to a different region
+    branch: main
+    autoDeploy: true     # auto-deploy on push to `branch` above
+    healthCheckPath: /health
+    envVars:
+      # Non-secret literals — safe to commit
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+
+      # Secrets — set these in the Render dashboard after first deploy.
+      # `sync: false` tells Render not to expect a value in this file.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID_ARGENTINA
+        sync: false
+      - key: ELEVENLABS_VOICE_ID_MEXICO
+        sync: false
+      - key: ELEVENLABS_VOICE_ID_COLOMBIA
+        sync: false
+      - key: REVENUECAT_SECRET_KEY
+        sync: false
+      - key: RC_WEBHOOK_SECRET
+        sync: false
