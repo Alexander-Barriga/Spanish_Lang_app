@@ -14,7 +14,7 @@
       "backgroundColor": "#1a1f36"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.spanishlab.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Spanish Lab needs microphone access to enable voice conversations in Spanish.",
