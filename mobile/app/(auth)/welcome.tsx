@@ -1,12 +1,29 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Link } from 'expo-router';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { Link, router } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../src/contexts/AuthContext';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
 const R2_BASE_URL = 'https://pub-eaa84f1d0f9b40b8b0fb15b73338527c.r2.dev';
 
 export default function WelcomeScreen() {
+  const { signInAnonymously } = useAuth();
+  const [isStarting, setIsStarting] = useState(false);
+
+  const handleGetStarted = async () => {
+    setIsStarting(true);
+    try {
+      await signInAnonymously();
+      router.replace('/(auth)/onboarding');
+    } catch (error) {
+      console.error('Guest sign-in error:', error);
+      Alert.alert('Something went wrong', 'Please try again in a moment.');
+      setIsStarting(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Video
@@ -47,14 +64,16 @@ export default function WelcomeScreen() {
 
         {/* CTA Buttons */}
         <View style={styles.ctaContainer}>
-          <Link href="/(auth)/signup" asChild>
-            <Pressable style={styles.primaryButton}>
+          <Pressable style={styles.primaryButton} onPress={handleGetStarted} disabled={isStarting}>
+            {isStarting ? (
+              <ActivityIndicator color={colors.neutral[900]} />
+            ) : (
               <Text style={styles.primaryButtonText}>Get Started</Text>
-            </Pressable>
-          </Link>
-          
+            )}
+          </Pressable>
+
           <Link href="/(auth)/login" asChild>
-            <Pressable style={styles.secondaryButton}>
+            <Pressable style={styles.secondaryButton} disabled={isStarting}>
               <Text style={styles.secondaryButtonText}>
                 Already have an account? <Text style={styles.linkText}>Sign In</Text>
               </Text>

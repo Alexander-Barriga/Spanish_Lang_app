@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
+import { requestMicrophoneAccess } from '../../../../src/utils/microphone';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, EpisodeArticle } from '../../../../src/services/api';
 import { colors, textStyles, spacing, borderRadius } from '../../../../src/theme';
@@ -125,9 +126,8 @@ export default function WritingExerciseScreen() {
 
   const startRecording = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant microphone access to use voice input.');
+      const hasMic = await requestMicrophoneAccess();
+      if (!hasMic) {
         return;
       }
 

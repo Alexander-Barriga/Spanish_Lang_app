@@ -3,6 +3,7 @@ import { createClient, User as SupabaseUser, Session } from '@supabase/supabase-
 import * as SecureStore from 'expo-secure-store';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, DEFAULT_TUTOR_ID } from '../config/constants';
 import { authTokenManager } from '../services/authToken';
+import { api } from '../services/api';
 
 // Types
 export type SubscriptionTier = 'free' | 'monthly' | 'annual' | 'comp';
@@ -39,6 +40,7 @@ interface UserProgress {
 interface AuthUser {
   id: string;
   email: string;
+  isAnonymous: boolean;
   profile: UserProfile | null;
   progress: UserProgress | null;
 }
@@ -47,9 +49,17 @@ interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** True when the session is a guest (anonymous) account with no email/password. */
+  isAnonymous: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
+  /** Create a guest session so users can browse/purchase without registering. */
+  signInAnonymously: () => Promise<void>;
+  /** Upgrade the current guest session to a permanent email/password account. */
+  registerAccount: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Permanently delete the account + data, then clear the local session. */
+  deleteAccount: () => Promise<void>;
   refreshUser: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
@@ -115,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       id: supabaseUser.id,
       email: supabaseUser.email || '',
+      isAnonymous: supabaseUser.is_anonymous ?? false,
       profile: profileResult.data as UserProfile | null,
       progress: progressResult.data as UserProgress | null,
     };
@@ -280,9 +291,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Sign in anonymously (guest). Creates a real Supabase session with a valid
+  // JWT but no personal info, so users can access content and purchase without
+  // being forced to register (App Store Guideline 5.1.1(v)). The database
+  // trigger creates the profile/progress rows just like a normal signup.
+  const signInAnonymously = async () => {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+
+    if (data.user && data.session) {
+      await SecureStore.setItemAsync('auth_token', data.session.access_token);
+      authTokenManager.setToken(data.session.access_token);
+      console.log('✅ Guest session created:', data.user.id);
+
+      const userData = await fetchUserData(data.user);
+      setUser(userData);
+    }
+  };
+
+  // Upgrade the current guest session to a permanent email/password account.
+  // This keeps the SAME user id, so any in-progress purchase/entitlement and
+  // learning progress carry over to the registered account.
+  const registerAccount = async (email: string, password: string, displayName?: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      email,
+      password,
+      data: { display_name: displayName || null },
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      // The creation trigger only set the (empty) email at signup time; mirror
+      // the new email/name onto our profile row.
+      await supabase
+        .from('users')
+        .update({
+          email,
+          ...(displayName ? { display_name: displayName } : {}),
+        })
+        .eq('id', data.user.id);
+
+      await refreshUser();
+    }
+  };
+
   // Sign out
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  // Permanently delete the account and all associated data, then clear the
+  // local session. The backend deletes the auth user (cascading all data).
+  const deleteAccount = async () => {
+    const result = await api.deleteAccount();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    await supabase.auth.signOut().catch(() => {});
+    await SecureStore.deleteItemAsync('auth_token').catch(() => {});
+    authTokenManager.setToken(null);
     setUser(null);
   };
 
@@ -316,8 +385,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isAnonymous: !!user?.isAnonymous,
         signIn,
         signUp,
+        signInAnonymously,
+        registerAccount,
         signOut,
         refreshUser,
         resetPasswordForEmail,

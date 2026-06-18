@@ -205,5 +205,33 @@ router.delete('/vocabulary-sets/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Permanently delete the authenticated user's account and all associated data.
+// Deleting the auth.users row cascades to public.users and every child table
+// (progress, conversations, episode data, etc.) via ON DELETE CASCADE.
+router.delete('/account', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (error) {
+      console.error('Delete account error:', error);
+      return res.status(500).json({ error: 'Failed to delete account' });
+    }
+
+    // Fallback: if the auth deletion didn't cascade for any reason, remove the
+    // profile row explicitly (this also cascades to child tables).
+    await supabaseAdmin.from('users').delete().eq('id', userId);
+
+    res.json({ message: 'Account deleted' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

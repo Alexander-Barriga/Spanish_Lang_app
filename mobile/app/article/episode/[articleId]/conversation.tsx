@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
+import { requestMicrophoneAccess } from '../../../../src/utils/microphone';
 import {
   api,
   EpisodeConversationMessage,
@@ -285,9 +286,8 @@ export default function EpisodeConversationScreen() {
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permission Required', 'Please grant microphone permission to record.');
+      const hasMic = await requestMicrophoneAccess();
+      if (!hasMic) {
         return;
       }
 

@@ -16,6 +16,7 @@ import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
+import { requestMicrophoneAccess } from '../../src/utils/microphone';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { api, WritingExercise, UserCurriculumProgress } from '../../src/services/api';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -109,9 +110,8 @@ export default function WritingScreen() {
 
   const startRecording = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant microphone access.');
+      const hasMic = await requestMicrophoneAccess();
+      if (!hasMic) {
         return;
       }
 

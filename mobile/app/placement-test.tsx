@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
+import { requestMicrophoneAccess } from '../src/utils/microphone';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../src/theme';
 import { api, PlacementQuestion } from '../src/services/api';
 
@@ -130,9 +131,8 @@ export default function PlacementTestScreen() {
 
   const startRecording = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant microphone access.');
+      const hasMic = await requestMicrophoneAccess();
+      if (!hasMic) {
         return;
       }
 

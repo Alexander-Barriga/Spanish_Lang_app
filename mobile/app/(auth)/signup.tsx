@@ -18,7 +18,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
 export default function SignupScreen() {
-  const { signUp } = useAuth();
+  const { signUp, registerAccount, isAnonymous } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,8 +44,14 @@ export default function SignupScreen() {
 
     setIsLoading(true);
     try {
-      await signUp(email, password, displayName || undefined);
-      router.replace('/(auth)/onboarding');
+      if (isAnonymous) {
+        // Upgrade the existing guest session so progress/purchases carry over.
+        await registerAccount(email, password, displayName || undefined);
+        router.replace('/(tabs)');
+      } else {
+        await signUp(email, password, displayName || undefined);
+        router.replace('/(auth)/onboarding');
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
       Alert.alert('Signup Failed', errorMessage);

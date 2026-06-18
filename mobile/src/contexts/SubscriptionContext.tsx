@@ -7,7 +7,7 @@ import Purchases, {
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { useAuth } from './AuthContext';
-import { api, RedeemCodeResponse } from '../services/api';
+import { api } from '../services/api';
 
 /**
  * RevenueCat configuration (from app.json -> extra.revenuecat). All keys default
@@ -33,6 +33,8 @@ export interface SubscriptionContextType {
   isLoading: boolean;
   monthlyPackage: PurchasesPackage | null;
   annualPackage: PurchasesPackage | null;
+  /** True when the current offering failed to load / returned no packages. */
+  offeringsError: boolean;
   /** Tier label sourced from server-cached entitlement, falls back to RC. */
   tier: 'free' | 'monthly' | 'annual' | 'comp' | null;
   source: 'revenuecat' | 'comp_code' | 'admin' | null;
@@ -43,8 +45,8 @@ export interface SubscriptionContextType {
   /** Legacy helper retained for compatibility — buys the monthly package. */
   purchaseSubscription: () => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
-  redeemCompCode: (code: string) => Promise<RedeemCodeResponse | null>;
-  presentAppleOfferCodeSheet: () => Promise<void>;
+  /** Re-fetch the current offering (used by the paywall retry button). */
+  reloadOfferings: () => Promise<void>;
   /** Force-refresh both server entitlement and RC customer info. */
   refresh: () => Promise<void>;
 }
@@ -77,6 +79,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [monthlyPackage, setMonthlyPackage] = useState<PurchasesPackage | null>(null);
   const [annualPackage, setAnnualPackage] = useState<PurchasesPackage | null>(null);
+  const [offeringsError, setOfferingsError] = useState(false);
   const [rcIsPremium, setRcIsPremium] = useState(false);
   const [serverStatus, setServerStatus] = useState<{
     isPremium: boolean;
@@ -112,13 +115,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const loadOfferings = useCallback(async () => {
     if (!isRevenueCatAvailable) return;
-    try {
+    setOfferingsError(false);
+    const attempt = async () => {
       const offerings = await Purchases.getOfferings();
-      const { monthly, annual } = splitOffering(offerings.current);
+      return splitOffering(offerings.current);
+    };
+    try {
+      let { monthly, annual } = await attempt();
+      // Retry once if the offering came back empty — cold-start / transient
+      // network failures otherwise leave the paywall with no packages.
+      if (!monthly && !annual) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        ({ monthly, annual } = await attempt());
+      }
       setMonthlyPackage(monthly);
       setAnnualPackage(annual);
+      setOfferingsError(!monthly && !annual);
     } catch (error) {
       console.error('[Subscription] Error loading offerings:', error);
+      setOfferingsError(true);
     }
   }, []);
 
@@ -253,47 +268,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshServerStatus, refreshUser]);
 
-  const redeemCompCode = useCallback(
-    async (code: string): Promise<RedeemCodeResponse | null> => {
-      const trimmed = code.trim();
-      if (!trimmed) return null;
-      const result = await api.redeemCode(trimmed);
-      if (result.data?.ok) {
-        await Promise.allSettled([refreshServerStatus(), refreshUser()]);
-        return result.data;
-      }
-      return null;
-    },
-    [refreshServerStatus, refreshUser]
-  );
-
-  const presentAppleOfferCodeSheet = useCallback(async (): Promise<void> => {
-    if (!isRevenueCatAvailable || Platform.OS !== 'ios') {
-      console.warn('[Subscription] Offer code sheet is iOS + dev-build only.');
-      return;
-    }
-    try {
-      // `presentCodeRedemptionSheet` is iOS-specific. Some SDK versions expose
-      // it directly on Purchases; others under a static helper. We probe both.
-      const PurchasesAny = Purchases as unknown as Record<string, any>;
-      if (typeof PurchasesAny.presentCodeRedemptionSheet === 'function') {
-        await PurchasesAny.presentCodeRedemptionSheet();
-      } else if (typeof PurchasesAny.default?.presentCodeRedemptionSheet === 'function') {
-        await PurchasesAny.default.presentCodeRedemptionSheet();
-      } else {
-        console.warn('[Subscription] presentCodeRedemptionSheet not available in this RC SDK version.');
-        return;
-      }
-      // Sheet returns synchronously; entitlement update flows through the
-      // customer-info listener / webhook within a few seconds.
-      setTimeout(() => {
-        refresh().catch(() => {});
-      }, 1500);
-    } catch (error) {
-      console.error('[Subscription] presentAppleOfferCodeSheet error:', error);
-    }
-  }, [refresh]);
-
   // Effective premium = server cache OR RC client view OR admin flag from profile.
   // The server cache is authoritative; RC is the fast-path for instant UI after
   // a fresh purchase, before the webhook fires.
@@ -314,6 +288,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       isLoading,
       monthlyPackage,
       annualPackage,
+      offeringsError,
       tier,
       source,
       expiresAt,
@@ -321,8 +296,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       purchasePackage,
       purchaseSubscription,
       restorePurchases,
-      redeemCompCode,
-      presentAppleOfferCodeSheet,
+      reloadOfferings: loadOfferings,
       refresh,
     }),
     [
@@ -330,14 +304,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       isLoading,
       monthlyPackage,
       annualPackage,
+      offeringsError,
       tier,
       source,
       expiresAt,
       purchasePackage,
       purchaseSubscription,
       restorePurchases,
-      redeemCompCode,
-      presentAppleOfferCodeSheet,
+      loadOfferings,
       refresh,
     ]
   );

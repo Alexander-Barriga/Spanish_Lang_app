@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Audio, Video, ResizeMode } from 'expo-av';
+import { requestMicrophoneAccess } from '../../src/utils/microphone';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { useAudioPlayback } from '../../src/hooks/useAudioPlayback';
 import { api, EmotionData } from '../../src/services/api';
@@ -315,10 +316,9 @@ export default function ConversationScreen() {
   const startRecording = async () => {
     try {
       console.log('📱 Requesting microphone permission...');
-      
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant microphone access to use voice chat.');
+
+      const hasMic = await requestMicrophoneAccess();
+      if (!hasMic) {
         setState('idle');
         return;
       }

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
+import { requestMicrophoneAccess } from '../../src/utils/microphone';
 import { colors, textStyles, spacing, borderRadius, shadows } from '../../src/theme';
 import { api, CurriculumWeek, DailyLesson, MCQQuestion, SpeakingPrompt } from '../../src/services/api';
 import { TUTOR_CHARACTERS, DEFAULT_TUTOR_ID } from '../../src/config/constants';
@@ -220,9 +221,8 @@ export default function WorkoutScreen() {
     if (isTutorSpeaking) return;
 
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant microphone access.');
+      const hasMic = await requestMicrophoneAccess();
+      if (!hasMic) {
         return;
       }
 

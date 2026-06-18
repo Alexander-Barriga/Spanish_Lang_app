@@ -8,10 +8,6 @@ import {
   ActivityIndicator,
   Linking,
   ScrollView,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -43,20 +39,18 @@ export default function PaywallScreen() {
   const {
     monthlyPackage,
     annualPackage,
+    offeringsError,
+    isLoading: isLoadingSubscription,
+    reloadOfferings,
     purchasePackage,
     restorePurchases,
-    redeemCompCode,
-    presentAppleOfferCodeSheet,
     isStoreAvailable,
   } = useSubscription();
 
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>('annual');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [showCodeSheet, setShowCodeSheet] = useState(false);
-  const [codeInput, setCodeInput] = useState('');
-  const [codeError, setCodeError] = useState<string | null>(null);
-  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
 
   const monthlyPrice = monthlyPackage?.product?.priceString ?? FALLBACK_MONTHLY_PRICE;
   const annualPrice = annualPackage?.product?.priceString ?? FALLBACK_ANNUAL_PRICE;
@@ -96,11 +90,33 @@ export default function PaywallScreen() {
     setSelectedPlan('free');
   };
 
+  const handleRetryOfferings = async () => {
+    setIsReloading(true);
+    try {
+      await reloadOfferings();
+    } finally {
+      setIsReloading(false);
+    }
+  };
+
   const handlePurchase = async (kind: PurchaseKind) => {
     if (!isStoreAvailable) {
       Alert.alert(
         'Purchases Unavailable',
-        'In-app purchases are only available in a development build of the app, not in Expo Go. Use a code or restore an existing purchase.'
+        'In-app purchases are only available in the App Store or TestFlight build of the app. Please try again there.'
+      );
+      return;
+    }
+
+    const target = kind === 'annual' ? annualPackage : monthlyPackage;
+    if (!target) {
+      Alert.alert(
+        'Plans Unavailable',
+        "We couldn't load subscription options. Please check your connection and try again.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: handleRetryOfferings },
+        ]
       );
       return;
     }
@@ -148,38 +164,6 @@ export default function PaywallScreen() {
     }
   };
 
-  const handleSubmitCode = async () => {
-    setCodeError(null);
-    const code = codeInput.trim();
-    if (!code) {
-      setCodeError('Enter a code to continue.');
-      return;
-    }
-    setIsRedeeming(true);
-    try {
-      const result = await redeemCompCode(code);
-      if (result?.ok && result.kind === 'full_access') {
-        setShowCodeSheet(false);
-        setCodeInput('');
-        Alert.alert('Welcome to Spanish Lab!', 'Your code has been redeemed. All episodes are now unlocked.', [
-          { text: 'Continue', onPress: () => router.replace('/(tabs)') },
-        ]);
-      } else {
-        setCodeError("That code isn't valid. Try again or use an App Store offer code.");
-      }
-    } catch {
-      setCodeError('Something went wrong. Please try again.');
-    } finally {
-      setIsRedeeming(false);
-    }
-  };
-
-  const handleAppleOfferCode = async () => {
-    setShowCodeSheet(false);
-    setCodeInput('');
-    await presentAppleOfferCodeSheet();
-  };
-
   const primaryCtaLabel = selectedPlan === 'free'
     ? 'Continue with Free'
     : isPurchasing
@@ -216,6 +200,24 @@ export default function PaywallScreen() {
           ))}
         </View>
 
+        {isStoreAvailable && isLoadingSubscription ? (
+          <View style={styles.plansBanner}>
+            <ActivityIndicator size="small" color={colors.primary.gold} />
+            <Text style={styles.plansBannerText}>Loading plans…</Text>
+          </View>
+        ) : isStoreAvailable && offeringsError ? (
+          <Pressable style={styles.plansBanner} onPress={handleRetryOfferings} disabled={isReloading}>
+            {isReloading ? (
+              <ActivityIndicator size="small" color={colors.primary.gold} />
+            ) : (
+              <Ionicons name="refresh" size={16} color={colors.primary.gold} />
+            )}
+            <Text style={styles.plansBannerText}>
+              {isReloading ? 'Loading plans…' : "Couldn't load latest prices — tap to retry"}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.plansContainer}>
           <PlanCard
             label="Annual"
@@ -226,7 +228,6 @@ export default function PaywallScreen() {
             selected={selectedPlan === 'annual'}
             onPress={() => setSelectedPlan('annual')}
             highlight
-            disabled={!annualPackage && isStoreAvailable}
           />
           <PlanCard
             label="Monthly"
@@ -235,7 +236,6 @@ export default function PaywallScreen() {
             sublabel="Cancel anytime"
             selected={selectedPlan === 'monthly'}
             onPress={() => setSelectedPlan('monthly')}
-            disabled={!monthlyPackage && isStoreAvailable}
           />
           <PlanCard
             label="Continue Free"
@@ -270,10 +270,6 @@ export default function PaywallScreen() {
         </Pressable>
 
         <View style={styles.secondaryRow}>
-          <Pressable onPress={() => setShowCodeSheet(true)} style={styles.secondaryButton}>
-            <Text style={styles.secondaryText}>Have a code?</Text>
-          </Pressable>
-          <View style={styles.secondaryDivider} />
           <Pressable onPress={handleRestore} disabled={isRestoring} style={styles.secondaryButton}>
             {isRestoring ? (
               <ActivityIndicator size="small" color={colors.text.secondary} />
@@ -298,63 +294,6 @@ export default function PaywallScreen() {
           </View>
         </View>
       </ScrollView>
-
-      <Modal
-        visible={showCodeSheet}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCodeSheet(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalRoot}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Pressable style={styles.modalBackdrop} onPress={() => setShowCodeSheet(false)} />
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Enter your code</Text>
-            <Text style={styles.modalSubtitle}>
-              Codes from Spanish Lab unlock full access. Codes from the App Store should be redeemed via Apple&apos;s sheet.
-            </Text>
-            <TextInput
-              value={codeInput}
-              onChangeText={(text) => {
-                setCodeInput(text);
-                if (codeError) setCodeError(null);
-              }}
-              placeholder="SPANLAB-XXXX-XXXX-XXXX"
-              placeholderTextColor={colors.neutral[600]}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              spellCheck={false}
-              style={styles.modalInput}
-              onSubmitEditing={handleSubmitCode}
-            />
-            {codeError ? <Text style={styles.modalError}>{codeError}</Text> : null}
-
-            <Pressable
-              onPress={handleSubmitCode}
-              disabled={isRedeeming}
-              style={[styles.modalPrimary, isRedeeming && styles.buttonDisabled]}
-            >
-              {isRedeeming ? (
-                <ActivityIndicator color={colors.neutral[950]} />
-              ) : (
-                <Text style={styles.modalPrimaryText}>Redeem Code</Text>
-              )}
-            </Pressable>
-
-            {Platform.OS === 'ios' && isStoreAvailable && (
-              <Pressable onPress={handleAppleOfferCode} style={styles.modalSecondary}>
-                <Text style={styles.modalSecondaryText}>Redeem an App Store code instead</Text>
-              </Pressable>
-            )}
-
-            <Pressable onPress={() => setShowCodeSheet(false)} style={styles.modalCancel}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -473,6 +412,19 @@ const styles = StyleSheet.create({
   plansContainer: {
     marginBottom: spacing[5],
     gap: spacing[3],
+  },
+  plansBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[2],
+    marginBottom: spacing[2],
+  },
+  plansBannerText: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontSize: 13,
   },
   planCard: {
     backgroundColor: colors.background.elevated,
@@ -597,11 +549,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[3],
   },
-  secondaryDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: colors.neutral[700],
-  },
   secondaryText: {
     ...textStyles.body,
     color: colors.text.secondary,
@@ -633,77 +580,5 @@ const styles = StyleSheet.create({
   legalDivider: {
     color: colors.neutral[600],
     fontSize: 12,
-  },
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-  },
-  modalCard: {
-    backgroundColor: colors.background.elevated,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    padding: spacing[6],
-    paddingBottom: spacing[8],
-    gap: spacing[3],
-  },
-  modalTitle: {
-    ...textStyles.h2,
-    color: colors.text.primary,
-    fontSize: 22,
-  },
-  modalSubtitle: {
-    ...textStyles.body,
-    color: colors.text.secondary,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  modalInput: {
-    backgroundColor: colors.background.primary,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    color: colors.text.primary,
-    fontSize: 15,
-    letterSpacing: 0.5,
-  },
-  modalError: {
-    ...textStyles.caption,
-    color: '#FF6B6B',
-    fontSize: 12,
-  },
-  modalPrimary: {
-    backgroundColor: colors.primary.gold,
-    paddingVertical: spacing[3],
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
-  modalPrimaryText: {
-    ...textStyles.button,
-    color: colors.neutral[950],
-    fontWeight: '700',
-  },
-  modalSecondary: {
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-  },
-  modalSecondaryText: {
-    ...textStyles.body,
-    color: colors.text.secondary,
-    textDecorationLine: 'underline',
-    fontSize: 13,
-  },
-  modalCancel: {
-    paddingVertical: spacing[2],
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    ...textStyles.body,
-    color: colors.text.tertiary,
-    fontSize: 14,
   },
 });

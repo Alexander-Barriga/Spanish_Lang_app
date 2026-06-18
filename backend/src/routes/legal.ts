@@ -115,7 +115,6 @@ router.get('/terms', (req: Request, res: Response) => {
     <li>You can manage your subscriptions and turn off auto-renewal at any time by going to your device's <em>Settings &gt; Apple ID &gt; Subscriptions</em>, or via <em>App Store &gt; Account &gt; Subscriptions</em>.</li>
     <li>No cancellation of the current subscription period is allowed during an active subscription period.</li>
     <li>Any unused portion of a free trial period, if offered, will be forfeited when you purchase a subscription.</li>
-    <li>Promotional or comp codes redeemed inside the app grant access according to their stated duration and do not auto-renew.</li>
   </ul>
 
   <h2>User Conduct</h2>
@@ -173,7 +172,6 @@ router.get('/support', (req: Request, res: Response) => {
   <h2>Common Topics</h2>
   <ul>
     <li><strong>Subscription / billing issues</strong> — contact us at the email above or manage your subscription via <em>Settings &gt; Apple ID &gt; Subscriptions</em>.</li>
-    <li><strong>Comp code redemption</strong> — tap "Have a code?" on the paywall screen and enter your code.</li>
     <li><strong>Account or login issues</strong> — use "Forgot password?" on the sign-in screen or email us.</li>
     <li><strong>Bug reports</strong> — describe what happened and your device/iOS version and we'll investigate.</li>
   </ul>

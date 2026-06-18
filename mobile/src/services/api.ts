@@ -456,6 +456,12 @@ class ApiClient {
     });
   }
 
+  async deleteAccount() {
+    return this.request<{ message: string }>('/users/account', {
+      method: 'DELETE',
+    });
+  }
+
   async getVocabularySets() {
     return this.request<{ vocabularySets: unknown[] }>('/users/vocabulary-sets');
   }

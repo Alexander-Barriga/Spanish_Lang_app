@@ -8,9 +8,10 @@ import { useSubscription } from '../../src/contexts/SubscriptionContext';
 import { colors, textStyles, spacing, borderRadius } from '../../src/theme';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, isAnonymous, signOut, deleteAccount } = useAuth();
   const { isPremium, restorePurchases } = useSubscription();
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -30,6 +31,31 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your account and all of your data, including progress and saved writing. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteAccount();
+              router.replace('/(auth)/welcome');
+            } catch {
+              Alert.alert('Error', 'Could not delete your account. Please try again.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView 
@@ -39,9 +65,25 @@ export default function ProfileScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.displayName}>
-            {user?.email || 'Learner'}
+            {user?.email || (isAnonymous ? 'Guest' : 'Learner')}
           </Text>
         </View>
+
+        {/* Guest upgrade prompt — registration is optional */}
+        {isAnonymous && (
+          <View style={styles.guestCard}>
+            <Text style={styles.guestTitle}>Save your progress</Text>
+            <Text style={styles.guestSubtitle}>
+              Create a free account to keep your progress and access it on any device. You can keep using the app as a guest.
+            </Text>
+            <Pressable style={styles.guestPrimary} onPress={() => router.push('/(auth)/signup')}>
+              <Text style={styles.guestPrimaryText}>Create Account</Text>
+            </Pressable>
+            <Pressable style={styles.guestSecondary} onPress={() => router.push('/(auth)/login')}>
+              <Text style={styles.guestSecondaryText}>Already have an account? Sign In</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Subscription status */}
         <View style={styles.subscriptionCard}>
@@ -93,9 +135,26 @@ export default function ProfileScreen() {
         </Pressable>
 
         <View>
-          <Pressable style={styles.signOutButton} onPress={handleSignOut}>
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={styles.signOutText}>Sign Out</Text>
+          {!isAnonymous && (
+            <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </Pressable>
+          )}
+
+          <Pressable
+            style={styles.deleteButton}
+            onPress={handleDeleteAccount}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Text style={styles.deleteText}>Delete Account</Text>
+              </>
+            )}
           </Pressable>
         </View>
 
@@ -182,6 +241,59 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.error,
     fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[4],
+    marginTop: spacing[3],
+  },
+  deleteText: {
+    ...textStyles.body,
+    color: colors.error,
+    fontWeight: '600',
+  },
+  guestCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  guestTitle: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: spacing[1],
+  },
+  guestSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    lineHeight: 18,
+    marginBottom: spacing[3],
+  },
+  guestPrimary: {
+    backgroundColor: colors.primary.gold,
+    paddingVertical: spacing[3],
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  guestPrimaryText: {
+    ...textStyles.body,
+    color: colors.neutral[950],
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  guestSecondary: {
+    paddingVertical: spacing[3],
+    alignItems: 'center',
+  },
+  guestSecondaryText: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    fontSize: 13,
   },
   version: {
     ...textStyles.caption,

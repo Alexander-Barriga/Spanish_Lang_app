@@ -26,7 +26,7 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, isAnonymous } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const lastPaywallNavAt = useRef(0);
@@ -38,9 +38,13 @@ function RootLayoutNav() {
   }, [isLoading]);
 
   // Handle auth-based navigation.
-  // The reset-password screen is exempt from the unauthenticated redirect:
-  // the user arrives there with a recovery session before the normal auth
-  // guard would consider them "logged in".
+  // - No session at all -> welcome (registration is optional; "Get Started"
+  //   creates a guest session).
+  // - Guest (anonymous) sessions are allowed to stay inside the (auth) group so
+  //   they can move through welcome -> onboarding and later reach signup/login
+  //   to upgrade or switch accounts.
+  // - Only a fully-registered user is bounced out of the (auth) group to tabs.
+  // - The reset-password screen is exempt from the unauthenticated redirect.
   useEffect(() => {
     if (isLoading) return;
 
@@ -49,11 +53,11 @@ function RootLayoutNav() {
 
     if (!isAuthenticated && !inAuthGroup && !inResetPassword) {
       router.replace('/(auth)/welcome');
-    } else if (isAuthenticated && inAuthGroup) {
+    } else if (isAuthenticated && !isAnonymous && inAuthGroup) {
       router.replace('/(tabs)');
     }
     // isAuthenticated && inResetPassword → stay on reset screen, don't push to tabs
-  }, [isAuthenticated, segments, isLoading]);
+  }, [isAuthenticated, isAnonymous, segments, isLoading]);
 
   // Handle password-reset deep links (spanishlab://reset-password).
   //
