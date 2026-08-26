@@ -457,8 +457,8 @@ class ApiClient {
   }
 
   async deleteAccount() {
-    return this.request<{ message: string }>('/users/account', {
-      method: 'DELETE',
+    return this.request<{ message: string }>('/users/account/delete', {
+      method: 'POST',
     });
   }
 

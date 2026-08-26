@@ -208,7 +208,10 @@ router.delete('/vocabulary-sets/:id', async (req: Request, res: Response) => {
 // Permanently delete the authenticated user's account and all associated data.
 // Deleting the auth.users row cascades to public.users and every child table
 // (progress, conversations, episode data, etc.) via ON DELETE CASCADE.
-router.delete('/account', async (req: Request, res: Response) => {
+//
+// Two routes handle deletion — DELETE /account (standard) and POST
+// /account/delete (fallback for networks/proxies that block DELETE requests).
+const handleDeleteAccount = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -231,7 +234,10 @@ router.delete('/account', async (req: Request, res: Response) => {
     console.error('Delete account error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
+
+router.delete('/account', handleDeleteAccount);
+router.post('/account/delete', handleDeleteAccount);
 
 export default router;
 
